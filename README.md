@@ -10,4 +10,4 @@
 
 
 The shield to protect our users from incoming events for the codex project.
-aka. The receiver of data from [https://github.com/Comcast/caduceus](caduceus)
+aka. The receiver of data from [XMiDT Caduceus](https://github.com/Comcast/caduceus)
