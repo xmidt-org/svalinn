@@ -7,7 +7,6 @@
   packages = ["db"]
   pruneopts = "UT"
   revision = "bab50fe24135722f22c71579ba191a1825bd17f0"
-  source = "git@github.com:Comcast/codex.git"
   version = "v0.1.0"
 
 [[projects]]
@@ -26,7 +25,6 @@
   ]
   pruneopts = "UT"
   revision = "690ceee87713a8a572d554e8bc5c12d73c1144ea"
-  source = "git@github.com:Comcast/webpa-common.git"
 
 [[projects]]
   digest = "1:8515c0ca4381246cf332cee05fc84070bbbb07bd679b639161506ba532f47128"
