@@ -11,6 +11,7 @@ RUN apk --no-cache add ca-certificates
 RUN mkdir -p /etc/svalinn
 VOLUME /etc/svalinn
 WORKDIR /root/
+EXPOSE 8181
 COPY --from=builder  /go/src/github.com/comcast/codex-svalinn .
 COPY svalinn.yaml .
 ENTRYPOINT ["./svalinn_linux_amd64"]
