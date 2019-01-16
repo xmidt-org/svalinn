@@ -40,6 +40,6 @@ jobs:
         # build gungnir
         - go get github.com/Comcast/codex-gungnir
         - cd ../codex-gungnir
-        - docker build -t gungnir:local
+        - docker build -t gungnir:local .
         - cd ../codex/deploy/docker-compose
         - docker-compose up -d
