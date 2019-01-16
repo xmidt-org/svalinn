@@ -30,17 +30,20 @@ script:
 jobs:
   include:
     - stage: docker
-      name: "Integration Tests"
+      name: "Docker Build"
       script:
         - docker build -t svalinn:local .
         - docker --version
         - docker-compose --version
         - docker swarm init
         - cd ..
-        - git clone https://github.com/Comcast/codex.git
         - git clone https://github.com/Comcast/codex-gungnir.git
         - cd codex-gungnir
         # build gungnir
         - docker build -t gungnir:local .
-        - cd ../codex/deploy/docker-compose
-        - docker-compose up -d
+    - name: "Integration Tests"
+      script:
+        - cd ..
+        - git clone https://github.com/Comcast/codex.git
+        - cd codex/deploy/docker-compose
+        - docker stack deploy
