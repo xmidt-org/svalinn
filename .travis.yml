@@ -34,8 +34,6 @@ jobs:
       script:
         - docker build -t svalinn:local .
         - docker --version
-        - docker-compose --version
-        - docker swarm init
         - cd ..
         - git clone https://github.com/Comcast/codex-gungnir.git
         - cd codex-gungnir
@@ -43,6 +41,8 @@ jobs:
         - docker build -t gungnir:local .
     - name: "Integration Tests"
       script:
+        - docker-compose --version
+        - docker swarm init
         - cd ..
         - git clone https://github.com/Comcast/codex.git
         - cd codex/deploy/docker-compose
