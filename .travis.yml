@@ -46,4 +46,7 @@ jobs:
         - pushd codex/deploy/docker-compose
         - docker stack deploy codex --compose-file docker-compose.yml
         - popd
+        # get test dependencies
+        - go get github.com/gorilla/mux
+        - go get github.com/DATA-DOG/godog
         - go run github.com/Comcast/codex/tests/runners/travis -feature=codex/tests/features
