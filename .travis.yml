@@ -36,10 +36,11 @@ jobs:
         - docker --version
         - docker-compose --version
         - docker swarm init
-        - go get github.com/Comcast/codex
+        - cd ..
+        - git clone https://github.com/Comcast/codex.git
+        - git clone https://github.com/Comcast/codex-gungnir.git
+        - cd codex-gungnir
         # build gungnir
-        - go get github.com/Comcast/codex-gungnir
-        - cd ../codex-gungnir
         - docker build -t gungnir:local .
         - cd ../codex/deploy/docker-compose
         - docker-compose up -d
