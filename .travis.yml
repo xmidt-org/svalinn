@@ -43,5 +43,7 @@ jobs:
         - docker swarm init
         - cd ..
         - git clone https://github.com/Comcast/codex.git
-        - cd codex/deploy/docker-compose
+        - pushd codex/deploy/docker-compose
         - docker stack deploy codex --compose-file docker-compose.yml
+        - popd
+        - go run github.com/Comcast/codex/tests/runners/travis -feature=codex/tests/features
