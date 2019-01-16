@@ -29,8 +29,8 @@ script:
 
 jobs:
   include:
-    - stage: docker
-      name: "Docker Build"
+    - stage: it
+      name: "Integration Tests"
       script:
         - docker build -t svalinn:local .
         - docker --version
@@ -39,8 +39,6 @@ jobs:
         - cd codex-gungnir
         # build gungnir
         - docker build -t gungnir:local .
-    - name: "Integration Tests"
-      script:
         - docker-compose --version
         - docker swarm init
         - cd ..
