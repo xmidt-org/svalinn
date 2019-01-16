@@ -44,4 +44,4 @@ jobs:
         - cd ..
         - git clone https://github.com/Comcast/codex.git
         - cd codex/deploy/docker-compose
-        - docker stack deploy
+        - docker stack deploy codex --compose-file docker-compose.yml
