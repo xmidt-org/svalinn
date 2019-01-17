@@ -19,6 +19,7 @@ config:
     password: "somepassword"
     bucket: "devices"
     numRetries: 4
+    timeout: 10m
 
 authHeader: ["YXV0aEhlYWRlcg=="]
 

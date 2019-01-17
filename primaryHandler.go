@@ -31,34 +31,35 @@ import (
 	"time"
 )
 
-func handleRequests(requestQueue chan wrp.Message, pruneQueue chan string, logger log.Logger, dbConn db.DbConnection) {
+func handleRequests(requestQueue chan wrp.Message, pruneQueue chan string, logger log.Logger, dbConn db.Connection) {
 	for request := range requestQueue {
 		// TODO: need to add semaphore/limit to goroutines
 		go handleRequest(request, pruneQueue, logger, dbConn)
 	}
 }
 
-func handlePruning(pruneQueue chan string, logger log.Logger, dbConn db.DbConnection, limit int) {
+func handlePruning(pruneQueue chan string, logger log.Logger, dbConn db.Connection, limit int) {
 	for device := range pruneQueue {
 		go pruneDevice(device, logger, dbConn, limit)
 	}
 }
 
-func pruneDevice(deviceId string, logger log.Logger, dbConn db.DbConnection, limit int) {
+func pruneDevice(deviceId string, logger log.Logger, dbConn db.Connection, limit int) {
 
-	events, err := dbConn.GetHistory(deviceId)
+	history, err := dbConn.GetHistory(deviceId)
 	if err != nil {
 		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(),
 			"Failed to get device", logging.ErrorKey(), err.Error())
 		return
 	}
 
-	numEvents := len(events)
+	numEvents := len(history.Events)
 	if numEvents > limit {
-		err = dbConn.RemoveHistory(deviceId, numEvents-limit)
+		newEventList := history.Events[:limit]
+		err = dbConn.UpdateHistory(deviceId, newEventList)
 		if err != nil {
 			logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(),
-				"Failed to remove event history", logging.ErrorKey(), err.Error())
+				"Failed to update event history", logging.ErrorKey(), err.Error(), "device", deviceId, "limit", limit)
 			return
 		}
 		logging.Info(logger).Log(logging.MessageKey(), "Successfully pruned event history", "device", deviceId, "limit", limit)
@@ -68,7 +69,7 @@ func pruneDevice(deviceId string, logger log.Logger, dbConn db.DbConnection, lim
 		"number of states", numEvents)
 }
 
-func handleRequest(request wrp.Message, pruneQueue chan string, logger log.Logger, dbConn db.DbConnection) {
+func handleRequest(request wrp.Message, pruneQueue chan string, logger log.Logger, dbConn db.Connection) {
 	deviceId, event, err := parseRequest(request)
 	if err != nil {
 		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(),

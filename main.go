@@ -44,7 +44,7 @@ type SvalinnConfig struct {
 	Endpoint            string
 	QueueSize           int
 	StateLimitPerDevice int
-	Db                  db.DbConnection
+	Db                  db.Connection
 }
 
 func svalinn(arguments []string) int {
