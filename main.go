@@ -38,6 +38,7 @@ import (
 const (
 	applicationName, apiBase = "svalinn", "/api/v1"
 	DEFAULT_KEY_ID           = "current"
+	applicationVersion       = "0.0.0"
 )
 
 type SvalinnConfig struct {
@@ -54,6 +55,17 @@ func svalinn(arguments []string) int {
 		f, v                                = pflag.NewFlagSet(applicationName, pflag.ContinueOnError), viper.New()
 		logger, metricsRegistry, codex, err = server.Initialize(applicationName, arguments, f, v)
 	)
+
+	printVer := f.BoolP("version", "v", false, "displays the version number")
+	if err := f.Parse(arguments); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to parse arguments: %s\n", err.Error())
+		return 1
+	}
+
+	if *printVer {
+		fmt.Println(applicationVersion)
+		return 0
+	}
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to initialize viper: %s\n", err.Error())
