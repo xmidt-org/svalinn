@@ -28,13 +28,14 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path"
+	"regexp"
 	"time"
 )
 
-func handleRequests(requestQueue chan wrp.Message, pruneQueue chan string, logger log.Logger, dbConn db.Connection) {
+func handleRequests(requestQueue chan wrp.Message, pruneQueue chan string, logger log.Logger, dbConn db.Connection, tombstoneRules map[string]*regexp.Regexp) {
 	for request := range requestQueue {
 		// TODO: need to add semaphore/limit to goroutines
-		go handleRequest(request, pruneQueue, logger, dbConn)
+		go handleRequest(request, pruneQueue, logger, dbConn, tombstoneRules)
 	}
 }
 
@@ -69,14 +70,18 @@ func pruneDevice(deviceId string, logger log.Logger, dbConn db.Connection, limit
 		"number of states", numEvents)
 }
 
-func handleRequest(request wrp.Message, pruneQueue chan string, logger log.Logger, dbConn db.Connection) {
+func handleRequest(request wrp.Message, pruneQueue chan string, logger log.Logger, dbConn db.Connection, tombstoneRules map[string]*regexp.Regexp) {
 	deviceId, event, err := parseRequest(request)
 	if err != nil {
 		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(),
 			"Failed to parse request", logging.ErrorKey(), err.Error())
 		return
 	}
-	err = dbConn.InsertEvent(deviceId, event, "")
+	key, err := getTombstoneKey(tombstoneRules, event.Destination)
+	if err != nil {
+		logging.Info(logger).Log(logging.MessageKey(), "Could not get key for tombstone", logging.ErrorKey(), err, "destination", event.Destination)
+	}
+	err = dbConn.InsertEvent(deviceId, event, key)
 	if err != nil {
 		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(),
 			"Failed to add state information to the database", logging.ErrorKey(), err.Error())

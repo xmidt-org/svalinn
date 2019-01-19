@@ -46,6 +46,7 @@ type SvalinnConfig struct {
 	QueueSize           int
 	StateLimitPerDevice int
 	Db                  db.Connection
+	TombstoneKeys       map[string]string
 }
 
 func svalinn(arguments []string) int {
@@ -141,10 +142,13 @@ func svalinn(arguments []string) int {
 		requestQueue: requestQueue,
 	}
 
+	tombstoneRules, err := createTombstoneRules(config.TombstoneKeys)
+	logging.Info(logger).Log(logging.MessageKey(), "tombstone rules made", "rules", tombstoneRules, "config", config.TombstoneKeys)
+
 	// TODO: Fix Caduces acutal register
 	router.Handle(apiBase+config.Endpoint, svalinnHandler.ThenFunc(app.handleWebhook))
 
-	go handleRequests(requestQueue, pruneQueue, logger, dbConn)
+	go handleRequests(requestQueue, pruneQueue, logger, dbConn, tombstoneRules)
 	go handlePruning(pruneQueue, logger, dbConn, config.StateLimitPerDevice)
 
 	// MARK: Starting the server
