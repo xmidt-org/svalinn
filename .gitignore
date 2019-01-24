@@ -6,7 +6,7 @@
 *.dylib
 codex-svalinn
 svalinn
-
+OPATH/
 
 # Test binary, build with `go test -c`
 *.test
