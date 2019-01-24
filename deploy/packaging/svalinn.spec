@@ -25,7 +25,7 @@ aka. The receiver of data from XMiDT Caduceus
 %build
 go get -u github.com/golang/dep/...
 dep ensure
-go build -o $RPM_SOURCE_DIR/%{name} .
+go build -o $RPM_SOURCE_DIR/%{name} %{_topdir}/..
 
 %install
 echo rm -rf %{buildroot}
