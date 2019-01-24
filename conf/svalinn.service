@@ -1,0 +1,17 @@
+# -*- mode: conf -*-
+
+[Unit]
+Description=The receiver of data from XMiDT Caduceus.
+Documentation=https://github.com/Comcast/codex-svalinn
+After=network.target
+
+[Service]
+EnvironmentFile=-/etc/default/svalinn
+User=svalinn
+ExecStart=/usr/bin/svalinn \
+          $SVALINN_OPTS
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
