@@ -21,5 +21,5 @@ VOLUME /etc/svalinn
 EXPOSE 8080
 
 COPY --from=builder /go/src/github.com/comcast/codex-svalinn/svalinn_linux_amd64 /
-COPY conf/svalinn.yaml /
+COPY svalinn.yaml /
 ENTRYPOINT ["/svalinn_linux_amd64"]

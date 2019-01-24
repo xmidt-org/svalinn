@@ -12,5 +12,5 @@ RUN mkdir -p /etc/svalinn
 VOLUME /etc/svalinn
 WORKDIR /root/
 COPY --from=builder  /go/src/github.com/comcast/codex-svalinn .
-COPY conf/svalinn.yaml .
+COPY svalinn.yaml .
 ENTRYPOINT ["./svalinn_linux_amd64"]
