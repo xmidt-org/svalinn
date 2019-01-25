@@ -19,6 +19,7 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/Comcast/codex/db"
 	"github.com/Comcast/webpa-common/concurrent"
 	"github.com/Comcast/webpa-common/logging"
@@ -27,12 +28,14 @@ import (
 	"github.com/justinas/alice"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+
 	//	"github.com/Comcast/webpa-common/secure/handler"
-	"github.com/Comcast/webpa-common/server"
-	"github.com/Comcast/webpa-common/wrp"
 	"os"
 	"os/signal"
 	"time"
+
+	"github.com/Comcast/webpa-common/server"
+	"github.com/Comcast/webpa-common/wrp"
 )
 
 const (
@@ -80,9 +83,12 @@ func svalinn(arguments []string) int {
 		return 1
 	}*/
 
-	config := new(SvalinnConfig)
+	configHolder := new(struct {
+		Config SvalinnConfig
+	})
 
-	v.UnmarshalKey("config", config)
+	v.Unmarshal(configHolder)
+	config := configHolder.Config
 
 	requestQueue := make(chan wrp.Message, config.QueueSize)
 	pruneQueue := make(chan string, config.QueueSize)
