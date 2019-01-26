@@ -20,78 +20,88 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"io/ioutil"
+	"net/http"
+	"path"
+	"time"
+
 	"github.com/Comcast/codex/db"
 	"github.com/Comcast/webpa-common/logging"
 	"github.com/Comcast/webpa-common/wrp"
 	"github.com/go-kit/kit/log"
 	"github.com/goph/emperror"
-	"io/ioutil"
-	"net/http"
-	"path"
-	"regexp"
-	"time"
 )
 
-func handleRequests(requestQueue chan wrp.Message, pruneQueue chan string, logger log.Logger, dbConn db.Connection, tombstoneRules map[string]*regexp.Regexp) {
+type RequestHandler struct {
+	db                  db.Connection
+	logger              log.Logger
+	tombstoneRules      []rule
+	metadataMaxSize     int
+	payloadMaxSize      int
+	stateLimitPerDevice int
+	pruneQueue          chan string
+}
+
+func (r *RequestHandler) handleRequests(requestQueue chan wrp.Message) {
 	for request := range requestQueue {
 		// TODO: need to add semaphore/limit to goroutines
-		go handleRequest(request, pruneQueue, logger, dbConn, tombstoneRules)
+		go r.handleRequest(request)
 	}
 }
 
-func handlePruning(pruneQueue chan string, logger log.Logger, dbConn db.Connection, limit int) {
-	for device := range pruneQueue {
-		go pruneDevice(device, logger, dbConn, limit)
+func (r *RequestHandler) handlePruning() {
+	for device := range r.pruneQueue {
+		go r.pruneDevice(device)
 	}
 }
 
-func pruneDevice(deviceId string, logger log.Logger, dbConn db.Connection, limit int) {
+func (r *RequestHandler) pruneDevice(deviceId string) {
 
-	history, err := dbConn.GetHistory(deviceId)
+	history, err := r.db.GetHistory(deviceId)
 	if err != nil {
-		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(),
+		logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 			"Failed to get device", logging.ErrorKey(), err.Error())
 		return
 	}
 
 	numEvents := len(history.Events)
-	if numEvents > limit {
-		newEventList := history.Events[:limit]
-		err = dbConn.UpdateHistory(deviceId, newEventList)
+	if numEvents > r.stateLimitPerDevice {
+		newEventList := history.Events[:r.stateLimitPerDevice]
+		err = r.db.UpdateHistory(deviceId, newEventList)
 		if err != nil {
-			logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(),
-				"Failed to update event history", logging.ErrorKey(), err.Error(), "device", deviceId, "limit", limit)
+			logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
+				"Failed to update event history", logging.ErrorKey(), err.Error(), "device", deviceId, "limit", r.stateLimitPerDevice)
 			return
 		}
-		logging.Info(logger).Log(logging.MessageKey(), "Successfully pruned event history", "device", deviceId, "limit", limit)
+		logging.Info(r.logger).Log(logging.MessageKey(), "Successfully pruned event history", "device", deviceId, "limit", r.stateLimitPerDevice)
 		return
 	}
-	logging.Info(logger).Log(logging.MessageKey(), "No need to prune event history", "device", deviceId, "limit", limit,
+	logging.Info(r.logger).Log(logging.MessageKey(), "No need to prune event history", "device", deviceId, "limit", r.stateLimitPerDevice,
 		"number of states", numEvents)
 }
 
-func handleRequest(request wrp.Message, pruneQueue chan string, logger log.Logger, dbConn db.Connection, tombstoneRules map[string]*regexp.Regexp) {
-	deviceId, event, err := parseRequest(request)
+func (r *RequestHandler) handleRequest(request wrp.Message) {
+	rule, err := findRule(r.tombstoneRules, request.Destination)
 	if err != nil {
-		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(),
+		logging.Info(r.logger).Log(logging.MessageKey(), "Could not get key for tombstone", logging.ErrorKey(), err, "destination", request.Destination)
+	}
+	deviceId, event, err := parseRequest(request, rule.storePayload, r.payloadMaxSize, r.metadataMaxSize)
+	if err != nil {
+		logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 			"Failed to parse request", logging.ErrorKey(), err.Error())
 		return
 	}
-	key, err := getTombstoneKey(tombstoneRules, event.Destination)
+	err = r.db.InsertEvent(deviceId, event, rule.key)
 	if err != nil {
-		logging.Info(logger).Log(logging.MessageKey(), "Could not get key for tombstone", logging.ErrorKey(), err, "destination", event.Destination)
-	}
-	err = dbConn.InsertEvent(deviceId, event, key)
-	if err != nil {
-		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(),
+		logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 			"Failed to add state information to the database", logging.ErrorKey(), err.Error())
 		return
 	}
-	logging.Info(logger).Log(logging.MessageKey(), "Successfully upserted device information", "device", deviceId, "events", event)
-	pruneQueue <- deviceId
+	logging.Info(r.logger).Log(logging.MessageKey(), "Successfully upserted device information", "device", deviceId, "events", event)
+	r.pruneQueue <- deviceId
 }
 
-func parseRequest(req wrp.Message) (string, db.Event, error) {
+func parseRequest(req wrp.Message, storePayload bool, payloadMaxSize int, metadataMaxSize int) (string, db.Event, error) {
 	var (
 		eventInfo db.Event
 		err       error
@@ -136,9 +146,24 @@ func parseRequest(req wrp.Message) (string, db.Event, error) {
 	eventInfo.PartnerIDs = msg.PartnerIDs
 	eventInfo.TransactionUUID = msg.TransactionUUID
 
+	// store the payload if we are supposed to and it's not too big
+	if storePayload && len(msg.Payload) <= payloadMaxSize {
+		eventInfo.Payload = msg.Payload
+	}
+
 	eventInfo.Details = make(map[string]interface{})
 
-	// store all metadata
+	// if metadata is too large, store a message explaining that instead of the metadata
+	marshaledMetadata, err := json.Marshal(msg.Metadata)
+	if err != nil {
+		return "", db.Event{}, emperror.WrapWith(err, "failed to marshal metadata to determine size", "metadata", msg.Metadata)
+	}
+	if len(marshaledMetadata) > metadataMaxSize {
+		eventInfo.Details["error"] = "metadata provided exceeds size limit - too big to store"
+		return deviceId, eventInfo, nil
+	}
+
+	// store all metadata if all is good
 	for key, val := range msg.Metadata {
 		eventInfo.Details[key] = val
 	}

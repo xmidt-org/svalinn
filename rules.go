@@ -19,27 +19,34 @@ package main
 
 import (
 	"errors"
-	"github.com/goph/emperror"
 	"regexp"
+
+	"github.com/goph/emperror"
 )
 
-func createTombstoneRules(keys map[string]string) (map[string]*regexp.Regexp, error) {
-	rules := make(map[string]*regexp.Regexp)
-	for keyName, keyRegexp := range keys {
-		rule, err := regexp.Compile(keyRegexp)
-		if err != nil {
-			return rules, emperror.WrapWith(err, "Failed to Compile regexp rule", "key", keyName, "regexp attempted", keyRegexp)
-		}
-		rules[keyName] = rule
-	}
-	return rules, nil
+type rule struct {
+	regex        *regexp.Regexp
+	key          string
+	storePayload bool
 }
 
-func getTombstoneKey(tombstoneRules map[string]*regexp.Regexp, dest string) (string, error) {
-	for key, rule := range tombstoneRules {
-		if rule.MatchString(dest) {
-			return key, nil
+func createRules(rules []RuleConfig) ([]rule, error) {
+	var parsedRules []rule
+	for _, r := range rules {
+		regex, err := regexp.Compile(r.Regex)
+		if err != nil {
+			return parsedRules, emperror.WrapWith(err, "Failed to Compile regexp rule", "key", r.TombstoneKey, "regexp attempted", r.Regex)
+		}
+		parsedRules = append(parsedRules, rule{regex, r.TombstoneKey, r.StorePayload})
+	}
+	return parsedRules, nil
+}
+
+func findRule(rules []rule, dest string) (rule, error) {
+	for _, r := range rules {
+		if r.regex.MatchString(dest) {
+			return r, nil
 		}
 	}
-	return "", errors.New("No key matches this destination")
+	return rule{}, errors.New("No key matches this destination")
 }

@@ -48,8 +48,16 @@ type SvalinnConfig struct {
 	Endpoint            string
 	QueueSize           int
 	StateLimitPerDevice int
+	PayloadMaxSize      int
+	MetadataMaxSize     int
 	Db                  db.Connection
-	TombstoneKeys       map[string]string
+	RegexRules          []RuleConfig
+}
+
+type RuleConfig struct {
+	Regex        string
+	TombstoneKey string
+	StorePayload bool
 }
 
 func svalinn(arguments []string) int {
@@ -148,14 +156,23 @@ func svalinn(arguments []string) int {
 		requestQueue: requestQueue,
 	}
 
-	tombstoneRules, err := createTombstoneRules(config.TombstoneKeys)
-	logging.Info(logger).Log(logging.MessageKey(), "tombstone rules made", "rules", tombstoneRules, "config", config.TombstoneKeys)
+	tombstoneRules, err := createRules(config.RegexRules)
+	logging.Info(logger).Log(logging.MessageKey(), "tombstone rules made", "rules", tombstoneRules, "config", config.RegexRules)
 
 	// TODO: Fix Caduces acutal register
 	router.Handle(apiBase+config.Endpoint, svalinnHandler.ThenFunc(app.handleWebhook))
 
-	go handleRequests(requestQueue, pruneQueue, logger, dbConn, tombstoneRules)
-	go handlePruning(pruneQueue, logger, dbConn, config.StateLimitPerDevice)
+	requestHandler := RequestHandler{
+		db:                  dbConn,
+		logger:              logger,
+		tombstoneRules:      tombstoneRules,
+		payloadMaxSize:      config.PayloadMaxSize,
+		metadataMaxSize:     config.MetadataMaxSize,
+		stateLimitPerDevice: config.StateLimitPerDevice,
+		pruneQueue:          pruneQueue,
+	}
+	go requestHandler.handleRequests(requestQueue)
+	go requestHandler.handlePruning()
 
 	// MARK: Starting the server
 	_, runnable, done := codex.Prepare(logger, nil, metricsRegistry, router)
