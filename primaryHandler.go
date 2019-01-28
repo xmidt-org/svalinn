@@ -192,5 +192,5 @@ func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
 	}
 	logging.Info(app.logger).Log(logging.MessageKey(), "message info", "message type", message.Type, "full", message)
 	app.requestQueue <- message
-	writer.WriteHeader(200)
+	writer.WriteHeader(202)
 }
