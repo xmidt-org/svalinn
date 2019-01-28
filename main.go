@@ -91,12 +91,8 @@ func svalinn(arguments []string) int {
 		return 1
 	}*/
 
-	configHolder := new(struct {
-		Config SvalinnConfig
-	})
-
-	v.Unmarshal(configHolder)
-	config := configHolder.Config
+	config := new(SvalinnConfig)
+	v.Unmarshal(config)
 
 	requestQueue := make(chan wrp.Message, config.QueueSize)
 	pruneQueue := make(chan string, config.QueueSize)
