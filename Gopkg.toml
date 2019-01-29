@@ -10,6 +10,10 @@
   name = "github.com/prometheus/client_golang"
   revision = "967789050ba94deca04a5e84cce8ad472ce313c1"
 
+[[override]]
+  name = "github.com/ugorji/go"
+  revision = "v1.1.1"
+
 [prune]
   go-tests = true
   unused-packages = true
