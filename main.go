@@ -50,7 +50,7 @@ type SvalinnConfig struct {
 	StateLimitPerDevice int
 	PayloadMaxSize      int
 	MetadataMaxSize     int
-	Db                  db.Connection
+	Db                  db.Config
 	RegexRules          []RuleConfig
 }
 
@@ -104,9 +104,7 @@ func svalinn(arguments []string) int {
 		Logger:              logger,
 	}*/
 
-	dbConn := config.Db
-
-	err = dbConn.Initialize()
+	dbConn, err := db.CreateDbConnection(config.Db)
 	if err != nil {
 		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to initialize database connection",
 			logging.ErrorKey(), err.Error())

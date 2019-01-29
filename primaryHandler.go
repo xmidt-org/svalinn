@@ -33,7 +33,7 @@ import (
 )
 
 type RequestHandler struct {
-	db                  db.Connection
+	db                  *db.Connection
 	logger              log.Logger
 	tombstoneRules      []rule
 	metadataMaxSize     int
