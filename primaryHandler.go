@@ -33,7 +33,9 @@ import (
 )
 
 type RequestHandler struct {
-	db                  *db.Connection
+	inserter            db.RetryInsertService
+	updater             db.RetryUpdateService
+	getter              db.RetryHGService
 	logger              log.Logger
 	tombstoneRules      []rule
 	metadataMaxSize     int
@@ -44,7 +46,7 @@ type RequestHandler struct {
 
 func (r *RequestHandler) handleRequests(requestQueue chan wrp.Message) {
 	for request := range requestQueue {
-		// TODO: need to add semaphore/limit to goroutines
+		// TODO: need to add limit to goroutines
 		go r.handleRequest(request)
 	}
 }
@@ -57,7 +59,7 @@ func (r *RequestHandler) handlePruning() {
 
 func (r *RequestHandler) pruneDevice(deviceId string) {
 
-	history, err := r.db.GetHistory(deviceId)
+	history, err := r.getter.GetHistory(deviceId)
 	if err != nil {
 		logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 			"Failed to get device", logging.ErrorKey(), err.Error())
@@ -67,7 +69,7 @@ func (r *RequestHandler) pruneDevice(deviceId string) {
 	numEvents := len(history.Events)
 	if numEvents > r.stateLimitPerDevice {
 		newEventList := history.Events[:r.stateLimitPerDevice]
-		err = r.db.UpdateHistory(deviceId, newEventList)
+		err = r.updater.UpdateHistory(deviceId, newEventList)
 		if err != nil {
 			logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 				"Failed to update event history", logging.ErrorKey(), err.Error(), "device", deviceId, "limit", r.stateLimitPerDevice)
@@ -91,7 +93,7 @@ func (r *RequestHandler) handleRequest(request wrp.Message) {
 			"Failed to parse request", logging.ErrorKey(), err.Error())
 		return
 	}
-	err = r.db.InsertEvent(deviceId, event, rule.key)
+	err = r.inserter.InsertEvent(deviceId, event, rule.key)
 	if err != nil {
 		logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 			"Failed to add state information to the database", logging.ErrorKey(), err.Error())

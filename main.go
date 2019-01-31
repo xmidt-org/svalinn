@@ -50,6 +50,10 @@ type SvalinnConfig struct {
 	StateLimitPerDevice int
 	PayloadMaxSize      int
 	MetadataMaxSize     int
+	InsertRetries       int
+	PruneRetries        int
+	GetRetries          int
+	RetryInterval       time.Duration
 	Db                  db.Config
 	RegexRules          []RuleConfig
 }
@@ -151,13 +155,18 @@ func svalinn(arguments []string) int {
 	}
 
 	tombstoneRules, err := createRules(config.RegexRules)
-	logging.Info(logger).Log(logging.MessageKey(), "tombstone rules made", "rules", tombstoneRules, "config", config.RegexRules)
 
 	// TODO: Fix Caduces acutal register
 	router.Handle(apiBase+config.Endpoint, svalinnHandler.ThenFunc(app.handleWebhook))
 
+	inserter := db.CreateRetryInsertService(dbConn, config.InsertRetries, config.RetryInterval)
+	updater := db.CreateRetryUpdateService(dbConn, config.PruneRetries, config.RetryInterval)
+	getter := db.CreateRetryHGService(dbConn, config.GetRetries, config.RetryInterval)
+
 	requestHandler := RequestHandler{
-		db:                  dbConn,
+		inserter:            inserter,
+		updater:             updater,
+		getter:              getter,
 		logger:              logger,
 		tombstoneRules:      tombstoneRules,
 		payloadMaxSize:      config.PayloadMaxSize,
