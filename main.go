@@ -161,7 +161,7 @@ func svalinn(arguments []string) int {
 
 	inserter := db.CreateRetryInsertService(dbConn, config.InsertRetries, config.RetryInterval)
 	updater := db.CreateRetryUpdateService(dbConn, config.PruneRetries, config.RetryInterval)
-	getter := db.CreateRetryHGService(dbConn, config.GetRetries, config.RetryInterval)
+	getter := db.CreateRetryEGService(dbConn, config.GetRetries, config.RetryInterval)
 
 	requestHandler := RequestHandler{
 		inserter:            inserter,
