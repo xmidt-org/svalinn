@@ -35,12 +35,13 @@ import (
 type RequestHandler struct {
 	inserter            db.RetryInsertService
 	updater             db.RetryUpdateService
-	getter              db.RetryHGService
+	getter              db.RetryEGService
 	logger              log.Logger
 	tombstoneRules      []rule
 	metadataMaxSize     int
 	payloadMaxSize      int
 	stateLimitPerDevice int
+	defaultTTL          time.Duration
 	pruneQueue          chan string
 }
 
@@ -52,37 +53,26 @@ func (r *RequestHandler) handleRequests(requestQueue chan wrp.Message) {
 }
 
 func (r *RequestHandler) handlePruning() {
-	for device := range r.pruneQueue {
-		go r.pruneDevice(device)
+	for _ = range r.pruneQueue {
+		go r.pruneDevice()
 	}
 }
 
-func (r *RequestHandler) pruneDevice(deviceId string) {
-
-	history, err := r.getter.GetHistory(deviceId)
+func (r *RequestHandler) pruneDevice() {
+	err := r.updater.PruneRecords(time.Now())
 	if err != nil {
 		logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
-			"Failed to get device", logging.ErrorKey(), err.Error())
+			"Failed to update event history", logging.ErrorKey(), err.Error())
 		return
 	}
-
-	numEvents := len(history.Events)
-	if numEvents > r.stateLimitPerDevice {
-		newEventList := history.Events[:r.stateLimitPerDevice]
-		err = r.updater.UpdateHistory(deviceId, newEventList)
-		if err != nil {
-			logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
-				"Failed to update event history", logging.ErrorKey(), err.Error(), "device", deviceId, "limit", r.stateLimitPerDevice)
-			return
-		}
-		logging.Info(r.logger).Log(logging.MessageKey(), "Successfully pruned event history", "device", deviceId, "limit", r.stateLimitPerDevice)
-		return
-	}
-	logging.Info(r.logger).Log(logging.MessageKey(), "No need to prune event history", "device", deviceId, "limit", r.stateLimitPerDevice,
-		"number of states", numEvents)
+	logging.Info(r.logger).Log(logging.MessageKey(), "Successfully pruned events")
+	return
 }
 
 func (r *RequestHandler) handleRequest(request wrp.Message) {
+	var (
+		deathDate time.Time
+	)
 	rule, err := findRule(r.tombstoneRules, request.Destination)
 	if err != nil {
 		logging.Info(r.logger).Log(logging.MessageKey(), "Could not get key for tombstone", logging.ErrorKey(), err, "destination", request.Destination)
@@ -93,7 +83,26 @@ func (r *RequestHandler) handleRequest(request wrp.Message) {
 			"Failed to parse request", logging.ErrorKey(), err.Error())
 		return
 	}
-	err = r.inserter.InsertEvent(deviceId, event, rule.key)
+	marshalledEvent, err := json.Marshal(event)
+	if err != nil {
+		logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
+			"Failed to marshal event", logging.ErrorKey(), err.Error())
+	}
+
+	birthDate := time.Unix(event.Time, 0)
+	if rule.ttl == 0 {
+		deathDate = birthDate.Add(r.defaultTTL)
+	} else {
+		deathDate = birthDate.Add(rule.ttl)
+	}
+
+	record := db.Record{
+		DeviceID:  deviceId,
+		BirthDate: birthDate,
+		DeathDate: deathDate,
+		Data:      marshalledEvent,
+	}
+	err = r.inserter.InsertRecord(record)
 	if err != nil {
 		logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 			"Failed to add state information to the database", logging.ErrorKey(), err.Error())

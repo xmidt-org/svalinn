@@ -18,6 +18,7 @@ insertRetries: 3
 pruneRetries: 3
 getRetries: 3
 retryInterval: 10s
+defaultTTL: 5s
 db:
   server: "127.0.0.1:11210"
   username: "Administrator"
@@ -30,9 +31,11 @@ regexRules:
   - regex: ".*/online$"
     tombstoneKey: "online"
     storePayload: true
+    ttl: 30s
   - regex: ".*/offline$"
     tombstoneKey: "offline"
     storePayload: true
+    ttl: 30s
 
 authHeader: ["YXV0aEhlYWRlcg=="]
 
