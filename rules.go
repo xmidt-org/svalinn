@@ -39,7 +39,7 @@ func createRules(rules []RuleConfig) ([]rule, error) {
 		if err != nil {
 			return parsedRules, emperror.WrapWith(err, "Failed to Compile regexp rule", "key", r.TombstoneKey, "regexp attempted", r.Regex)
 		}
-		parsedRules = append(parsedRules, rule{regex, r.TombstoneKey, r.StorePayload, r.TTL})
+		parsedRules = append(parsedRules, rule{regex, r.TombstoneKey, r.StorePayload, r.RuleTTL})
 	}
 	return parsedRules, nil
 }

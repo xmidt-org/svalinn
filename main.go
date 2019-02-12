@@ -63,7 +63,7 @@ type RuleConfig struct {
 	Regex        string
 	TombstoneKey string
 	StorePayload bool
-	TTL          time.Duration
+	RuleTTL      time.Duration
 }
 
 func svalinn(arguments []string) int {

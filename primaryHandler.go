@@ -108,8 +108,8 @@ func (r *RequestHandler) handleRequest(request wrp.Message) {
 			"Failed to add state information to the database", logging.ErrorKey(), err.Error())
 		return
 	}
-	logging.Info(r.logger).Log(logging.MessageKey(), "Successfully upserted device information", "device", deviceId, "events", event)
-	//r.pruneQueue <- deviceId
+	logging.Info(r.logger).Log(logging.MessageKey(), "Successfully upserted device information", "device", deviceId, "event", event, "record", record)
+	r.pruneQueue <- deviceId
 }
 
 func parseRequest(req wrp.Message, storePayload bool, payloadMaxSize int, metadataMaxSize int) (string, db.Event, error) {
