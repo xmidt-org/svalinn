@@ -109,7 +109,7 @@ func (r *RequestHandler) handleRequest(request wrp.Message) {
 		return
 	}
 	logging.Info(r.logger).Log(logging.MessageKey(), "Successfully upserted device information", "device", deviceId, "events", event)
-	r.pruneQueue <- deviceId
+	//r.pruneQueue <- deviceId
 }
 
 func parseRequest(req wrp.Message, storePayload bool, payloadMaxSize int, metadataMaxSize int) (string, db.Event, error) {
