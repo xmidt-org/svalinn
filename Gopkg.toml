@@ -1,7 +1,6 @@
 [[constraint]]
   name = "github.com/Comcast/codex"
-  branch = "cockroachdb"
- # version= "0.1.3"
+  version= "0.1.4"
 
 [[constraint]]
   branch = "master"

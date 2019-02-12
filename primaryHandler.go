@@ -41,6 +41,7 @@ type RequestHandler struct {
 	metadataMaxSize     int
 	payloadMaxSize      int
 	stateLimitPerDevice int
+	defaultTTL          time.Duration
 	pruneQueue          chan string
 }
 
@@ -58,7 +59,7 @@ func (r *RequestHandler) handlePruning() {
 }
 
 func (r *RequestHandler) pruneDevice() {
-	err := r.updater.PruneEvents(time.Now())
+	err := r.updater.PruneRecords(time.Now())
 	if err != nil {
 		logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 			"Failed to update event history", logging.ErrorKey(), err.Error())
@@ -69,6 +70,9 @@ func (r *RequestHandler) pruneDevice() {
 }
 
 func (r *RequestHandler) handleRequest(request wrp.Message) {
+	var (
+		deathDate time.Time
+	)
 	rule, err := findRule(r.tombstoneRules, request.Destination)
 	if err != nil {
 		logging.Info(r.logger).Log(logging.MessageKey(), "Could not get key for tombstone", logging.ErrorKey(), err, "destination", request.Destination)
@@ -84,20 +88,28 @@ func (r *RequestHandler) handleRequest(request wrp.Message) {
 		logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 			"Failed to marshal event", logging.ErrorKey(), err.Error())
 	}
+
+	birthDate := time.Unix(event.Time, 0)
+	if rule.ttl == 0 {
+		deathDate = birthDate.Add(r.defaultTTL)
+	} else {
+		deathDate = birthDate.Add(rule.ttl)
+	}
+
 	record := db.Record{
 		DeviceID:  deviceId,
-		BirthDate: time.Unix(event.Time, 0),
-		DeathDate: time.Now().Add(5 * time.Minute),
+		BirthDate: birthDate,
+		DeathDate: deathDate,
 		Data:      marshalledEvent,
 	}
-	err = r.inserter.InsertEvent(record)
+	err = r.inserter.InsertRecord(record)
 	if err != nil {
 		logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 			"Failed to add state information to the database", logging.ErrorKey(), err.Error())
 		return
 	}
 	logging.Info(r.logger).Log(logging.MessageKey(), "Successfully upserted device information", "device", deviceId, "events", event)
-	//r.pruneQueue <- deviceId
+	r.pruneQueue <- deviceId
 }
 
 func parseRequest(req wrp.Message, storePayload bool, payloadMaxSize int, metadataMaxSize int) (string, db.Event, error) {

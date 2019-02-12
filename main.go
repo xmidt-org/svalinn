@@ -53,6 +53,7 @@ type SvalinnConfig struct {
 	InsertRetries       int
 	PruneRetries        int
 	GetRetries          int
+	DefaultTTL          time.Duration
 	RetryInterval       time.Duration
 	Db                  db.Config
 	RegexRules          []RuleConfig
@@ -62,6 +63,7 @@ type RuleConfig struct {
 	Regex        string
 	TombstoneKey string
 	StorePayload bool
+	TTL          time.Duration
 }
 
 func svalinn(arguments []string) int {
@@ -172,6 +174,7 @@ func svalinn(arguments []string) int {
 		payloadMaxSize:      config.PayloadMaxSize,
 		metadataMaxSize:     config.MetadataMaxSize,
 		stateLimitPerDevice: config.StateLimitPerDevice,
+		defaultTTL:          config.DefaultTTL,
 		pruneQueue:          pruneQueue,
 	}
 	go requestHandler.handleRequests(requestQueue)

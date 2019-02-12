@@ -20,6 +20,7 @@ package main
 import (
 	"errors"
 	"regexp"
+	"time"
 
 	"github.com/goph/emperror"
 )
@@ -28,6 +29,7 @@ type rule struct {
 	regex        *regexp.Regexp
 	key          string
 	storePayload bool
+	ttl          time.Duration
 }
 
 func createRules(rules []RuleConfig) ([]rule, error) {
@@ -37,7 +39,7 @@ func createRules(rules []RuleConfig) ([]rule, error) {
 		if err != nil {
 			return parsedRules, emperror.WrapWith(err, "Failed to Compile regexp rule", "key", r.TombstoneKey, "regexp attempted", r.Regex)
 		}
-		parsedRules = append(parsedRules, rule{regex, r.TombstoneKey, r.StorePayload})
+		parsedRules = append(parsedRules, rule{regex, r.TombstoneKey, r.StorePayload, r.TTL})
 	}
 	return parsedRules, nil
 }
