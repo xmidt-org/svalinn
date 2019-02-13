@@ -30,6 +30,7 @@ type rule struct {
 	key          string
 	storePayload bool
 	ttl          time.Duration
+	eventType    string
 }
 
 func createRules(rules []RuleConfig) ([]rule, error) {
@@ -39,7 +40,7 @@ func createRules(rules []RuleConfig) ([]rule, error) {
 		if err != nil {
 			return parsedRules, emperror.WrapWith(err, "Failed to Compile regexp rule", "key", r.TombstoneKey, "regexp attempted", r.Regex)
 		}
-		parsedRules = append(parsedRules, rule{regex, r.TombstoneKey, r.StorePayload, r.RuleTTL})
+		parsedRules = append(parsedRules, rule{regex, r.TombstoneKey, r.StorePayload, r.RuleTTL, r.EventType})
 	}
 	return parsedRules, nil
 }

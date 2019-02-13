@@ -64,6 +64,7 @@ type RuleConfig struct {
 	TombstoneKey string
 	StorePayload bool
 	RuleTTL      time.Duration
+	EventType    string
 }
 
 func svalinn(arguments []string) int {

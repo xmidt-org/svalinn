@@ -32,10 +32,12 @@ regexRules:
     tombstoneKey: "online"
     storePayload: true
     ttl: 30s
+    eventType: "state"
   - regex: ".*/offline$"
     tombstoneKey: "offline"
     storePayload: true
     ttl: 30s
+    eventType: "state"
 
 authHeader: ["YXV0aEhlYWRlcg=="]
 
