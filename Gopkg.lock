@@ -11,12 +11,13 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:27b6014e12291c36223c204787b0c7e7c4f4694615665966c35054125744eea6"
+  digest = "1:b522beb026d796251493b18249e9c62a6687b8e16c9c9c1d6d477335f0a0af10"
   name = "github.com/Comcast/webpa-common"
   packages = [
     "concurrent",
     "health",
     "logging",
+    "semaphore",
     "server",
     "wrp",
     "xhttp",
@@ -24,7 +25,7 @@
     "xmetrics",
   ]
   pruneopts = "UT"
-  revision = "752bd49a9e0ed3b4e134ed36b6e97d365944a2db"
+  revision = "9189af3ae1e5b1cdc567749284c75d7e4e953879"
 
 [[projects]]
   digest = "1:8515c0ca4381246cf332cee05fc84070bbbb07bd679b639161506ba532f47128"
@@ -144,7 +145,7 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:718c57979a9197414a044fff2028e57cb9fe145069e4f507059755bfe87f1bfe"
+  digest = "1:fceb575e3343d80da4807c9bd73e76494931643fa4851e27239812155cf0a341"
   name = "github.com/influxdata/influxdb"
   packages = [
     "client/v2",
@@ -152,8 +153,8 @@
     "pkg/escape",
   ]
   pruneopts = "UT"
-  revision = "698dbc789aff13c2678357a6b93ff73dd7136571"
-  version = "v1.7.3"
+  revision = "ef77e72f435b71b1ad6da7d6a6a4c4a262439379"
+  version = "v1.7.4"
 
 [[projects]]
   digest = "1:937258f1293bc9295b4789b0abea5b4ec030e3caecb65a4e1dc0b6999957a5ed"
@@ -346,11 +347,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:8b466798e96432c23185ca32826702885299f94eb644c9a8dedb79771dff383a"
+  digest = "1:8207c052fb873f83c61a5aa16f6add5feb9881eda2112b56f69fd3b9e7f55c3f"
   name = "golang.org/x/sys"
   packages = ["unix"]
   pruneopts = "UT"
-  revision = "3b5209105503162ded1863c307ac66fec31120dd"
+  revision = "d0b11bdaac8adb652bff00e49bcacf992835621a"
 
 [[projects]]
   digest = "1:8029e9743749d4be5bc9f7d42ea1659471767860f0cdc34d37c3111bd308a295"

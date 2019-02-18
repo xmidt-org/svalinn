@@ -21,22 +21,28 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/go-kit/kit/log"
-	"github.com/goph/emperror"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/go-kit/kit/log"
+	"github.com/goph/emperror"
 )
 
 var RequestAuthorization string
 
 type Webhook struct {
-	Secret               string        `json:",secret"`
+	CaduceusSecret       string        `json:",caduceusSecret"`
 	RegistrationInterval time.Duration `json:",registrationInterval"`
 	URL                  string        `json:",url"`
 	Timeout              time.Duration `json:",timeout"`
 	RegistrationURL      string        `json:",registrationURL"`
+	EventsToWatch        []string      `json:",eventsToWatch"`
+
+	Client string `json:"client"`
+	Secret string `json:"secret"`
+	SatURL string `json:"satURL"`
 
 	Logger log.Logger
 }
@@ -106,13 +112,17 @@ func AcquireSatToken(client string, secret string, satURL string) (string, error
 }
 
 func (webhook *Webhook) Register() error {
+	var tempEvents []string
 
-	tempEvents := []string{".*"}
+	if len(webhook.EventsToWatch) != 0 {
+		tempEvents = webhook.EventsToWatch
+	}
+
 	tempMacs := []string{".*"}
 
 	//create webhookbody
 	webhookBody := WebhookBody{
-		Config:  WebhookConfig{URL: webhook.URL, ContentType: "wrp", Secret: webhook.Secret},
+		Config:  WebhookConfig{URL: webhook.URL, ContentType: "wrp", Secret: webhook.CaduceusSecret},
 		Matcher: WebhookMatcher{DeviceId: tempMacs},
 		Events:  tempEvents,
 	}
@@ -122,8 +132,13 @@ func (webhook *Webhook) Register() error {
 		return emperror.WrapWith(errMarshal, "failed to marshal")
 	}
 
+	satToken, err := AcquireSatToken(webhook.Client, webhook.Secret, webhook.SatURL)
+	if err != nil {
+		return err
+	}
+
 	req, _ := http.NewRequest("POST", webhook.RegistrationURL, bytes.NewBuffer(jsonStr))
-	req.Header.Set("Authorization", webhook.Secret)
+	req.Header.Set("Authorization", satToken)
 	httpclient := &http.Client{
 		Timeout: webhook.Timeout,
 	}
