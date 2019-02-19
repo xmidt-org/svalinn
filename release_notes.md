@@ -1,1 +1,2 @@
-- ignore me
+- added health endpoint
+- added bookkeeper for logging

@@ -11,16 +11,19 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:b522beb026d796251493b18249e9c62a6687b8e16c9c9c1d6d477335f0a0af10"
+  digest = "1:a75ecc5da9746251374ecd0bd0c69f486e948c9a1777b749593a4ceccfebe797"
   name = "github.com/Comcast/webpa-common"
   packages = [
+    "bookkeeping",
     "concurrent",
     "health",
     "logging",
+    "logging/logginghttp",
     "semaphore",
     "server",
     "wrp",
     "xhttp",
+    "xhttp/xcontext",
     "xlistener",
     "xmetrics",
   ]
@@ -45,11 +48,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:080689a7cb710dc8f694005f8e5b3aab861d01e885eaf53fae54431c4635bfe6"
+  digest = "1:7057ef47edbd707faa2b02a105944649d720b79a7f99d64ddcd9e4c6fda00a04"
   name = "github.com/c9s/goprocinfo"
   packages = ["linux"]
   pruneopts = "UT"
-  revision = "0010a05ce49fde7f50669bc7ecda7d41dd6ab824"
+  revision = "2b0825337245cf3d2948c34eee4d3aff47b2a044"
 
 [[projects]]
   digest = "1:abeb38ade3f32a92943e5be54f55ed6d6e3b6602761d74b4aab4c9dd45c18abd"
@@ -186,6 +189,7 @@
   revision = "04140366298a54a039076d798123ffa108fff46c"
 
 [[projects]]
+  branch = "master"
   digest = "1:e74fa8e635591eb1ad79e8e711bff8bea4e12e9737563daf12af325c6ea206e4"
   name = "github.com/justinas/alice"
   packages = ["."]
@@ -351,7 +355,7 @@
   name = "golang.org/x/sys"
   packages = ["unix"]
   pruneopts = "UT"
-  revision = "d0b11bdaac8adb652bff00e49bcacf992835621a"
+  revision = "153ac476189d567564fda94622d7a8c0fb338f6b"
 
 [[projects]]
   digest = "1:8029e9743749d4be5bc9f7d42ea1659471767860f0cdc34d37c3111bd308a295"
@@ -389,11 +393,15 @@
   analyzer-version = 1
   input-imports = [
     "github.com/Comcast/codex/db",
+    "github.com/Comcast/webpa-common/bookkeeping",
     "github.com/Comcast/webpa-common/concurrent",
     "github.com/Comcast/webpa-common/logging",
+    "github.com/Comcast/webpa-common/logging/logginghttp",
     "github.com/Comcast/webpa-common/server",
     "github.com/Comcast/webpa-common/wrp",
+    "github.com/Comcast/webpa-common/xhttp/xcontext",
     "github.com/go-kit/kit/log",
+    "github.com/go-kit/kit/transport/http",
     "github.com/goph/emperror",
     "github.com/gorilla/mux",
     "github.com/justinas/alice",

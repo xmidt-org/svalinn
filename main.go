@@ -19,6 +19,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/go-kit/kit/log"
+	"net/http"
 
 	"github.com/Comcast/codex/db"
 	"github.com/Comcast/webpa-common/concurrent"
@@ -34,14 +36,19 @@ import (
 	"os/signal"
 	"time"
 
+	gokithttp "github.com/go-kit/kit/transport/http"
+
+	"github.com/Comcast/webpa-common/bookkeeping"
+	"github.com/Comcast/webpa-common/logging/logginghttp"
 	"github.com/Comcast/webpa-common/server"
 	"github.com/Comcast/webpa-common/wrp"
+	"github.com/Comcast/webpa-common/xhttp/xcontext"
 )
 
 const (
 	applicationName, apiBase = "svalinn", "/api/v1"
 	DEFAULT_KEY_ID           = "current"
-	applicationVersion       = "0.0.1"
+	applicationVersion       = "0.1.1"
 )
 
 type SvalinnConfig struct {
@@ -65,6 +72,16 @@ type RuleConfig struct {
 	StorePayload bool
 	RuleTTL      time.Duration
 	EventType    string
+}
+
+func SetLogger(logger log.Logger) func(delegate http.Handler) http.Handler {
+	return func(delegate http.Handler) http.Handler {
+		return http.HandlerFunc(
+			func(w http.ResponseWriter, r *http.Request) {
+				r.WithContext(logging.WithLogger(r.Context(), logger))
+				delegate.ServeHTTP(w, r.WithContext(logging.WithLogger(r.Context(), logger)))
+			})
+	}
 }
 
 func svalinn(arguments []string) int {
@@ -146,7 +163,16 @@ func svalinn(arguments []string) int {
 		}
 	}()
 
-	svalinnHandler := alice.New()
+	customLogInfo := xcontext.Populate(0,
+		logginghttp.SetLogger(logger,
+			logginghttp.RequestInfo,
+		),
+		gokithttp.PopulateRequestContext,
+	)
+	// TODO: fix bookkeeping, add a decorator to add the bookkeeping requests and logger
+	bookkeeper := bookkeeping.New(bookkeeping.WithResponses(bookkeeping.Code))
+
+	svalinnHandler := alice.New(SetLogger(logger), bookkeeper, customLogInfo)
 	// TODO: add authentication back
 	//svalinnHandler := alice.New(authHandler.Decorate)
 	router := mux.NewRouter()
@@ -182,8 +208,10 @@ func svalinn(arguments []string) int {
 	go requestHandler.handleRequests(requestQueue)
 	go requestHandler.handlePruning()
 
+	serverHealth := codex.Health.NewHealth(logger)
+
 	// MARK: Starting the server
-	_, runnable, done := codex.Prepare(logger, nil, metricsRegistry, router)
+	_, runnable, done := codex.Prepare(logger, serverHealth, metricsRegistry, router)
 
 	waitGroup, shutdown, err := concurrent.Execute(runnable)
 	if err != nil {
