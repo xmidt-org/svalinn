@@ -55,8 +55,8 @@ install: deps
 
 .PHONY: release-artifacts
 release-artifacts:
-	GOOS=darwin GOARCH=amd64 go build -o ./OPATH/svalinn-$(PROGVER).darwin-amd64 && gzip -f ./OPATH/svalinn-$(PROGVER).darwin-amd64
-	GOOS=linux  GOARCH=amd64 go build -o ./OPATH/svalinn-$(PROGVER).linux-amd64  && gzip -f ./OPATH/svalinn-$(PROGVER).linux-amd64
+	GOOS=darwin GOARCH=amd64 go build -o ./OPATH/svalinn-$(PROGVER).darwin-amd64
+	GOOS=linux  GOARCH=amd64 go build -o ./OPATH/svalinn-$(PROGVER).linux-amd64
 
 .PHONY: docker
 docker:
