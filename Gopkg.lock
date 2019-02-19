@@ -28,7 +28,7 @@
     "xmetrics",
   ]
   pruneopts = "UT"
-  revision = "339b574e7309af66995a5a4ab1cdb82cf4278ad7"
+  revision = "9189af3ae1e5b1cdc567749284c75d7e4e953879"
 
 [[projects]]
   digest = "1:8515c0ca4381246cf332cee05fc84070bbbb07bd679b639161506ba532f47128"
@@ -48,11 +48,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:080689a7cb710dc8f694005f8e5b3aab861d01e885eaf53fae54431c4635bfe6"
+  digest = "1:7057ef47edbd707faa2b02a105944649d720b79a7f99d64ddcd9e4c6fda00a04"
   name = "github.com/c9s/goprocinfo"
   packages = ["linux"]
   pruneopts = "UT"
-  revision = "0010a05ce49fde7f50669bc7ecda7d41dd6ab824"
+  revision = "2b0825337245cf3d2948c34eee4d3aff47b2a044"
 
 [[projects]]
   digest = "1:abeb38ade3f32a92943e5be54f55ed6d6e3b6602761d74b4aab4c9dd45c18abd"
@@ -189,6 +189,7 @@
   revision = "04140366298a54a039076d798123ffa108fff46c"
 
 [[projects]]
+  branch = "master"
   digest = "1:e74fa8e635591eb1ad79e8e711bff8bea4e12e9737563daf12af325c6ea206e4"
   name = "github.com/justinas/alice"
   packages = ["."]
@@ -354,7 +355,7 @@
   name = "golang.org/x/sys"
   packages = ["unix"]
   pruneopts = "UT"
-  revision = "d0b11bdaac8adb652bff00e49bcacf992835621a"
+  revision = "153ac476189d567564fda94622d7a8c0fb338f6b"
 
 [[projects]]
   digest = "1:8029e9743749d4be5bc9f7d42ea1659471767860f0cdc34d37c3111bd308a295"

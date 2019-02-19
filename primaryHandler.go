@@ -18,8 +18,12 @@
 package main
 
 import (
+	"crypto/hmac"
+	"crypto/sha1"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"path"
@@ -187,6 +191,8 @@ func parseRequest(req wrp.Message, storePayload bool, payloadMaxSize int, metada
 type App struct {
 	requestQueue chan wrp.Message
 	logger       log.Logger
+	token        string
+	secret       string
 }
 
 func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
@@ -197,6 +203,16 @@ func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
 		writer.WriteHeader(400)
 		return
 	}
+
+	// verify this is valid from caduceus
+	encodedSecret := req.Header.Get("X-Webpa-Signature")
+	h := hmac.New(sha1.New, []byte(app.secret))
+	h.Write(msgBytes)
+	sig := fmt.Sprintf("sha1=%s", hex.EncodeToString(h.Sum(nil)))
+	if sig != encodedSecret {
+		logging.Error(app.logger).Log(logging.MessageKey(), "Invalid secret")
+	}
+
 	err = wrp.NewDecoderBytes(msgBytes, wrp.JSON).Decode(&message)
 	if err != nil {
 		logging.Error(app.logger).Log(logging.MessageKey(), "Could not decode request body", logging.ErrorKey(), err.Error())

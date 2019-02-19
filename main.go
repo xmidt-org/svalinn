@@ -181,6 +181,7 @@ func svalinn(arguments []string) int {
 	app := &App{
 		logger:       logger,
 		requestQueue: requestQueue,
+		secret:       webhookConfig.CaduceusSecret,
 	}
 
 	tombstoneRules, err := createRules(config.RegexRules)
