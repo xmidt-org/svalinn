@@ -25,9 +25,19 @@ import (
 	"github.com/goph/emperror"
 )
 
+var (
+	errNoMatch = errors.New("No key matches this destination")
+)
+
+type RuleConfig struct {
+	Regex        string
+	StorePayload bool
+	RuleTTL      time.Duration
+	EventType    string
+}
+
 type rule struct {
 	regex        *regexp.Regexp
-	key          string
 	storePayload bool
 	ttl          time.Duration
 	eventType    string
@@ -38,9 +48,9 @@ func createRules(rules []RuleConfig) ([]rule, error) {
 	for _, r := range rules {
 		regex, err := regexp.Compile(r.Regex)
 		if err != nil {
-			return parsedRules, emperror.WrapWith(err, "Failed to Compile regexp rule", "key", r.TombstoneKey, "regexp attempted", r.Regex)
+			return parsedRules, emperror.WrapWith(err, "Failed to compile regexp rule", "regexp attempted", r.Regex)
 		}
-		parsedRules = append(parsedRules, rule{regex, r.TombstoneKey, r.StorePayload, r.RuleTTL, r.EventType})
+		parsedRules = append(parsedRules, rule{regex, r.StorePayload, r.RuleTTL, r.EventType})
 	}
 	return parsedRules, nil
 }
@@ -51,5 +61,5 @@ func findRule(rules []rule, dest string) (rule, error) {
 			return r, nil
 		}
 	}
-	return rule{}, errors.New("No key matches this destination")
+	return rule{}, errNoMatch
 }
