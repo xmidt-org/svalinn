@@ -18,144 +18,120 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
+	"errors"
 	"net/http"
-	"strings"
 	"time"
 
-	"github.com/go-kit/kit/log"
+	"github.com/Comcast/codex-svalinn/webhook"
+	"github.com/Comcast/webpa-common/logging"
 	"github.com/goph/emperror"
+
+	"github.com/go-kit/kit/log"
 )
 
-var RequestAuthorization string
+type webhookRegisterer interface {
+	Register(client *http.Client, secret string) error
+}
 
-type Webhook struct {
-	CaduceusSecret       string        `json:",caduceusSecret"`
-	RegistrationInterval time.Duration `json:",registrationInterval"`
-	URL                  string        `json:",url"`
-	Timeout              time.Duration `json:",timeout"`
-	RegistrationURL      string        `json:",registrationURL"`
-	EventsToWatch        []string      `json:",eventsToWatch"`
-
-	Client string `json:"client"`
-	Secret string `json:"secret"`
-	SatURL string `json:"satURL"`
-
-	Logger log.Logger
+// add in a secret getter now so that later we can just plug it in
+type secretGetter interface {
+	GetSecret() (string, error)
 }
 
 type WebhookConfig struct {
-	// The URL to deliver messages to.
-	URL string `json:"url"`
-
-	// The content-type to set the messages to (unless specified by WRP).
-	ContentType string `json:"content_type"`
-
-	// The secret to use for the SHA1 HMAC.
-	// Optional, set to "" to disable behavior.
-	Secret string `json:"secret,omitempty"`
-}
-type WebhookMatcher struct {
-	// The list of regular expressions to match device id type against.
-	DeviceId []string `json:"device_id"`
+	RegistrationInterval time.Duration
+	URL                  string
+	Timeout              time.Duration
+	RegistrationURL      string
+	EventsToWatch        []string
+	AcquirerConfig       map[string]interface{}
+	Secret               string
 }
 
-type WebhookBody struct {
-	Config WebhookConfig `json:"config"`
-	// Matcher type contains values to match against the metadata.
-	Matcher WebhookMatcher `json:"matcher,omitempty"`
-	Events  []string       `json:"events"`
+type periodicRegisterer struct {
+	registerer           webhookRegisterer
+	secretGetter         secretGetter
+	registrationInterval time.Duration
+	timeout              time.Duration
+	logger               log.Logger
 }
 
-func stringInList(key string, list []string) bool {
-	for _, b := range list {
-		if strings.Compare(key, b) == 0 {
-			return true
+func newPeriodicRegisterer(wc WebhookConfig, secretGetter secretGetter, logger log.Logger) periodicRegisterer {
+	acquirer, err := determineTokenAcquirer(wc.AcquirerConfig)
+	if err != nil {
+		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to parse token acquirer config, using default acquirer",
+			logging.ErrorKey(), err.Error(), "config", wc.AcquirerConfig)
+	}
+	webhook := webhook.Webhook{
+		URL:             wc.URL,
+		RegistrationURL: wc.RegistrationURL,
+		EventsToWatch:   wc.EventsToWatch,
+		Logger:          logger,
+		Acquirer:        acquirer,
+	}
+	return periodicRegisterer{
+		registerer:           &webhook,
+		secretGetter:         secretGetter,
+		registrationInterval: wc.RegistrationInterval,
+		timeout:              wc.Timeout,
+		logger:               logger,
+	}
+}
+
+// determineTokenAcquirer always returns a valid TokenAcquirer, but may also return an error
+func determineTokenAcquirer(config map[string]interface{}) (webhook.TokenAcquirer, error) {
+	defaultAcquirer := &webhook.DefaultAcquirer{}
+	if value, ok := config["sat"]; ok {
+		acquirer, ok := value.(webhook.SatAcquirer)
+		if !ok {
+			return defaultAcquirer, errors.New("Couldn't parse SAT acquirer config")
+		}
+		return &acquirer, nil
+	}
+	if value, ok := config["basic"]; ok {
+		str, ok := value.(string)
+		if !ok {
+			return defaultAcquirer, errors.New("Couldn't parse basic acquirer config")
+		}
+		if str == "" {
+			return defaultAcquirer, errors.New("Empty basic credentials")
+		}
+		return webhook.NewBasicAcquirer(str), nil
+	}
+	return defaultAcquirer, nil
+}
+
+func (p *periodicRegisterer) registerAtInterval() {
+	hookagain := time.NewTicker(p.registrationInterval)
+	err := getSecretAndRegister(p.registerer, p.secretGetter, p.timeout)
+	if err != nil {
+		logging.Error(p.logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to register webhook",
+			logging.ErrorKey(), err.Error())
+	} else {
+		logging.Info(p.logger).Log(logging.MessageKey(), "Successfully registered webhook")
+	}
+	for range hookagain.C {
+		err := getSecretAndRegister(p.registerer, p.secretGetter, p.timeout)
+		if err != nil {
+			logging.Error(p.logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to register webhook",
+				logging.ErrorKey(), err.Error())
+		} else {
+			logging.Info(p.logger).Log(logging.MessageKey(), "Successfully registered webhook")
 		}
 	}
-	return false
 }
 
-func AcquireSatToken(client string, secret string, satURL string) (string, error) {
-	type satToken struct {
-		Expiration float64 `json:"expires_in"`
-		Token      string  `json:"serviceAccessToken"`
+func getSecretAndRegister(registerer webhookRegisterer, secretGetter secretGetter, timeout time.Duration) error {
+	httpclient := &http.Client{
+		Timeout: timeout,
 	}
-	jsonStr := []byte(`{}`) //TODO: in case we need to specify something in the future
-	httpclient := &http.Client{}
-	req, _ := http.NewRequest("GET", satURL, bytes.NewBuffer(jsonStr))
-	req.Header.Set("X-Client-Id", client)
-	req.Header.Set("X-Client-Secret", secret)
-
-	resp, errHTTP := httpclient.Do(req)
-	if errHTTP != nil {
-
-		return "", fmt.Errorf("error acquiring SAT token: [%s]", errHTTP.Error())
+	secret, err := secretGetter.GetSecret()
+	if err != nil {
+		return emperror.Wrap(err, "Failed to get secret")
 	}
-	defer resp.Body.Close()
-
-	respBody, errRead := ioutil.ReadAll(resp.Body)
-	if errRead != nil {
-
-		return "", fmt.Errorf("error reading SAT token: [%s]", errRead.Error())
-	}
-
-	var sat satToken
-
-	if errUnmarshal := json.Unmarshal(respBody, &sat); errUnmarshal != nil {
-		return "", fmt.Errorf("unable to read json in SAT response: [%s]", errUnmarshal.Error())
-	}
-	return fmt.Sprintf("Bearer %s", sat.Token), nil
-}
-
-func (webhook *Webhook) Register() error {
-	var tempEvents []string
-
-	if len(webhook.EventsToWatch) != 0 {
-		tempEvents = webhook.EventsToWatch
-	}
-
-	tempMacs := []string{".*"}
-
-	//create webhookbody
-	webhookBody := WebhookBody{
-		Config:  WebhookConfig{URL: webhook.URL, ContentType: "wrp", Secret: webhook.CaduceusSecret},
-		Matcher: WebhookMatcher{DeviceId: tempMacs},
-		Events:  tempEvents,
-	}
-
-	jsonStr, errMarshal := json.Marshal(&webhookBody)
-	if errMarshal != nil {
-		return emperror.WrapWith(errMarshal, "failed to marshal")
-	}
-
-	satToken, err := AcquireSatToken(webhook.Client, webhook.Secret, webhook.SatURL)
+	err = registerer.Register(httpclient, secret)
 	if err != nil {
 		return err
-	}
-
-	req, _ := http.NewRequest("POST", webhook.RegistrationURL, bytes.NewBuffer(jsonStr))
-	req.Header.Set("Authorization", satToken)
-	httpclient := &http.Client{
-		Timeout: webhook.Timeout,
-	}
-
-	resp, err := httpclient.Do(req)
-	if err != nil {
-		return emperror.WrapWith(err, "failed to make http request")
-	}
-	defer resp.Body.Close()
-
-	respBody, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return emperror.WrapWith(err, "failed to read body")
-	} else {
-		if resp.StatusCode != 200 {
-			return emperror.WrapWith(fmt.Errorf("unable to register webhook"), "received non-200 response", "code", resp.StatusCode, "body", string(respBody[:]))
-		}
 	}
 	return nil
 }

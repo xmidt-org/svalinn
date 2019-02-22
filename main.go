@@ -129,32 +129,17 @@ func svalinn(arguments []string) int {
 		return 2
 	}
 
-	webhookConfig := &Webhook{
-		Logger: logger,
-		URL:    codex.Server + apiBase + config.Endpoint,
+	var wc WebhookConfig
+	wc.URL = codex.Server + apiBase + config.Endpoint
+	v.UnmarshalKey("webhook", wc)
+	secretGetter := NewConstantSecret(wc.Secret)
+	// if the register interval is 0, don't register
+	if wc.RegistrationInterval > 0 {
+		registerer := newPeriodicRegisterer(wc, secretGetter, logger)
+
+		// then continue to register
+		go registerer.registerAtInterval()
 	}
-	v.UnmarshalKey("webhook", webhookConfig)
-	go func() {
-		if webhookConfig.RegistrationInterval > 0 {
-			err := webhookConfig.Register()
-			if err != nil {
-				logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to register webhook",
-					logging.ErrorKey(), err.Error())
-			} else {
-				logging.Info(logger).Log(logging.MessageKey(), "Successfully registered webhook")
-			}
-			hookagain := time.NewTicker(webhookConfig.RegistrationInterval)
-			for range hookagain.C {
-				err := webhookConfig.Register()
-				if err != nil {
-					logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to register webhook",
-						logging.ErrorKey(), err.Error())
-				} else {
-					logging.Info(logger).Log(logging.MessageKey(), "Successfully registered webhook")
-				}
-			}
-		}
-	}()
 
 	customLogInfo := xcontext.Populate(0,
 		logginghttp.SetLogger(logger,
@@ -174,7 +159,7 @@ func svalinn(arguments []string) int {
 	app := &App{
 		logger:       logger,
 		requestQueue: requestQueue,
-		secret:       webhookConfig.CaduceusSecret,
+		secretGetter: secretGetter,
 	}
 
 	tombstoneRules, err := createRules(config.RegexRules)

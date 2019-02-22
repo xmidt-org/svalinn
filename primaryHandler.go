@@ -192,7 +192,7 @@ type App struct {
 	requestQueue chan wrp.Message
 	logger       log.Logger
 	token        string
-	secret       string
+	secretGetter secretGetter
 }
 
 func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
@@ -207,7 +207,7 @@ func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
 	// verify this is valid from caduceus
 	encodedSecret := req.Header.Get("X-Webpa-Signature")
 	trimedSecret := strings.TrimPrefix(encodedSecret, "sha1=")
-	secret, err := hex.DecodeString(trimedSecret)
+	secretGiven, err := hex.DecodeString(trimedSecret)
 	if err != nil {
 		logging.Error(app.logger).Log(logging.MessageKey(), "Could not decode signature", logging.ErrorKey(), err.Error())
 		writer.WriteHeader(400)
@@ -222,11 +222,15 @@ func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	h := hmac.New(sha1.New, []byte(app.secret))
+	secret, err := app.secretGetter.GetSecret()
+	if err != nil {
+		logging.Error(app.logger).Log(logging.MessageKey(), "Could not get secret", logging.ErrorKey(), err.Error())
+	}
+	h := hmac.New(sha1.New, []byte(secret))
 	h.Write(message.Payload)
 	sig := h.Sum(nil)
-	if !hmac.Equal(sig, secret) {
-		logging.Error(app.logger).Log(logging.MessageKey(), "Invalid secret", "sig", hex.EncodeToString(sig), "secret", hex.EncodeToString(secret), "trim", trimedSecret)
+	if !hmac.Equal(sig, secretGiven) {
+		logging.Error(app.logger).Log(logging.MessageKey(), "Invalid secret", "sig", hex.EncodeToString(sig), "secret given", hex.EncodeToString(secretGiven), "trim", trimedSecret)
 		writer.WriteHeader(403)
 		return
 	}
