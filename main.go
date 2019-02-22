@@ -19,8 +19,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/go-kit/kit/log"
 	"net/http"
+
+	"github.com/go-kit/kit/log"
 
 	"github.com/Comcast/codex/db"
 	"github.com/Comcast/webpa-common/concurrent"
@@ -64,14 +65,6 @@ type SvalinnConfig struct {
 	RetryInterval       time.Duration
 	Db                  db.Config
 	RegexRules          []RuleConfig
-}
-
-type RuleConfig struct {
-	Regex        string
-	TombstoneKey string
-	StorePayload bool
-	RuleTTL      time.Duration
-	EventType    string
 }
 
 func SetLogger(logger log.Logger) func(delegate http.Handler) http.Handler {
