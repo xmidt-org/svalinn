@@ -29,6 +29,12 @@ import (
 	"github.com/go-kit/kit/log"
 )
 
+var (
+	errParseSat   = errors.New("Couldn't parse SAT acquirer config")
+	errParseBasic = errors.New("Couldn't parse basic acquirer config")
+	errEmptyBasic = errors.New("Empty basic credentials")
+)
+
 type webhookRegisterer interface {
 	Register(client *http.Client, secret string) error
 }
@@ -66,7 +72,6 @@ func newPeriodicRegisterer(wc WebhookConfig, secretGetter secretGetter, logger l
 		URL:             wc.URL,
 		RegistrationURL: wc.RegistrationURL,
 		EventsToWatch:   wc.EventsToWatch,
-		Logger:          logger,
 		Acquirer:        acquirer,
 	}
 	return periodicRegisterer{
@@ -84,17 +89,17 @@ func determineTokenAcquirer(config map[string]interface{}) (webhook.TokenAcquire
 	if value, ok := config["sat"]; ok {
 		acquirer, ok := value.(webhook.SatAcquirer)
 		if !ok {
-			return defaultAcquirer, errors.New("Couldn't parse SAT acquirer config")
+			return defaultAcquirer, errParseSat
 		}
 		return &acquirer, nil
 	}
 	if value, ok := config["basic"]; ok {
 		str, ok := value.(string)
 		if !ok {
-			return defaultAcquirer, errors.New("Couldn't parse basic acquirer config")
+			return defaultAcquirer, errParseBasic
 		}
 		if str == "" {
-			return defaultAcquirer, errors.New("Empty basic credentials")
+			return defaultAcquirer, errEmptyBasic
 		}
 		return webhook.NewBasicAcquirer(str), nil
 	}

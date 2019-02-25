@@ -24,7 +24,6 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/go-kit/kit/log"
 	"github.com/goph/emperror"
 )
 
@@ -38,7 +37,6 @@ type Webhook struct {
 	EventsToWatch   []string `json:",eventsToWatch"`
 
 	Acquirer TokenAcquirer
-	Logger   log.Logger
 }
 
 type webhookRequest struct {
