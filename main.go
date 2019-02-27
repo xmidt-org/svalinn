@@ -26,6 +26,7 @@ import (
 	"github.com/Comcast/codex/db"
 	"github.com/Comcast/webpa-common/concurrent"
 	"github.com/Comcast/webpa-common/logging"
+	"github.com/Comcast/webpa-common/secure"
 	"github.com/goph/emperror"
 	"github.com/gorilla/mux"
 	"github.com/justinas/alice"
@@ -82,7 +83,7 @@ func svalinn(arguments []string) int {
 
 	var (
 		f, v                                = pflag.NewFlagSet(applicationName, pflag.ContinueOnError), viper.New()
-		logger, metricsRegistry, codex, err = server.Initialize(applicationName, arguments, f, v)
+		logger, metricsRegistry, codex, err = server.Initialize(applicationName, arguments, f, v, secure.Metrics, db.Metrics)
 	)
 
 	printVer := f.BoolP("version", "v", false, "displays the version number")

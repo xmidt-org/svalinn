@@ -11,7 +11,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:b1d0931921f8672f4b186381d31e5ad9cd94c4bccbbdc1a92425250cf627bb04"
+  digest = "1:a1653a8a637b0c7b9789c4b9045df2d93d570e0b576cb219e83ae4ae6b17b568"
   name = "github.com/Comcast/webpa-common"
   packages = [
     "bookkeeping",
@@ -19,8 +19,12 @@
     "health",
     "logging",
     "logging/logginghttp",
+    "resource",
+    "secure",
+    "secure/key",
     "semaphore",
     "server",
+    "types",
     "wrp",
     "xhttp",
     "xhttp/xcontext",
@@ -29,6 +33,19 @@
   ]
   pruneopts = "UT"
   revision = "68d49a3c87b48d7acc7fa0c2db097fc71d647f04"
+
+[[projects]]
+  digest = "1:a69ab3f1445ffd4815add4bd31ba05b65b3b9fec1ade5057d5d717f30e6efd6d"
+  name = "github.com/SermoDigital/jose"
+  packages = [
+    ".",
+    "crypto",
+    "jws",
+    "jwt",
+  ]
+  pruneopts = "UT"
+  revision = "f6df55f235c24f236d11dbcf665249a59ac2021f"
+  version = "1.1"
 
 [[projects]]
   digest = "1:8515c0ca4381246cf332cee05fc84070bbbb07bd679b639161506ba532f47128"
@@ -195,6 +212,14 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "04140366298a54a039076d798123ffa108fff46c"
+
+[[projects]]
+  digest = "1:3786254a486f6d605a52cbc62aa0e71dacc76d5cd1a217c16905831b0f92f6ad"
+  name = "github.com/jtacoma/uritemplates"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "307ae868f90f4ee1b73ebe4596e0394237dacce8"
+  version = "v1.0.0"
 
 [[projects]]
   digest = "1:e74fa8e635591eb1ad79e8e711bff8bea4e12e9737563daf12af325c6ea206e4"
@@ -434,6 +459,7 @@
     "github.com/Comcast/webpa-common/concurrent",
     "github.com/Comcast/webpa-common/logging",
     "github.com/Comcast/webpa-common/logging/logginghttp",
+    "github.com/Comcast/webpa-common/secure",
     "github.com/Comcast/webpa-common/server",
     "github.com/Comcast/webpa-common/wrp",
     "github.com/Comcast/webpa-common/xhttp/xcontext",
