@@ -121,7 +121,7 @@ func svalinn(arguments []string) int {
 		Logger:              logger,
 	}*/
 
-	dbConn, err := db.CreateDbConnection(config.Db)
+	dbConn, err := db.CreateDbConnection(config.Db, metricsRegistry)
 	if err != nil {
 		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to initialize database connection",
 			logging.ErrorKey(), err.Error())
@@ -169,12 +169,10 @@ func svalinn(arguments []string) int {
 
 	inserter := db.CreateRetryInsertService(dbConn, config.InsertRetries, config.RetryInterval)
 	updater := db.CreateRetryUpdateService(dbConn, config.PruneRetries, config.RetryInterval)
-	getter := db.CreateRetryEGService(dbConn, config.GetRetries, config.RetryInterval)
 
 	requestHandler := RequestHandler{
 		inserter:            inserter,
 		updater:             updater,
-		getter:              getter,
 		logger:              logger,
 		rules:               rules,
 		payloadMaxSize:      config.PayloadMaxSize,

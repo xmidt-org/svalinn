@@ -44,7 +44,6 @@ var (
 type RequestHandler struct {
 	inserter            db.RetryInsertService
 	updater             db.RetryUpdateService
-	getter              db.RetryEGService
 	logger              log.Logger
 	rules               []rule
 	metadataMaxSize     int
@@ -214,20 +213,9 @@ func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
 	trimedSecret := strings.TrimPrefix(encodedSecret, "sha1=")
 	secretGiven, err := hex.DecodeString(trimedSecret)
 	if err != nil {
-<<<<<<< HEAD
 		logging.Error(app.logger).Log(logging.MessageKey(), "Could not decode signature", logging.ErrorKey(), err.Error())
 		writer.WriteHeader(400)
 		return
-=======
-		logging.Error(app.logger).Log(logging.MessageKey(), "Could not get secret", logging.ErrorKey(), err.Error())
-	}
-	h := hmac.New(sha1.New, []byte(secret))
-	h.Write(msgBytes)
-	sig := fmt.Sprintf("sha1=%s", hex.EncodeToString(h.Sum(nil)))
-	if sig != encodedSecret {
-		logging.Error(app.logger).Log(logging.MessageKey(), "Invalid secret")
-		// TODO: if the secret is invalid, reject the request
->>>>>>> Added primaryHandler tests
 	}
 
 	// TODO: Update WRP library
@@ -241,6 +229,7 @@ func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
 	secret, err := app.secretGetter.GetSecret()
 	if err != nil {
 		logging.Error(app.logger).Log(logging.MessageKey(), "Could not get secret", logging.ErrorKey(), err.Error())
+		writer.WriteHeader(500)
 	}
 	h := hmac.New(sha1.New, []byte(secret))
 	h.Write(message.Payload)
