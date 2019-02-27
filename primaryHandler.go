@@ -23,10 +23,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/Comcast/codex/db"
@@ -206,20 +206,32 @@ func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
 
 	// verify this is valid from caduceus
 	encodedSecret := req.Header.Get("X-Webpa-Signature")
-	h := hmac.New(sha1.New, []byte(app.secret))
-	h.Write(msgBytes)
-	sig := fmt.Sprintf("sha1=%s", hex.EncodeToString(h.Sum(nil)))
-	if sig != encodedSecret {
-		logging.Error(app.logger).Log(logging.MessageKey(), "Invalid secret")
+	trimedSecret := strings.TrimPrefix(encodedSecret, "sha1=")
+	secret, err := hex.DecodeString(trimedSecret)
+	if err != nil {
+		logging.Error(app.logger).Log(logging.MessageKey(), "Could not decode signature", logging.ErrorKey(), err.Error())
+		writer.WriteHeader(400)
+		return
 	}
 
-	err = wrp.NewDecoderBytes(msgBytes, wrp.JSON).Decode(&message)
+	// TODO: Update WRP library
+	err = wrp.NewDecoderBytes(msgBytes, wrp.Msgpack).Decode(&message)
 	if err != nil {
 		logging.Error(app.logger).Log(logging.MessageKey(), "Could not decode request body", logging.ErrorKey(), err.Error())
 		writer.WriteHeader(400)
 		return
 	}
-	logging.Info(app.logger).Log(logging.MessageKey(), "message info", "message type", message.Type, "full", message)
+
+	h := hmac.New(sha1.New, []byte(app.secret))
+	h.Write(message.Payload)
+	sig := h.Sum(nil)
+	if !hmac.Equal(sig, secret) {
+		logging.Error(app.logger).Log(logging.MessageKey(), "Invalid secret", "sig", hex.EncodeToString(sig), "secret", hex.EncodeToString(secret), "trim", trimedSecret)
+		writer.WriteHeader(403)
+		return
+	}
+
+	logging.Debug(app.logger).Log(logging.MessageKey(), "message info", "message type", message.Type, "full", message)
 	app.requestQueue <- message
 	writer.WriteHeader(202)
 }
