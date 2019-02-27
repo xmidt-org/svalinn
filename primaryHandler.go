@@ -204,7 +204,7 @@ func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
 	msgBytes, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		logging.Error(app.logger).Log(logging.MessageKey(), "Could not read request body", logging.ErrorKey(), err.Error())
-		writer.WriteHeader(400)
+		writer.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
@@ -214,7 +214,7 @@ func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
 	secretGiven, err := hex.DecodeString(trimedSecret)
 	if err != nil {
 		logging.Error(app.logger).Log(logging.MessageKey(), "Could not decode signature", logging.ErrorKey(), err.Error())
-		writer.WriteHeader(400)
+		writer.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
@@ -222,25 +222,25 @@ func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
 	err = wrp.NewDecoderBytes(msgBytes, wrp.Msgpack).Decode(&message)
 	if err != nil {
 		logging.Error(app.logger).Log(logging.MessageKey(), "Could not decode request body", logging.ErrorKey(), err.Error())
-		writer.WriteHeader(400)
+		writer.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	secret, err := app.secretGetter.GetSecret()
 	if err != nil {
 		logging.Error(app.logger).Log(logging.MessageKey(), "Could not get secret", logging.ErrorKey(), err.Error())
-		writer.WriteHeader(500)
+		writer.WriteHeader(http.StatusInternalServerError)
 	}
 	h := hmac.New(sha1.New, []byte(secret))
 	h.Write(message.Payload)
 	sig := h.Sum(nil)
 	if !hmac.Equal(sig, secretGiven) {
 		logging.Error(app.logger).Log(logging.MessageKey(), "Invalid secret", "sig", hex.EncodeToString(sig), "secret given", hex.EncodeToString(secretGiven), "trim", trimedSecret)
-		writer.WriteHeader(403)
+		writer.WriteHeader(http.StatusForbidden)
 		return
 	}
 
 	logging.Debug(app.logger).Log(logging.MessageKey(), "message info", "message type", message.Type, "full", message)
 	app.requestQueue <- message
-	writer.WriteHeader(202)
+	writer.WriteHeader(http.StatusAccepted)
 }
