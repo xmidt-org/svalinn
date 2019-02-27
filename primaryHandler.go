@@ -216,7 +216,7 @@ func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
 	h := hmac.New(sha1.New, []byte(app.secret))
 	h.Write(msgBytes)
 	sig := h.Sum(nil)
-	if !hmac.Equal(sig, []byte(secret)) {
+	if !hmac.Equal(sig, secret) {
 		logging.Error(app.logger).Log(logging.MessageKey(), "Invalid secret")
 		writer.WriteHeader(403)
 		return
@@ -229,7 +229,7 @@ func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
 		writer.WriteHeader(400)
 		return
 	}
-	logging.Info(app.logger).Log(logging.MessageKey(), "message info", "message type", message.Type, "full", message)
+	logging.Debug(app.logger).Log(logging.MessageKey(), "message info", "message type", message.Type, "full", message)
 	app.requestQueue <- message
 	writer.WriteHeader(202)
 }
