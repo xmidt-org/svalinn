@@ -162,7 +162,7 @@ func svalinn(arguments []string) int {
 		secretGetter: secretGetter,
 	}
 
-	tombstoneRules, err := createRules(config.RegexRules)
+	rules, err := createRules(config.RegexRules)
 
 	// TODO: Fix Caduces acutal register
 	router.Handle(apiBase+config.Endpoint, svalinnHandler.ThenFunc(app.handleWebhook))
@@ -176,7 +176,7 @@ func svalinn(arguments []string) int {
 		updater:             updater,
 		getter:              getter,
 		logger:              logger,
-		tombstoneRules:      tombstoneRules,
+		rules:               rules,
 		payloadMaxSize:      config.PayloadMaxSize,
 		metadataMaxSize:     config.MetadataMaxSize,
 		stateLimitPerDevice: config.StateLimitPerDevice,

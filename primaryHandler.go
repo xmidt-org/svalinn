@@ -36,12 +36,17 @@ import (
 	"github.com/goph/emperror"
 )
 
+var (
+	errEmptyID           = errors.New("Empty id is invalid")
+	errUnexpectedWRPType = errors.New("Unexpected wrp message type")
+)
+
 type RequestHandler struct {
 	inserter            db.RetryInsertService
 	updater             db.RetryUpdateService
 	getter              db.RetryEGService
 	logger              log.Logger
-	tombstoneRules      []rule
+	rules               []rule
 	metadataMaxSize     int
 	payloadMaxSize      int
 	stateLimitPerDevice int
@@ -69,7 +74,7 @@ func (r *RequestHandler) pruneDevice() {
 			"Failed to update event history", logging.ErrorKey(), err.Error())
 		return
 	}
-	logging.Info(r.logger).Log(logging.MessageKey(), "Successfully pruned events")
+	logging.Debug(r.logger).Log(logging.MessageKey(), "Successfully pruned events")
 	return
 }
 
@@ -77,9 +82,9 @@ func (r *RequestHandler) handleRequest(request wrp.Message) {
 	var (
 		deathDate time.Time
 	)
-	rule, err := findRule(r.tombstoneRules, request.Destination)
+	rule, err := findRule(r.rules, request.Destination)
 	if err != nil {
-		logging.Info(r.logger).Log(logging.MessageKey(), "Could not get key for tombstone", logging.ErrorKey(), err, "destination", request.Destination)
+		logging.Info(r.logger).Log(logging.MessageKey(), "Could not get rule", logging.ErrorKey(), err, "destination", request.Destination)
 	}
 	deviceId, event, err := parseRequest(request, rule.storePayload, r.payloadMaxSize, r.metadataMaxSize)
 	if err != nil {
@@ -128,7 +133,7 @@ func parseRequest(req wrp.Message, storePayload bool, payloadMaxSize int, metada
 	base, _ := path.Split(req.Destination)
 	base, deviceId := path.Split(path.Base(base))
 	if deviceId == "" {
-		return "", db.Event{}, emperror.WrapWith(errors.New("Empty id is invalid"), "id check failed", "request destination", req.Destination, "full message", req)
+		return "", db.Event{}, emperror.WrapWith(errEmptyID, "id check failed", "request destination", req.Destination, "full message", req)
 	}
 
 	// verify wrp is the right type
@@ -137,7 +142,7 @@ func parseRequest(req wrp.Message, storePayload bool, payloadMaxSize int, metada
 	case wrp.SimpleEventMessageType:
 
 	default:
-		return "", db.Event{}, emperror.WrapWith(errors.New("Unexpected wrp message type"), "message type check failed", "type", msg.Type, "full message", msg)
+		return "", db.Event{}, emperror.WrapWith(errUnexpectedWRPType, "message type check failed", "type", msg.Type, "full message", msg)
 	}
 
 	// get timestamp from wrp payload
@@ -153,7 +158,7 @@ func parseRequest(req wrp.Message, storePayload bool, payloadMaxSize int, metada
 	timeString := payload["ts"].(string)
 	parsedTime, err := time.Parse(time.RFC3339Nano, timeString)
 	if err != nil {
-		return "", db.Event{}, err
+		return "", db.Event{}, emperror.Wrap(err, "failed to parse timestamp")
 	}
 	eventInfo.Time = parsedTime.Unix()
 
@@ -209,9 +214,20 @@ func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
 	trimedSecret := strings.TrimPrefix(encodedSecret, "sha1=")
 	secretGiven, err := hex.DecodeString(trimedSecret)
 	if err != nil {
+<<<<<<< HEAD
 		logging.Error(app.logger).Log(logging.MessageKey(), "Could not decode signature", logging.ErrorKey(), err.Error())
 		writer.WriteHeader(400)
 		return
+=======
+		logging.Error(app.logger).Log(logging.MessageKey(), "Could not get secret", logging.ErrorKey(), err.Error())
+	}
+	h := hmac.New(sha1.New, []byte(secret))
+	h.Write(msgBytes)
+	sig := fmt.Sprintf("sha1=%s", hex.EncodeToString(h.Sum(nil)))
+	if sig != encodedSecret {
+		logging.Error(app.logger).Log(logging.MessageKey(), "Invalid secret")
+		// TODO: if the secret is invalid, reject the request
+>>>>>>> Added primaryHandler tests
 	}
 
 	// TODO: Update WRP library
