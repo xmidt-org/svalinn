@@ -26,6 +26,7 @@ import (
 	"github.com/Comcast/codex/db"
 	"github.com/Comcast/webpa-common/concurrent"
 	"github.com/Comcast/webpa-common/logging"
+	"github.com/Comcast/webpa-common/secure"
 	"github.com/goph/emperror"
 	"github.com/gorilla/mux"
 	"github.com/justinas/alice"
@@ -82,7 +83,7 @@ func svalinn(arguments []string) int {
 
 	var (
 		f, v                                = pflag.NewFlagSet(applicationName, pflag.ContinueOnError), viper.New()
-		logger, metricsRegistry, codex, err = server.Initialize(applicationName, arguments, f, v)
+		logger, metricsRegistry, codex, err = server.Initialize(applicationName, arguments, f, v, secure.Metrics, db.Metrics)
 	)
 
 	printVer := f.BoolP("version", "v", false, "displays the version number")
@@ -121,7 +122,7 @@ func svalinn(arguments []string) int {
 		Logger:              logger,
 	}*/
 
-	dbConn, err := db.CreateDbConnection(config.Db)
+	dbConn, err := db.CreateDbConnection(config.Db, metricsRegistry)
 	if err != nil {
 		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to initialize database connection",
 			logging.ErrorKey(), err.Error())
@@ -129,32 +130,17 @@ func svalinn(arguments []string) int {
 		return 2
 	}
 
-	webhookConfig := &Webhook{
-		Logger: logger,
-		URL:    codex.Server + apiBase + config.Endpoint,
+	var wc WebhookConfig
+	wc.URL = codex.Server + apiBase + config.Endpoint
+	v.UnmarshalKey("webhook", wc)
+	secretGetter := NewConstantSecret(wc.Secret)
+	// if the register interval is 0, don't register
+	if wc.RegistrationInterval > 0 {
+		registerer := newPeriodicRegisterer(wc, secretGetter, logger)
+
+		// then continue to register
+		go registerer.registerAtInterval()
 	}
-	v.UnmarshalKey("webhook", webhookConfig)
-	go func() {
-		if webhookConfig.RegistrationInterval > 0 {
-			err := webhookConfig.Register()
-			if err != nil {
-				logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to register webhook",
-					logging.ErrorKey(), err.Error())
-			} else {
-				logging.Info(logger).Log(logging.MessageKey(), "Successfully registered webhook")
-			}
-			hookagain := time.NewTicker(webhookConfig.RegistrationInterval)
-			for range hookagain.C {
-				err := webhookConfig.Register()
-				if err != nil {
-					logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to register webhook",
-						logging.ErrorKey(), err.Error())
-				} else {
-					logging.Info(logger).Log(logging.MessageKey(), "Successfully registered webhook")
-				}
-			}
-		}
-	}()
 
 	customLogInfo := xcontext.Populate(0,
 		logginghttp.SetLogger(logger,
@@ -174,24 +160,22 @@ func svalinn(arguments []string) int {
 	app := &App{
 		logger:       logger,
 		requestQueue: requestQueue,
-		secret:       webhookConfig.CaduceusSecret,
+		secretGetter: secretGetter,
 	}
 
-	tombstoneRules, err := createRules(config.RegexRules)
+	rules, err := createRules(config.RegexRules)
 
 	// TODO: Fix Caduces acutal register
 	router.Handle(apiBase+config.Endpoint, svalinnHandler.ThenFunc(app.handleWebhook))
 
 	inserter := db.CreateRetryInsertService(dbConn, config.InsertRetries, config.RetryInterval)
 	updater := db.CreateRetryUpdateService(dbConn, config.PruneRetries, config.RetryInterval)
-	getter := db.CreateRetryEGService(dbConn, config.GetRetries, config.RetryInterval)
 
 	requestHandler := RequestHandler{
 		inserter:            inserter,
 		updater:             updater,
-		getter:              getter,
 		logger:              logger,
-		tombstoneRules:      tombstoneRules,
+		rules:               rules,
 		payloadMaxSize:      config.PayloadMaxSize,
 		metadataMaxSize:     config.MetadataMaxSize,
 		stateLimitPerDevice: config.StateLimitPerDevice,

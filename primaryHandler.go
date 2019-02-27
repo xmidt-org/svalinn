@@ -36,12 +36,16 @@ import (
 	"github.com/goph/emperror"
 )
 
+var (
+	errEmptyID           = errors.New("Empty id is invalid")
+	errUnexpectedWRPType = errors.New("Unexpected wrp message type")
+)
+
 type RequestHandler struct {
 	inserter            db.RetryInsertService
 	updater             db.RetryUpdateService
-	getter              db.RetryEGService
 	logger              log.Logger
-	tombstoneRules      []rule
+	rules               []rule
 	metadataMaxSize     int
 	payloadMaxSize      int
 	stateLimitPerDevice int
@@ -69,7 +73,7 @@ func (r *RequestHandler) pruneDevice() {
 			"Failed to update event history", logging.ErrorKey(), err.Error())
 		return
 	}
-	logging.Info(r.logger).Log(logging.MessageKey(), "Successfully pruned events")
+	logging.Debug(r.logger).Log(logging.MessageKey(), "Successfully pruned events")
 	return
 }
 
@@ -77,9 +81,9 @@ func (r *RequestHandler) handleRequest(request wrp.Message) {
 	var (
 		deathDate time.Time
 	)
-	rule, err := findRule(r.tombstoneRules, request.Destination)
+	rule, err := findRule(r.rules, request.Destination)
 	if err != nil {
-		logging.Info(r.logger).Log(logging.MessageKey(), "Could not get key for tombstone", logging.ErrorKey(), err, "destination", request.Destination)
+		logging.Info(r.logger).Log(logging.MessageKey(), "Could not get rule", logging.ErrorKey(), err, "destination", request.Destination)
 	}
 	deviceId, event, err := parseRequest(request, rule.storePayload, r.payloadMaxSize, r.metadataMaxSize)
 	if err != nil {
@@ -128,7 +132,7 @@ func parseRequest(req wrp.Message, storePayload bool, payloadMaxSize int, metada
 	base, _ := path.Split(req.Destination)
 	base, deviceId := path.Split(path.Base(base))
 	if deviceId == "" {
-		return "", db.Event{}, emperror.WrapWith(errors.New("Empty id is invalid"), "id check failed", "request destination", req.Destination, "full message", req)
+		return "", db.Event{}, emperror.WrapWith(errEmptyID, "id check failed", "request destination", req.Destination, "full message", req)
 	}
 
 	// verify wrp is the right type
@@ -137,7 +141,7 @@ func parseRequest(req wrp.Message, storePayload bool, payloadMaxSize int, metada
 	case wrp.SimpleEventMessageType:
 
 	default:
-		return "", db.Event{}, emperror.WrapWith(errors.New("Unexpected wrp message type"), "message type check failed", "type", msg.Type, "full message", msg)
+		return "", db.Event{}, emperror.WrapWith(errUnexpectedWRPType, "message type check failed", "type", msg.Type, "full message", msg)
 	}
 
 	// get timestamp from wrp payload
@@ -153,7 +157,7 @@ func parseRequest(req wrp.Message, storePayload bool, payloadMaxSize int, metada
 	timeString := payload["ts"].(string)
 	parsedTime, err := time.Parse(time.RFC3339Nano, timeString)
 	if err != nil {
-		return "", db.Event{}, err
+		return "", db.Event{}, emperror.Wrap(err, "failed to parse timestamp")
 	}
 	eventInfo.Time = parsedTime.Unix()
 
@@ -192,7 +196,7 @@ type App struct {
 	requestQueue chan wrp.Message
 	logger       log.Logger
 	token        string
-	secret       string
+	secretGetter secretGetter
 }
 
 func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
@@ -207,7 +211,7 @@ func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
 	// verify this is valid from caduceus
 	encodedSecret := req.Header.Get("X-Webpa-Signature")
 	trimedSecret := strings.TrimPrefix(encodedSecret, "sha1=")
-	secret, err := hex.DecodeString(trimedSecret)
+	secretGiven, err := hex.DecodeString(trimedSecret)
 	if err != nil {
 		logging.Error(app.logger).Log(logging.MessageKey(), "Could not decode signature", logging.ErrorKey(), err.Error())
 		writer.WriteHeader(400)
@@ -222,11 +226,16 @@ func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	h := hmac.New(sha1.New, []byte(app.secret))
+	secret, err := app.secretGetter.GetSecret()
+	if err != nil {
+		logging.Error(app.logger).Log(logging.MessageKey(), "Could not get secret", logging.ErrorKey(), err.Error())
+		writer.WriteHeader(500)
+	}
+	h := hmac.New(sha1.New, []byte(secret))
 	h.Write(message.Payload)
 	sig := h.Sum(nil)
-	if !hmac.Equal(sig, secret) {
-		logging.Error(app.logger).Log(logging.MessageKey(), "Invalid secret", "sig", hex.EncodeToString(sig), "secret", hex.EncodeToString(secret), "trim", trimedSecret)
+	if !hmac.Equal(sig, secretGiven) {
+		logging.Error(app.logger).Log(logging.MessageKey(), "Invalid secret", "sig", hex.EncodeToString(sig), "secret given", hex.EncodeToString(secretGiven), "trim", trimedSecret)
 		writer.WriteHeader(403)
 		return
 	}

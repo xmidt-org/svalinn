@@ -2,16 +2,16 @@
 
 
 [[projects]]
-  digest = "1:f741e70a3ff9815c11882cbae3129a3d1c0fcc49e5503e524025a3d744c6065a"
+  digest = "1:9c1a8714b106ce080066040bbf5e598cd5439e99d346cd55f8726eee46abe440"
   name = "github.com/Comcast/codex"
   packages = ["db"]
   pruneopts = "UT"
-  revision = "ef0e5751cac69cf6024e0100b94b63dda46e98d4"
-  version = "0.1.5"
+  revision = "2829412a0f5730c0b8440538e86df7ffd8753537"
+  version = "v0.2.0"
 
 [[projects]]
   branch = "master"
-  digest = "1:a75ecc5da9746251374ecd0bd0c69f486e948c9a1777b749593a4ceccfebe797"
+  digest = "1:a1653a8a637b0c7b9789c4b9045df2d93d570e0b576cb219e83ae4ae6b17b568"
   name = "github.com/Comcast/webpa-common"
   packages = [
     "bookkeeping",
@@ -19,8 +19,12 @@
     "health",
     "logging",
     "logging/logginghttp",
+    "resource",
+    "secure",
+    "secure/key",
     "semaphore",
     "server",
+    "types",
     "wrp",
     "xhttp",
     "xhttp/xcontext",
@@ -28,7 +32,20 @@
     "xmetrics",
   ]
   pruneopts = "UT"
-  revision = "9189af3ae1e5b1cdc567749284c75d7e4e953879"
+  revision = "68d49a3c87b48d7acc7fa0c2db097fc71d647f04"
+
+[[projects]]
+  digest = "1:a69ab3f1445ffd4815add4bd31ba05b65b3b9fec1ade5057d5d717f30e6efd6d"
+  name = "github.com/SermoDigital/jose"
+  packages = [
+    ".",
+    "crypto",
+    "jws",
+    "jwt",
+  ]
+  pruneopts = "UT"
+  revision = "f6df55f235c24f236d11dbcf665249a59ac2021f"
+  version = "1.1"
 
 [[projects]]
   digest = "1:8515c0ca4381246cf332cee05fc84070bbbb07bd679b639161506ba532f47128"
@@ -113,12 +130,12 @@
   version = "v1.8.0"
 
 [[projects]]
-  digest = "1:97df918963298c287643883209a2c3f642e6593379f97ab400c2a2e219ab647d"
+  digest = "1:318f1c959a8a740366fce4b1e1eb2fd914036b4af58fbd0a003349b305f118ad"
   name = "github.com/golang/protobuf"
   packages = ["proto"]
   pruneopts = "UT"
-  revision = "aa810b61a9c79d51363740d207bb46cf8e620ed5"
-  version = "v1.2.0"
+  revision = "c823c79ea1570fb5ff454033735a8e68575d1d0f"
+  version = "v1.3.0"
 
 [[projects]]
   digest = "1:205c73bd5808318c9804e1dae07508064fab82c11fb4b2833f0358338b7b4fab"
@@ -197,6 +214,14 @@
   revision = "04140366298a54a039076d798123ffa108fff46c"
 
 [[projects]]
+  digest = "1:3786254a486f6d605a52cbc62aa0e71dacc76d5cd1a217c16905831b0f92f6ad"
+  name = "github.com/jtacoma/uritemplates"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "307ae868f90f4ee1b73ebe4596e0394237dacce8"
+  version = "v1.0.0"
+
+[[projects]]
   digest = "1:e74fa8e635591eb1ad79e8e711bff8bea4e12e9737563daf12af325c6ea206e4"
   name = "github.com/justinas/alice"
   packages = ["."]
@@ -272,14 +297,16 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:c968b29db5d68ec97de404b6d058d5937fa015a141b3b4f7a0d87d5f8226f04c"
+  digest = "1:93a746f1060a8acbcf69344862b2ceced80f854170e1caae089b2834c5fbf7f4"
   name = "github.com/prometheus/client_golang"
   packages = [
     "prometheus",
+    "prometheus/internal",
     "prometheus/promhttp",
   ]
   pruneopts = "UT"
-  revision = "967789050ba94deca04a5e84cce8ad472ce313c1"
+  revision = "505eaef017263e299324067d40ca2c48f6a2cf50"
+  version = "v0.9.2"
 
 [[projects]]
   branch = "master"
@@ -303,16 +330,17 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:f0bb332b39488b057a8671557f307997426e5c650ee738a634a0697a41e207c5"
+  digest = "1:ca30ee2c96d195cef49b546d10825d3e13b50c63da4df23c80e77c51e07bad0d"
   name = "github.com/prometheus/procfs"
   packages = [
     ".",
     "internal/util",
+    "iostats",
     "nfs",
     "xfs",
   ]
   pruneopts = "UT"
-  revision = "f8d8b3f739bd91a7c0462cb55235ef63c79c9abc"
+  revision = "6ed1f7e1041181781dd2826d3001075d011a80cc"
 
 [[projects]]
   digest = "1:3e39bafd6c2f4bf3c76c3bfd16a2e09e016510ad5db90dc02b88e2f565d6d595"
@@ -358,9 +386,20 @@
   version = "v1.3.1"
 
 [[projects]]
-  digest = "1:972c2427413d41a1e06ca4897e8528e5a1622894050e2f527b38ddf0f343f759"
+  digest = "1:ac83cf90d08b63ad5f7e020ef480d319ae890c208f8524622a2f3136e2686b02"
+  name = "github.com/stretchr/objx"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "477a77ecc69700c7cdeb1fa9e129548e1c1c393c"
+  version = "v0.1.1"
+
+[[projects]]
+  digest = "1:0bcc464dabcfad5393daf87c3f8142911d0f6c52569b837e91a1c15e890265f3"
   name = "github.com/stretchr/testify"
-  packages = ["assert"]
+  packages = [
+    "assert",
+    "mock",
+  ]
   pruneopts = "UT"
   revision = "ffdc059bfe9ce6a4e144ba849dbedead332c6053"
   version = "v1.3.0"
@@ -374,11 +413,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:8207c052fb873f83c61a5aa16f6add5feb9881eda2112b56f69fd3b9e7f55c3f"
+  digest = "1:d0e9a312c4610a508569ab25e54d34600b1a96d19b1866ece104ffdf1c1b9d2c"
   name = "golang.org/x/sys"
   packages = ["unix"]
   pruneopts = "UT"
-  revision = "153ac476189d567564fda94622d7a8c0fb338f6b"
+  revision = "775f8194d0f9e65c46913c7be783d3d95a29333c"
 
 [[projects]]
   digest = "1:8029e9743749d4be5bc9f7d42ea1659471767860f0cdc34d37c3111bd308a295"
@@ -420,6 +459,7 @@
     "github.com/Comcast/webpa-common/concurrent",
     "github.com/Comcast/webpa-common/logging",
     "github.com/Comcast/webpa-common/logging/logginghttp",
+    "github.com/Comcast/webpa-common/secure",
     "github.com/Comcast/webpa-common/server",
     "github.com/Comcast/webpa-common/wrp",
     "github.com/Comcast/webpa-common/xhttp/xcontext",
@@ -431,6 +471,7 @@
     "github.com/spf13/pflag",
     "github.com/spf13/viper",
     "github.com/stretchr/testify/assert",
+    "github.com/stretchr/testify/mock",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
