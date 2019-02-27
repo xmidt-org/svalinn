@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 - Added unit tests
 - testing 
+- testing2
 
 ## [v0.1.1]
 - added health endpoint
