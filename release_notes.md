@@ -1,1 +1,3 @@
-
+- added metrics
+- added unit tests
+- fix signature validation
