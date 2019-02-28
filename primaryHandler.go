@@ -218,25 +218,25 @@ func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// TODO: Update WRP library
-	err = wrp.NewDecoderBytes(msgBytes, wrp.Msgpack).Decode(&message)
-	if err != nil {
-		logging.Error(app.logger).Log(logging.MessageKey(), "Could not decode request body", logging.ErrorKey(), err.Error())
-		writer.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
 	secret, err := app.secretGetter.GetSecret()
 	if err != nil {
 		logging.Error(app.logger).Log(logging.MessageKey(), "Could not get secret", logging.ErrorKey(), err.Error())
 		writer.WriteHeader(http.StatusInternalServerError)
 	}
 	h := hmac.New(sha1.New, []byte(secret))
-	h.Write(message.Payload)
+	h.Write(msgBytes)
 	sig := h.Sum(nil)
 	if !hmac.Equal(sig, secretGiven) {
-		logging.Error(app.logger).Log(logging.MessageKey(), "Invalid secret", "sig", hex.EncodeToString(sig), "secret given", hex.EncodeToString(secretGiven), "trim", trimedSecret)
+		logging.Error(app.logger).Log(logging.MessageKey(), "Invalid secret")
 		writer.WriteHeader(http.StatusForbidden)
+		return
+	}
+
+	// TODO: Update WRP library
+	err = wrp.NewDecoderBytes(msgBytes, wrp.Msgpack).Decode(&message)
+	if err != nil {
+		logging.Error(app.logger).Log(logging.MessageKey(), "Could not decode request body", logging.ErrorKey(), err.Error())
+		writer.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
