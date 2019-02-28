@@ -178,6 +178,7 @@ func TestHandleWebhook(t *testing.T) {
 			description:      "Decode Body Error",
 			requestBody:      "{{{{{{{{{",
 			includeSignature: true,
+			getSecretCalled:  true,
 			expectedHeader:   http.StatusBadRequest,
 		},
 		{
@@ -225,7 +226,7 @@ func TestHandleWebhook(t *testing.T) {
 				if tc.secret != "" {
 					h = hmac.New(sha1.New, []byte(tc.secret))
 				}
-				h.Write(tc.expectedMsgOnQueue.Payload)
+				h.Write(marshaledMsg)
 				sig := fmt.Sprintf("sha1=%s", hex.EncodeToString(h.Sum(nil)))
 				request.Header.Set("X-Webpa-Signature", sig)
 			}
