@@ -214,6 +214,11 @@ func svalinn(arguments []string) int {
 		}
 	}
 
+	err = dbConn.Close()
+	if err != nil {
+		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "closing database threads failed",
+			logging.ErrorKey(), err.Error())
+	}
 	close(shutdown)
 	waitGroup.Wait()
 	return 0
