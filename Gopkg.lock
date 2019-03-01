@@ -32,7 +32,7 @@
     "xmetrics",
   ]
   pruneopts = "UT"
-  revision = "68d49a3c87b48d7acc7fa0c2db097fc71d647f04"
+  revision = "25ec3c974a4c38a1e4a6d19bffcb76c363f733cb"
 
 [[projects]]
   digest = "1:a69ab3f1445ffd4815add4bd31ba05b65b3b9fec1ade5057d5d717f30e6efd6d"
@@ -330,7 +330,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:ca30ee2c96d195cef49b546d10825d3e13b50c63da4df23c80e77c51e07bad0d"
+  digest = "1:bfc66a1fd78dc8f14d419fd52a5a42db1d572e887ebcc80b98c1a515a8f2d837"
   name = "github.com/prometheus/procfs"
   packages = [
     ".",
@@ -340,7 +340,7 @@
     "xfs",
   ]
   pruneopts = "UT"
-  revision = "6ed1f7e1041181781dd2826d3001075d011a80cc"
+  revision = "bbced9601137e764853b2fad7ec3e2dc4c504e02"
 
 [[projects]]
   digest = "1:3e39bafd6c2f4bf3c76c3bfd16a2e09e016510ad5db90dc02b88e2f565d6d595"
@@ -413,11 +413,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:d0e9a312c4610a508569ab25e54d34600b1a96d19b1866ece104ffdf1c1b9d2c"
+  digest = "1:a2bc6cb1f4e1d0b512e1d47d392ead580006b5bdade6ffde16271759fe609b34"
   name = "golang.org/x/sys"
   packages = ["unix"]
   pruneopts = "UT"
-  revision = "775f8194d0f9e65c46913c7be783d3d95a29333c"
+  revision = "a34e9553db1e492c9a76e60db2296ae7e5fbb772"
 
 [[projects]]
   digest = "1:8029e9743749d4be5bc9f7d42ea1659471767860f0cdc34d37c3111bd308a295"
