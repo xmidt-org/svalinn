@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [v0.2.2]
+Bug Fix: Webhook authorization config loading
+
+
+
 ## [v0.2.1]
 Bug Fix Caduceus config loading
 
@@ -27,7 +32,8 @@ Bug Fix Caduceus config loading
 - Initial creation
 - Bumped codex version, modified code to match changes
 
-[Unreleased]: https://github.com/Comcast/codex-svalinn/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/Comcast/codex-svalinn/compare/v0.2.2...HEAD
+[v0.2.2]: https://github.com/Comcast/codex-svalinn/compare/v0.2.1...v0.2.2
 [v0.2.1]: https://github.com/Comcast/codex-svalinn/compare/v0.2.0...v0.2.1
 [v0.2.0]: https://github.com/Comcast/codex-svalinn/compare/v0.1.1...v0.2.0
 [v0.1.1]: https://github.com/Comcast/codex-svalinn/compare/v0.1.0...v0.1.1
