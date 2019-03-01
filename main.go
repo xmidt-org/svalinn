@@ -65,6 +65,7 @@ type SvalinnConfig struct {
 	DefaultTTL          time.Duration
 	RetryInterval       time.Duration
 	Db                  db.Config
+	Webhook             WebhookConfig
 	RegexRules          []RuleConfig
 }
 
@@ -130,13 +131,13 @@ func svalinn(arguments []string) int {
 		return 2
 	}
 
-	var wc WebhookConfig
-	wc.URL = codex.Server + apiBase + config.Endpoint
-	v.UnmarshalKey("webhook", wc)
-	secretGetter := NewConstantSecret(wc.Secret)
+	if config.Webhook.URL == "" {
+		config.Webhook.URL = codex.Server + apiBase + config.Endpoint
+	}
+	secretGetter := NewConstantSecret(config.Webhook.Secret)
 	// if the register interval is 0, don't register
-	if wc.RegistrationInterval > 0 {
-		registerer := newPeriodicRegisterer(wc, secretGetter, logger)
+	if config.Webhook.RegistrationInterval > 0 {
+		registerer := newPeriodicRegisterer(config.Webhook, secretGetter, logger)
 
 		// then continue to register
 		go registerer.registerAtInterval()

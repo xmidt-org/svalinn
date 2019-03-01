@@ -20,21 +20,19 @@ getRetries: 3
 retryInterval: 10s
 defaultTTL: 5s
 db:
-  server: "127.0.0.1:11210"
-  username: "Administrator"
-  password: "somepassword"
-  bucket: "devices"
+  server: "db:26257"
+  username: "roachadmin"
+  database: "devices"
   numRetries: 4
+  waitTimeMult: 5
   connectTimeout: 1m
   opTimeout: 3s
 regexRules:
   - regex: ".*/online$"
-    tombstoneKey: "online"
     storePayload: true
     ttl: 30s
     eventType: "state"
   - regex: ".*/offline$"
-    tombstoneKey: "offline"
     storePayload: true
     ttl: 30s
     eventType: "state"
