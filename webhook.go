@@ -18,7 +18,6 @@
 package main
 
 import (
-	"errors"
 	"net/http"
 	"time"
 
@@ -27,12 +26,6 @@ import (
 	"github.com/goph/emperror"
 
 	"github.com/go-kit/kit/log"
-)
-
-var (
-	errParseSat   = errors.New("Couldn't parse SAT acquirer config")
-	errParseBasic = errors.New("Couldn't parse basic acquirer config")
-	errEmptyBasic = errors.New("Empty basic credentials")
 )
 
 type webhookRegisterer interface {
@@ -50,7 +43,8 @@ type WebhookConfig struct {
 	Timeout              time.Duration
 	RegistrationURL      string
 	EventsToWatch        []string
-	AcquirerConfig       map[string]interface{}
+	Sat                  webhook.SatAcquirer
+	Basic                string
 	Secret               string
 }
 
@@ -63,11 +57,9 @@ type periodicRegisterer struct {
 }
 
 func newPeriodicRegisterer(wc WebhookConfig, secretGetter secretGetter, logger log.Logger) periodicRegisterer {
-	acquirer, err := determineTokenAcquirer(wc.AcquirerConfig)
-	if err != nil {
-		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to parse token acquirer config, using default acquirer",
-			logging.ErrorKey(), err.Error(), "config", wc.AcquirerConfig)
-	}
+	acquirer := determineTokenAcquirer(wc)
+	logging.Debug(logger).Log(logging.MessageKey(), "determined token acquirer", "acquirer", acquirer,
+		"config", wc)
 	webhook := webhook.Webhook{
 		URL:             wc.URL,
 		RegistrationURL: wc.RegistrationURL,
@@ -84,26 +76,17 @@ func newPeriodicRegisterer(wc WebhookConfig, secretGetter secretGetter, logger l
 }
 
 // determineTokenAcquirer always returns a valid TokenAcquirer, but may also return an error
-func determineTokenAcquirer(config map[string]interface{}) (webhook.TokenAcquirer, error) {
+func determineTokenAcquirer(config WebhookConfig) webhook.TokenAcquirer {
 	defaultAcquirer := &webhook.DefaultAcquirer{}
-	if value, ok := config["sat"]; ok {
-		acquirer, ok := value.(webhook.SatAcquirer)
-		if !ok {
-			return defaultAcquirer, errParseSat
-		}
-		return &acquirer, nil
+	if config.Sat.Client != "" && config.Sat.SatURL != "" && config.Sat.Secret != "" && config.Sat.Timeout != time.Duration(0)*time.Second {
+		return &config.Sat
 	}
-	if value, ok := config["basic"]; ok {
-		str, ok := value.(string)
-		if !ok {
-			return defaultAcquirer, errParseBasic
-		}
-		if str == "" {
-			return defaultAcquirer, errEmptyBasic
-		}
-		return webhook.NewBasicAcquirer(str), nil
+
+	if config.Basic != "" {
+		return webhook.NewBasicAcquirer(config.Basic)
 	}
-	return defaultAcquirer, nil
+
+	return defaultAcquirer
 }
 
 func (p *periodicRegisterer) registerAtInterval() {

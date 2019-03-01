@@ -90,10 +90,9 @@ func TestDetermineTokenAcquirer(t *testing.T) {
 	}
 	tests := []struct {
 		description           string
-		satVal                interface{}
-		basicVal              interface{}
+		satVal                webhook.SatAcquirer
+		basicVal              string
 		expectedTokenAcquirer webhook.TokenAcquirer
-		expectedErr           error
 	}{
 		{
 			description:           "Sat Success",
@@ -101,27 +100,9 @@ func TestDetermineTokenAcquirer(t *testing.T) {
 			expectedTokenAcquirer: &goodSatAcquirer,
 		},
 		{
-			description:           "Sat Error",
-			satVal:                "",
-			expectedTokenAcquirer: defaultAcquirer,
-			expectedErr:           errParseSat,
-		},
-		{
 			description:           "Basic Success",
 			basicVal:              "test basic",
 			expectedTokenAcquirer: goodBasicAcquirer,
-		},
-		{
-			description:           "Basic Parse Error",
-			basicVal:              goodSatAcquirer,
-			expectedTokenAcquirer: defaultAcquirer,
-			expectedErr:           errParseBasic,
-		},
-		{
-			description:           "Basic Empty Creds Error",
-			basicVal:              "",
-			expectedTokenAcquirer: defaultAcquirer,
-			expectedErr:           errEmptyBasic,
 		},
 		{
 			description:           "Default Success",
@@ -132,19 +113,11 @@ func TestDetermineTokenAcquirer(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
-			config := make(map[string]interface{})
-			if tc.satVal != nil {
-				config["sat"] = tc.satVal
+			config := WebhookConfig{
+				Sat:   tc.satVal,
+				Basic: tc.basicVal,
 			}
-			if tc.basicVal != nil {
-				config["basic"] = tc.basicVal
-			}
-			tokenAcquirer, err := determineTokenAcquirer(config)
-			if tc.expectedErr == nil || err == nil {
-				assert.Equal(tc.expectedErr, err)
-			} else {
-				assert.Contains(err.Error(), tc.expectedErr.Error())
-			}
+			tokenAcquirer := determineTokenAcquirer(config)
 			assert.Equal(tc.expectedTokenAcquirer, tokenAcquirer)
 		})
 	}
