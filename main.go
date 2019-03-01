@@ -50,7 +50,7 @@ import (
 const (
 	applicationName, apiBase = "svalinn", "/api/v1"
 	DEFAULT_KEY_ID           = "current"
-	applicationVersion       = "0.2.0"
+	applicationVersion       = "0.2.1"
 )
 
 type SvalinnConfig struct {
