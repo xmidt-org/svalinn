@@ -39,6 +39,7 @@ import (
 var (
 	errEmptyID           = errors.New("Empty id is invalid")
 	errUnexpectedWRPType = errors.New("Unexpected wrp message type")
+	errTimestampString   = errors.New("timestamp couldn't be found and converted to string")
 )
 
 type RequestHandler struct {
@@ -156,7 +157,7 @@ func parseRequest(req wrp.Message, storePayload bool, payloadMaxSize int, metada
 	// parse the time from the payload
 	timeString, ok := payload["ts"].(string)
 	if !ok {
-		return "", db.Event{}, emperror.Wrap(errors.New("timestamp couldn't be converted to string"), "failed to parse timestamp")
+		return "", db.Event{}, emperror.Wrap(errTimestampString, "failed to parse timestamp")
 	}
 	parsedTime, err := time.Parse(time.RFC3339Nano, timeString)
 	if err != nil {
