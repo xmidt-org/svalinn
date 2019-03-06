@@ -121,6 +121,24 @@ func TestParseRequest(t *testing.T) {
 			expectedErr: errors.New("failed to unmarshal payload"),
 		},
 		{
+			description: "Empty Payload String Error",
+			req: wrp.Message{
+				Destination: "/device/",
+				Type:        wrp.SimpleEventMessageType,
+				Payload:     []byte(``),
+			},
+			expectedErr: errTimestampString,
+		},
+		{
+			description: "Non-String Timestamp Error",
+			req: wrp.Message{
+				Destination: "/device/",
+				Type:        wrp.SimpleEventMessageType,
+				Payload:     []byte(`{"ts":5}`),
+			},
+			expectedErr: errTimestampString,
+		},
+		{
 			description: "Parse Timestamp Error",
 			req: wrp.Message{
 				Destination: "/device/",
