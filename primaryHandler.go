@@ -154,7 +154,10 @@ func parseRequest(req wrp.Message, storePayload bool, payloadMaxSize int, metada
 	}
 
 	// parse the time from the payload
-	timeString := payload["ts"].(string)
+	timeString, ok := payload["ts"].(string)
+	if !ok {
+		return "", db.Event{}, emperror.Wrap(errors.New("timestamp couldn't be converted to string"), "failed to parse timestamp")
+	}
 	parsedTime, err := time.Parse(time.RFC3339Nano, timeString)
 	if err != nil {
 		return "", db.Event{}, emperror.Wrap(err, "failed to parse timestamp")
