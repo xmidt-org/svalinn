@@ -46,18 +46,17 @@ var (
 )
 
 type RequestHandler struct {
-	inserter            db.RetryInsertService
-	updater             db.RetryUpdateService
-	logger              log.Logger
-	rules               []rule
-	metadataMaxSize     int
-	payloadMaxSize      int
-	stateLimitPerDevice int
-	defaultTTL          time.Duration
-	pruneQueue          chan string
-	maxWorkers          int
-	workers             semaphore.Interface
-	wg                  sync.WaitGroup
+	inserter        db.RetryInsertService
+	updater         db.RetryUpdateService
+	logger          log.Logger
+	rules           []rule
+	metadataMaxSize int
+	payloadMaxSize  int
+	defaultTTL      time.Duration
+	pruneQueue      chan string
+	maxWorkers      int
+	workers         semaphore.Interface
+	wg              sync.WaitGroup
 }
 
 func (r *RequestHandler) handleRequests(requestQueue chan wrp.Message) {
