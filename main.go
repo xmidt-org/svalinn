@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/Comcast/webpa-common/semaphore"
+
 	"github.com/go-kit/kit/log"
 
 	"github.com/Comcast/codex/db"
@@ -56,6 +58,7 @@ const (
 type SvalinnConfig struct {
 	Endpoint            string
 	QueueSize           int
+	MaxWorkers          int
 	StateLimitPerDevice int
 	PayloadMaxSize      int
 	MetadataMaxSize     int
@@ -182,7 +185,10 @@ func svalinn(arguments []string) int {
 		stateLimitPerDevice: config.StateLimitPerDevice,
 		defaultTTL:          config.DefaultTTL,
 		pruneQueue:          pruneQueue,
+		maxWorkers:          config.MaxWorkers,
+		workers:             semaphore.New(config.MaxWorkers),
 	}
+	requestHandler.wg.Add(1)
 	go requestHandler.handleRequests(requestQueue)
 	go requestHandler.handlePruning()
 
@@ -215,13 +221,14 @@ func svalinn(arguments []string) int {
 		}
 	}
 
+	close(shutdown)
+	waitGroup.Wait()
+	requestHandler.wg.Wait()
 	err = dbConn.Close()
 	if err != nil {
 		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "closing database threads failed",
 			logging.ErrorKey(), err.Error())
 	}
-	close(shutdown)
-	waitGroup.Wait()
 	return 0
 }
 
