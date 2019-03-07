@@ -27,7 +27,10 @@ import (
 	"net/http"
 	"path"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/Comcast/webpa-common/semaphore"
 
 	"github.com/Comcast/codex/db"
 	"github.com/Comcast/webpa-common/logging"
@@ -43,21 +46,30 @@ var (
 )
 
 type RequestHandler struct {
-	inserter            db.RetryInsertService
-	updater             db.RetryUpdateService
-	logger              log.Logger
-	rules               []rule
-	metadataMaxSize     int
-	payloadMaxSize      int
-	stateLimitPerDevice int
-	defaultTTL          time.Duration
-	pruneQueue          chan string
+	inserter        db.RetryInsertService
+	updater         db.RetryUpdateService
+	logger          log.Logger
+	rules           []rule
+	metadataMaxSize int
+	payloadMaxSize  int
+	defaultTTL      time.Duration
+	prune           bool
+	pruneQueue      chan string
+	maxWorkers      int
+	workers         semaphore.Interface
+	wg              sync.WaitGroup
 }
 
 func (r *RequestHandler) handleRequests(requestQueue chan wrp.Message) {
+	defer r.wg.Done()
 	for request := range requestQueue {
-		// TODO: need to add limit to goroutines
+		r.workers.Acquire()
 		go r.handleRequest(request)
+	}
+
+	// Grab all the workers to make sure they are done.
+	for i := 0; i < r.maxWorkers; i++ {
+		r.workers.Acquire()
 	}
 }
 
@@ -79,6 +91,7 @@ func (r *RequestHandler) pruneDevice() {
 }
 
 func (r *RequestHandler) handleRequest(request wrp.Message) {
+	defer r.workers.Release()
 	var (
 		deathDate time.Time
 	)
@@ -120,7 +133,9 @@ func (r *RequestHandler) handleRequest(request wrp.Message) {
 		return
 	}
 	logging.Info(r.logger).Log(logging.MessageKey(), "Successfully upserted device information", "device", deviceId, "event", event, "record", record)
-	r.pruneQueue <- deviceId
+	if r.prune {
+		r.pruneQueue <- deviceId
+	}
 }
 
 func parseRequest(req wrp.Message, storePayload bool, payloadMaxSize int, metadataMaxSize int) (string, db.Event, error) {

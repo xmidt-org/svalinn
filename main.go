@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/Comcast/webpa-common/semaphore"
+
 	"github.com/go-kit/kit/log"
 
 	"github.com/Comcast/codex/db"
@@ -54,19 +56,20 @@ const (
 )
 
 type SvalinnConfig struct {
-	Endpoint            string
-	QueueSize           int
-	StateLimitPerDevice int
-	PayloadMaxSize      int
-	MetadataMaxSize     int
-	InsertRetries       int
-	PruneRetries        int
-	GetRetries          int
-	DefaultTTL          time.Duration
-	RetryInterval       time.Duration
-	Db                  db.Config
-	Webhook             WebhookConfig
-	RegexRules          []RuleConfig
+	Endpoint        string
+	QueueSize       int
+	MaxWorkers      int
+	PayloadMaxSize  int
+	MetadataMaxSize int
+	InsertRetries   int
+	PruneRetries    int
+	GetRetries      int
+	Prune           bool
+	DefaultTTL      time.Duration
+	RetryInterval   time.Duration
+	Db              db.Config
+	Webhook         WebhookConfig
+	RegexRules      []RuleConfig
 }
 
 func SetLogger(logger log.Logger) func(delegate http.Handler) http.Handler {
@@ -173,18 +176,23 @@ func svalinn(arguments []string) int {
 	updater := db.CreateRetryUpdateService(dbConn, config.PruneRetries, config.RetryInterval)
 
 	requestHandler := RequestHandler{
-		inserter:            inserter,
-		updater:             updater,
-		logger:              logger,
-		rules:               rules,
-		payloadMaxSize:      config.PayloadMaxSize,
-		metadataMaxSize:     config.MetadataMaxSize,
-		stateLimitPerDevice: config.StateLimitPerDevice,
-		defaultTTL:          config.DefaultTTL,
-		pruneQueue:          pruneQueue,
+		inserter:        inserter,
+		updater:         updater,
+		logger:          logger,
+		rules:           rules,
+		payloadMaxSize:  config.PayloadMaxSize,
+		metadataMaxSize: config.MetadataMaxSize,
+		defaultTTL:      config.DefaultTTL,
+		prune:           config.Prune,
+		pruneQueue:      pruneQueue,
+		maxWorkers:      config.MaxWorkers,
+		workers:         semaphore.New(config.MaxWorkers),
 	}
+	requestHandler.wg.Add(1)
 	go requestHandler.handleRequests(requestQueue)
-	go requestHandler.handlePruning()
+	if config.Prune {
+		go requestHandler.handlePruning()
+	}
 
 	serverHealth := codex.Health.NewHealth(logger)
 
@@ -215,13 +223,14 @@ func svalinn(arguments []string) int {
 		}
 	}
 
+	close(shutdown)
+	waitGroup.Wait()
+	requestHandler.wg.Wait()
 	err = dbConn.Close()
 	if err != nil {
 		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "closing database threads failed",
 			logging.ErrorKey(), err.Error())
 	}
-	close(shutdown)
-	waitGroup.Wait()
 	return 0
 }
 
