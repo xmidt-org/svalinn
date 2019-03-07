@@ -53,6 +53,7 @@ type RequestHandler struct {
 	metadataMaxSize int
 	payloadMaxSize  int
 	defaultTTL      time.Duration
+	prune           bool
 	pruneQueue      chan string
 	maxWorkers      int
 	workers         semaphore.Interface
@@ -132,7 +133,9 @@ func (r *RequestHandler) handleRequest(request wrp.Message) {
 		return
 	}
 	logging.Info(r.logger).Log(logging.MessageKey(), "Successfully upserted device information", "device", deviceId, "event", event, "record", record)
-	r.pruneQueue <- deviceId
+	if r.prune {
+		r.pruneQueue <- deviceId
+	}
 }
 
 func parseRequest(req wrp.Message, storePayload bool, payloadMaxSize int, metadataMaxSize int) (string, db.Event, error) {

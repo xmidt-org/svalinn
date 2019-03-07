@@ -64,6 +64,7 @@ type SvalinnConfig struct {
 	InsertRetries   int
 	PruneRetries    int
 	GetRetries      int
+	Prune           bool
 	DefaultTTL      time.Duration
 	RetryInterval   time.Duration
 	Db              db.Config
@@ -182,13 +183,16 @@ func svalinn(arguments []string) int {
 		payloadMaxSize:  config.PayloadMaxSize,
 		metadataMaxSize: config.MetadataMaxSize,
 		defaultTTL:      config.DefaultTTL,
+		prune:           config.Prune,
 		pruneQueue:      pruneQueue,
 		maxWorkers:      config.MaxWorkers,
 		workers:         semaphore.New(config.MaxWorkers),
 	}
 	requestHandler.wg.Add(1)
 	go requestHandler.handleRequests(requestQueue)
-	go requestHandler.handlePruning()
+	if config.Prune {
+		go requestHandler.handlePruning()
+	}
 
 	serverHealth := codex.Health.NewHealth(logger)
 
