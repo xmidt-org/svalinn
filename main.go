@@ -20,6 +20,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	_ "net/http/pprof"
 
 	"github.com/Comcast/webpa-common/semaphore"
 
