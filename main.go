@@ -72,6 +72,7 @@ type SvalinnConfig struct {
 	Webhook         WebhookConfig
 	RegexRules      []RuleConfig
 	MaxBatchSize    int
+	BatchWait       time.Duration
 }
 
 func SetLogger(logger log.Logger) func(delegate http.Handler) http.Handler {
@@ -89,7 +90,7 @@ func svalinn(arguments []string) int {
 
 	var (
 		f, v                                = pflag.NewFlagSet(applicationName, pflag.ContinueOnError), viper.New()
-		logger, metricsRegistry, codex, err = server.Initialize(applicationName, arguments, f, v, secure.Metrics, db.Metrics)
+		logger, metricsRegistry, codex, err = server.Initialize(applicationName, arguments, f, v, secure.Metrics, db.Metrics, Metrics)
 	)
 
 	printVer := f.BoolP("version", "v", false, "displays the version number")
@@ -136,6 +137,9 @@ func svalinn(arguments []string) int {
 		return 2
 	}
 
+	// Create Metrics
+	measures := NewMeasures(metricsRegistry)
+
 	if config.Webhook.URL == "" {
 		config.Webhook.URL = codex.Server + apiBase + config.Endpoint
 	}
@@ -167,6 +171,7 @@ func svalinn(arguments []string) int {
 		logger:       logger,
 		requestQueue: requestQueue,
 		secretGetter: secretGetter,
+		measures:     measures,
 	}
 
 	rules, err := createRules(config.RegexRules)
@@ -194,6 +199,7 @@ func svalinn(arguments []string) int {
 		maxWorkers:      config.MaxWorkers,
 		workers:         semaphore.New(config.MaxWorkers),
 		batchSize:       config.MaxBatchSize,
+		measures:        measures,
 	}
 	requestHandler.wg.Add(1)
 	go requestHandler.handleRequests(requestQueue)

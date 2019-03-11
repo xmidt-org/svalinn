@@ -59,23 +59,32 @@ type RequestHandler struct {
 	workers         semaphore.Interface
 	wg              sync.WaitGroup
 	batchSize       int
+	batchWait       time.Duration
+
+	measures *Measures
 }
 
 func (r *RequestHandler) handleRequests(requestQueue chan wrp.Message) {
 	defer r.wg.Done()
 	for request := range requestQueue {
 		requests := []wrp.Message{request}
+		if r.measures != nil {
+			r.measures.DepthQueue.Add(-1.0)
+		}
 		r.workers.Acquire()
 
 		for i := 0; i < r.batchSize; i++ {
 			select {
-			case r := <-requestQueue:
-				requests = append(requests, r)
-			default:
-				logging.Debug(r.logger).Log(logging.MessageKey(), "No Messages in Queue")
+			case additionalRequest := <-requestQueue:
+				requests = append(requests, additionalRequest)
+				if r.measures != nil {
+					r.measures.DepthQueue.Add(-1.0)
+				}
+			case <-time.After(r.batchWait):
+				logging.Debug(r.logger).Log(logging.MessageKey(), "No Messages in Queue", "duration", r.batchWait)
 			}
 		}
-		go r.handleRequest(requests...)
+		go r.processRequests(requests...)
 	}
 
 	// Grab all the workers to make sure they are done.
@@ -101,7 +110,7 @@ func (r *RequestHandler) pruneDevice() {
 	return
 }
 
-func (r *RequestHandler) handleRequest(requests ...wrp.Message) {
+func (r *RequestHandler) processRequests(requests ...wrp.Message) {
 	defer r.workers.Release()
 	var records []db.Record
 	for _, request := range requests {
@@ -140,6 +149,9 @@ func (r *RequestHandler) handleRequest(requests ...wrp.Message) {
 			Type:      db.UnmarshalEvent(rule.eventType),
 		}
 		records = append(records, record)
+		if r.prune {
+			r.pruneQueue <- deviceId
+		}
 	}
 
 	err := r.inserter.InsertRecords(records...)
@@ -147,10 +159,6 @@ func (r *RequestHandler) handleRequest(requests ...wrp.Message) {
 		logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 			"Failed to add state information to the database", logging.ErrorKey(), err.Error())
 		return
-	}
-	logging.Info(r.logger).Log(logging.MessageKey(), "Successfully upserted devices information", "records", len(records))
-	if r.prune {
-		//r.pruneQueue <- deviceId
 	}
 }
 
@@ -232,6 +240,8 @@ type App struct {
 	logger       log.Logger
 	token        string
 	secretGetter secretGetter
+
+	measures *Measures
 }
 
 func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
@@ -278,4 +288,7 @@ func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
 	logging.Debug(app.logger).Log(logging.MessageKey(), "message info", "message type", message.Type, "full", message)
 	app.requestQueue <- message
 	writer.WriteHeader(http.StatusAccepted)
+	if app.measures != nil {
+		app.measures.DepthQueue.Add(1.0)
+	}
 }
