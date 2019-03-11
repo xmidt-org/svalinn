@@ -58,13 +58,24 @@ type RequestHandler struct {
 	maxWorkers      int
 	workers         semaphore.Interface
 	wg              sync.WaitGroup
+	batchSize       int
 }
 
 func (r *RequestHandler) handleRequests(requestQueue chan wrp.Message) {
 	defer r.wg.Done()
 	for request := range requestQueue {
+		requests := []wrp.Message{request}
 		r.workers.Acquire()
-		go r.handleRequest(request)
+
+		for i := 0; i < r.batchSize; i++ {
+			select {
+			case r := <-requestQueue:
+				requests = append(requests, r)
+			default:
+				logging.Debug(r.logger).Log(logging.MessageKey(), "No Messages in Queue")
+			}
+		}
+		go r.handleRequest(requests...)
 	}
 
 	// Grab all the workers to make sure they are done.
@@ -90,51 +101,56 @@ func (r *RequestHandler) pruneDevice() {
 	return
 }
 
-func (r *RequestHandler) handleRequest(request wrp.Message) {
+func (r *RequestHandler) handleRequest(requests ...wrp.Message) {
 	defer r.workers.Release()
-	var (
-		deathDate time.Time
-	)
-	rule, err := findRule(r.rules, request.Destination)
-	if err != nil {
-		logging.Info(r.logger).Log(logging.MessageKey(), "Could not get rule", logging.ErrorKey(), err, "destination", request.Destination)
-	}
-	deviceId, event, err := parseRequest(request, rule.storePayload, r.payloadMaxSize, r.metadataMaxSize)
-	if err != nil {
-		logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
-			"Failed to parse request", logging.ErrorKey(), err.Error())
-		return
-	}
-	marshalledEvent, err := json.Marshal(event)
-	if err != nil {
-		logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
-			"Failed to marshal event", logging.ErrorKey(), err.Error())
+	var records []db.Record
+	for _, request := range requests {
+		var (
+			deathDate time.Time
+		)
+		rule, err := findRule(r.rules, request.Destination)
+		if err != nil {
+			logging.Info(r.logger).Log(logging.MessageKey(), "Could not get rule", logging.ErrorKey(), err, "destination", request.Destination)
+			continue
+		}
+		deviceId, event, err := parseRequest(request, rule.storePayload, r.payloadMaxSize, r.metadataMaxSize)
+		if err != nil {
+			logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
+				"Failed to parse request", logging.ErrorKey(), err.Error())
+			continue
+		}
+		marshalledEvent, err := json.Marshal(event)
+		if err != nil {
+			logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
+				"Failed to marshal event", logging.ErrorKey(), err.Error())
+			continue
+		}
+
+		birthDate := time.Unix(event.Time, 0)
+		if rule.ttl == 0 {
+			deathDate = birthDate.Add(r.defaultTTL)
+		} else {
+			deathDate = birthDate.Add(rule.ttl)
+		}
+		record := db.Record{
+			DeviceID:  deviceId,
+			BirthDate: birthDate,
+			DeathDate: deathDate,
+			Data:      marshalledEvent,
+			Type:      db.UnmarshalEvent(rule.eventType),
+		}
+		records = append(records, record)
 	}
 
-	birthDate := time.Unix(event.Time, 0)
-	if rule.ttl == 0 {
-		deathDate = birthDate.Add(r.defaultTTL)
-	} else {
-		deathDate = birthDate.Add(rule.ttl)
-	}
-
-	record := db.Record{
-		DeviceID:  deviceId,
-		BirthDate: birthDate,
-		DeathDate: deathDate,
-		Data:      marshalledEvent,
-		Type:      db.UnmarshalEvent(rule.eventType),
-	}
-
-	err = r.inserter.InsertRecord(record)
+	err := r.inserter.InsertRecords(records...)
 	if err != nil {
 		logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 			"Failed to add state information to the database", logging.ErrorKey(), err.Error())
 		return
 	}
-	logging.Info(r.logger).Log(logging.MessageKey(), "Successfully upserted device information", "device", deviceId, "event", event, "record", record)
+	logging.Info(r.logger).Log(logging.MessageKey(), "Successfully upserted devices information", "records", len(records))
 	if r.prune {
-		r.pruneQueue <- deviceId
+		//r.pruneQueue <- deviceId
 	}
 }
 

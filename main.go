@@ -71,6 +71,7 @@ type SvalinnConfig struct {
 	Db              db.Config
 	Webhook         WebhookConfig
 	RegexRules      []RuleConfig
+	MaxBatchSize    int
 }
 
 func SetLogger(logger log.Logger) func(delegate http.Handler) http.Handler {
@@ -176,6 +177,10 @@ func svalinn(arguments []string) int {
 	inserter := db.CreateRetryInsertService(dbConn, config.InsertRetries, config.RetryInterval)
 	updater := db.CreateRetryUpdateService(dbConn, config.PruneRetries, config.RetryInterval)
 
+	if config.MaxBatchSize == 0 {
+		config.MaxBatchSize = 100
+	}
+
 	requestHandler := RequestHandler{
 		inserter:        inserter,
 		updater:         updater,
@@ -188,6 +193,7 @@ func svalinn(arguments []string) int {
 		pruneQueue:      pruneQueue,
 		maxWorkers:      config.MaxWorkers,
 		workers:         semaphore.New(config.MaxWorkers),
+		batchSize:       config.MaxBatchSize,
 	}
 	requestHandler.wg.Add(1)
 	go requestHandler.handleRequests(requestQueue)
