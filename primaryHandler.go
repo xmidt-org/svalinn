@@ -58,11 +58,15 @@ type RequestHandler struct {
 	maxWorkers      int
 	workers         semaphore.Interface
 	wg              sync.WaitGroup
+	measures        *Measures
 }
 
 func (r *RequestHandler) handleRequests(requestQueue chan wrp.Message) {
 	defer r.wg.Done()
 	for request := range requestQueue {
+		if r.measures != nil {
+			r.measures.DepthQueue.Add(-1.0)
+		}
 		r.workers.Acquire()
 		go r.handleRequest(request)
 	}
@@ -101,14 +105,17 @@ func (r *RequestHandler) handleRequest(request wrp.Message) {
 	}
 	deviceId, event, err := parseRequest(request, rule.storePayload, r.payloadMaxSize, r.metadataMaxSize)
 	if err != nil {
+		r.measures.DroppedEventsCount.With(reasonLabel, parseFailReason).Add(1.0)
 		logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 			"Failed to parse request", logging.ErrorKey(), err.Error())
 		return
 	}
 	marshalledEvent, err := json.Marshal(event)
 	if err != nil {
+		r.measures.DroppedEventsCount.With(reasonLabel, marshalFailReason).Add(1.0)
 		logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 			"Failed to marshal event", logging.ErrorKey(), err.Error())
+		return
 	}
 
 	birthDate := time.Unix(event.Time, 0)
@@ -126,8 +133,9 @@ func (r *RequestHandler) handleRequest(request wrp.Message) {
 		Type:      db.UnmarshalEvent(rule.eventType),
 	}
 
-	err = r.inserter.InsertRecord(record)
+	err = r.inserter.InsertRecords(record)
 	if err != nil {
+		r.measures.DroppedEventsCount.With(reasonLabel, dbFailReason).Add(1.0)
 		logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 			"Failed to add state information to the database", logging.ErrorKey(), err.Error())
 		return
@@ -216,6 +224,7 @@ type App struct {
 	logger       log.Logger
 	token        string
 	secretGetter secretGetter
+	measures     *Measures
 }
 
 func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
@@ -261,5 +270,8 @@ func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
 
 	logging.Debug(app.logger).Log(logging.MessageKey(), "message info", "message type", message.Type, "full", message)
 	app.requestQueue <- message
+	if app.measures != nil {
+		app.measures.DepthQueue.Add(1.0)
+	}
 	writer.WriteHeader(http.StatusAccepted)
 }
