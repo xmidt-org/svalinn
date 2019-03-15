@@ -24,26 +24,42 @@ import (
 )
 
 const (
-	IncommingQueueDepth = "incoming_queue_depth"
+	IncomingQueueDepth   = "incoming_queue_depth"
+	DroppedEventsCounter = "dropped_events_count"
+)
+
+const (
+	reasonLabel            = "reason"
+	parseFailReason        = "parsing failed"
+	marshalFailReason      = "marshaling failed"
+	invalidBirthdateReason = "invalid birthdate"
+	dbFailReason           = "database request failed"
 )
 
 func Metrics() []xmetrics.Metric {
 	return []xmetrics.Metric{
 		{
-			Name: IncommingQueueDepth,
+			Name: IncomingQueueDepth,
 			Help: "The depth of the queue",
 			Type: "gauge",
+		},
+		{
+			Name: DroppedEventsCounter,
+			Help: "The total number of events dropped",
+			Type: "counter",
 		},
 	}
 }
 
 type Measures struct {
-	DepthQueue metrics.Gauge
+	DepthQueue         metrics.Gauge
+	DroppedEventsCount metrics.Counter
 }
 
 // NewMeasures constructs a Measures given a go-kit metrics Provider
 func NewMeasures(p provider.Provider) *Measures {
 	return &Measures{
-		DepthQueue: p.NewGauge(IncommingQueueDepth),
+		DepthQueue:         p.NewGauge(IncomingQueueDepth),
+		DroppedEventsCount: p.NewCounter(DroppedEventsCounter),
 	}
 }

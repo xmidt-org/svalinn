@@ -105,14 +105,17 @@ func (r *RequestHandler) handleRequest(request wrp.Message) {
 	}
 	deviceId, event, err := parseRequest(request, rule.storePayload, r.payloadMaxSize, r.metadataMaxSize)
 	if err != nil {
+		r.measures.DroppedEventsCount.With(reasonLabel, parseFailReason).Add(1.0)
 		logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 			"Failed to parse request", logging.ErrorKey(), err.Error())
 		return
 	}
 	marshalledEvent, err := json.Marshal(event)
 	if err != nil {
+		r.measures.DroppedEventsCount.With(reasonLabel, marshalFailReason).Add(1.0)
 		logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 			"Failed to marshal event", logging.ErrorKey(), err.Error())
+		return
 	}
 
 	birthDate := time.Unix(event.Time, 0)
@@ -132,6 +135,7 @@ func (r *RequestHandler) handleRequest(request wrp.Message) {
 
 	err = r.inserter.InsertRecords(record)
 	if err != nil {
+		r.measures.DroppedEventsCount.With(reasonLabel, dbFailReason).Add(1.0)
 		logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 			"Failed to add state information to the database", logging.ErrorKey(), err.Error())
 		return
