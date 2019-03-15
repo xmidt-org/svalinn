@@ -58,11 +58,15 @@ type RequestHandler struct {
 	maxWorkers      int
 	workers         semaphore.Interface
 	wg              sync.WaitGroup
+	measures        *Measures
 }
 
 func (r *RequestHandler) handleRequests(requestQueue chan wrp.Message) {
 	defer r.wg.Done()
 	for request := range requestQueue {
+		if r.measures != nil {
+			r.measures.DepthQueue.Add(-1.0)
+		}
 		r.workers.Acquire()
 		go r.handleRequest(request)
 	}
@@ -216,6 +220,7 @@ type App struct {
 	logger       log.Logger
 	token        string
 	secretGetter secretGetter
+	measures     *Measures
 }
 
 func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
@@ -261,5 +266,8 @@ func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
 
 	logging.Debug(app.logger).Log(logging.MessageKey(), "message info", "message type", message.Type, "full", message)
 	app.requestQueue <- message
+	if app.measures != nil {
+		app.measures.DepthQueue.Add(1.0)
+	}
 	writer.WriteHeader(http.StatusAccepted)
 }
