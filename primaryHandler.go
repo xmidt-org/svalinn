@@ -126,7 +126,7 @@ func (r *RequestHandler) handleRequest(request wrp.Message) {
 		Type:      db.UnmarshalEvent(rule.eventType),
 	}
 
-	err = r.inserter.InsertRecord(record)
+	err = r.inserter.InsertRecords(record)
 	if err != nil {
 		logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 			"Failed to add state information to the database", logging.ErrorKey(), err.Error())

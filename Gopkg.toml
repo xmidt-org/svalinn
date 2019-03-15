@@ -1,10 +1,6 @@
 [[constraint]]
   name = "github.com/Comcast/codex"
-  version= "v0.2.0"
-
-[[constraint]]
-  branch = "master"
-  name = "github.com/Comcast/webpa-common"
+  version= "v0.2.2"
 
 [[override]]
   name = "github.com/prometheus/client_golang"
@@ -12,7 +8,7 @@
 
 [[override]]
   name = "github.com/ugorji/go"
-  revision = "v1.1.1"
+  revision = "e5e69e061d4f7ee3a69b793cf9c1b41afe21918e"
 
 [prune]
   go-tests = true

@@ -2,16 +2,15 @@
 
 
 [[projects]]
-  digest = "1:9c1a8714b106ce080066040bbf5e598cd5439e99d346cd55f8726eee46abe440"
+  digest = "1:2d7a4ee94b809972b9c2e450425b59e6e6a043a199a46519e40d0b31146734d2"
   name = "github.com/Comcast/codex"
   packages = ["db"]
   pruneopts = "UT"
-  revision = "2829412a0f5730c0b8440538e86df7ffd8753537"
-  version = "v0.2.0"
+  revision = "2d1ed51e084edd9d1cbd430a645439b48dba317d"
+  version = "v0.2.2"
 
 [[projects]]
-  branch = "master"
-  digest = "1:a1653a8a637b0c7b9789c4b9045df2d93d570e0b576cb219e83ae4ae6b17b568"
+  digest = "1:4f9e6e76de50580cf05463bd2c7a90be6051116744968d44603f7ff269dc0edf"
   name = "github.com/Comcast/webpa-common"
   packages = [
     "bookkeeping",
@@ -32,7 +31,7 @@
     "xmetrics",
   ]
   pruneopts = "UT"
-  revision = "25ec3c974a4c38a1e4a6d19bffcb76c363f733cb"
+  revision = "400bb4f8fc509ead8a6180a357d448bc593ea000"
 
 [[projects]]
   digest = "1:a69ab3f1445ffd4815add4bd31ba05b65b3b9fec1ade5057d5d717f30e6efd6d"
@@ -65,11 +64,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:7057ef47edbd707faa2b02a105944649d720b79a7f99d64ddcd9e4c6fda00a04"
+  digest = "1:8e1d01023ad6893c3b4fccf50346b871f91579f330e7f27880d4a585bfafcdcf"
   name = "github.com/c9s/goprocinfo"
   packages = ["linux"]
   pruneopts = "UT"
-  revision = "2b0825337245cf3d2948c34eee4d3aff47b2a044"
+  revision = "0b2ad9ac246b05c4f5750721d0c4d230888cac5e"
 
 [[projects]]
   digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
@@ -134,8 +133,8 @@
   name = "github.com/golang/protobuf"
   packages = ["proto"]
   pruneopts = "UT"
-  revision = "c823c79ea1570fb5ff454033735a8e68575d1d0f"
-  version = "v1.3.0"
+  revision = "b5d812f8a3706043e23a9cd5babf2e5423744d30"
+  version = "v1.3.1"
 
 [[projects]]
   digest = "1:205c73bd5808318c9804e1dae07508064fab82c11fb4b2833f0358338b7b4fab"
@@ -330,7 +329,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:bfc66a1fd78dc8f14d419fd52a5a42db1d572e887ebcc80b98c1a515a8f2d837"
+  digest = "1:0573a48c92e778ad732779bf1e5064a5085ab3fbd236ad71e53cab5753ef3e6e"
   name = "github.com/prometheus/procfs"
   packages = [
     ".",
@@ -340,7 +339,7 @@
     "xfs",
   ]
   pruneopts = "UT"
-  revision = "bbced9601137e764853b2fad7ec3e2dc4c504e02"
+  revision = "e56f2e22fc761e82a34aca553f6725e2aff4fe6c"
 
 [[projects]]
   digest = "1:3e39bafd6c2f4bf3c76c3bfd16a2e09e016510ad5db90dc02b88e2f565d6d595"
@@ -362,12 +361,12 @@
   version = "v1.3.0"
 
 [[projects]]
-  digest = "1:68ea4e23713989dc20b1bded5d9da2c5f9be14ff9885beef481848edd18c26cb"
+  digest = "1:1b753ec16506f5864d26a28b43703c58831255059644351bbcb019b843950900"
   name = "github.com/spf13/jwalterweatherman"
   packages = ["."]
   pruneopts = "UT"
-  revision = "4a4406e478ca629068e7768fc33f3f044173c0a6"
-  version = "v1.0.0"
+  revision = "94f6ae3ed3bceceafa716478c5fbf8d29ca601a1"
+  version = "v1.1.0"
 
 [[projects]]
   digest = "1:c1b1102241e7f645bc8e0c22ae352e8f0dc6484b6cb4d132fa9f24174e0119e2"
@@ -378,12 +377,12 @@
   version = "v1.0.3"
 
 [[projects]]
-  digest = "1:de37e343c64582d7026bf8ab6ac5b22a72eac54f3a57020db31524affed9f423"
+  digest = "1:1b773526998f3dbde3a51a4a5881680c4d237d3600f570d900f97ac93c7ba0a8"
   name = "github.com/spf13/viper"
   packages = ["."]
   pruneopts = "UT"
-  revision = "6d33b5a963d922d182c91e8a1c88d81fd150cfd4"
-  version = "v1.3.1"
+  revision = "9e56dacc08fbbf8c9ee2dbc717553c758ce42bc9"
+  version = "v1.3.2"
 
 [[projects]]
   digest = "1:ac83cf90d08b63ad5f7e020ef480d319ae890c208f8524622a2f3136e2686b02"
@@ -405,19 +404,19 @@
   version = "v1.3.0"
 
 [[projects]]
-  digest = "1:03aa6e485e528acb119fb32901cf99582c380225fc7d5a02758e08b180cb56c3"
+  digest = "1:9277145fda3716710628b0ea2c973abfc7c7bc8c8e00d32bdca630c12d1725fc"
   name = "github.com/ugorji/go"
   packages = ["codec"]
   pruneopts = "UT"
-  revision = "v1.1.1"
+  revision = "e5e69e061d4f7ee3a69b793cf9c1b41afe21918e"
 
 [[projects]]
   branch = "master"
-  digest = "1:a2bc6cb1f4e1d0b512e1d47d392ead580006b5bdade6ffde16271759fe609b34"
+  digest = "1:f36c7b9a36158e62ffe5d8b02d1b5955500c13106cdaeebf5323d88863cae96f"
   name = "golang.org/x/sys"
   packages = ["unix"]
   pruneopts = "UT"
-  revision = "a34e9553db1e492c9a76e60db2296ae7e5fbb772"
+  revision = "fead79001313d15903fb4605b4a1b781532cd93e"
 
 [[projects]]
   digest = "1:8029e9743749d4be5bc9f7d42ea1659471767860f0cdc34d37c3111bd308a295"
@@ -460,6 +459,7 @@
     "github.com/Comcast/webpa-common/logging",
     "github.com/Comcast/webpa-common/logging/logginghttp",
     "github.com/Comcast/webpa-common/secure",
+    "github.com/Comcast/webpa-common/semaphore",
     "github.com/Comcast/webpa-common/server",
     "github.com/Comcast/webpa-common/wrp",
     "github.com/Comcast/webpa-common/xhttp/xcontext",

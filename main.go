@@ -173,8 +173,8 @@ func svalinn(arguments []string) int {
 	// TODO: Fix Caduces acutal register
 	router.Handle(apiBase+config.Endpoint, svalinnHandler.ThenFunc(app.handleWebhook))
 
-	inserter := db.CreateRetryInsertService(dbConn, config.InsertRetries, config.RetryInterval)
-	updater := db.CreateRetryUpdateService(dbConn, config.PruneRetries, config.RetryInterval)
+	inserter := db.CreateRetryInsertService(dbConn, config.InsertRetries, config.RetryInterval, metricsRegistry)
+	updater := db.CreateRetryUpdateService(dbConn, config.PruneRetries, config.RetryInterval, metricsRegistry)
 
 	requestHandler := RequestHandler{
 		inserter:        inserter,
