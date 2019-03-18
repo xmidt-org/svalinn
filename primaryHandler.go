@@ -144,6 +144,9 @@ func (r *RequestHandler) handleRequest(request wrp.Message) {
 		Type:      db.UnmarshalEvent(rule.eventType),
 	}
 
+	if r.measures != nil {
+		r.measures.InsertingQeue.Add(1.0)
+	}
 	r.insertQueue <- record
 }
 
