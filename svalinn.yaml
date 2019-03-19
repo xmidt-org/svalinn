@@ -10,12 +10,17 @@ log:
   json: false
 
 endpoint: "/device-status"
-queueSize: 3000
+parseQueueSize: 3000
+insertQueueSize: 3000
+maxParseWorkers: 10000
+maxInsertWorkers: 1000
+maxBatchSize: 30
+maxBatchWaitTime: 10ms
 metadataMaxSize: 1000
 payloadMaxSize: 1000
 insertRetries: 3
+pruneInterval: 0s
 pruneRetries: 3
-getRetries: 3
 retryInterval: 10s
 defaultTTL: 5s
 db:
@@ -29,11 +34,11 @@ db:
 regexRules:
   - regex: ".*/online$"
     storePayload: true
-    ttl: 30s
+    ruleTTL: 30s
     eventType: "state"
   - regex: ".*/offline$"
     storePayload: true
-    ttl: 30s
+    ruleTTL: 30s
     eventType: "state"
 
 authHeader: ["YXV0aEhlYWRlcg=="]

@@ -54,23 +54,27 @@ const (
 	applicationName, apiBase = "svalinn", "/api/v1"
 	DEFAULT_KEY_ID           = "current"
 	applicationVersion       = "0.2.2"
+	defaultMaxBatchSize      = 10
 )
 
 type SvalinnConfig struct {
-	Endpoint        string
-	QueueSize       int
-	MaxWorkers      int
-	PayloadMaxSize  int
-	MetadataMaxSize int
-	InsertRetries   int
-	PruneRetries    int
-	GetRetries      int
-	Prune           bool
-	DefaultTTL      time.Duration
-	RetryInterval   time.Duration
-	Db              db.Config
-	Webhook         WebhookConfig
-	RegexRules      []RuleConfig
+	Endpoint         string
+	ParseQueueSize   int
+	InsertQueueSize  int
+	MaxParseWorkers  int
+	MaxInsertWorkers int
+	MaxBatchSize     int
+	MaxBatchWaitTime time.Duration
+	PayloadMaxSize   int
+	MetadataMaxSize  int
+	InsertRetries    int
+	PruneInterval    time.Duration
+	PruneRetries     int
+	DefaultTTL       time.Duration
+	RetryInterval    time.Duration
+	Db               db.Config
+	Webhook          WebhookConfig
+	RegexRules       []RuleConfig
 }
 
 func SetLogger(logger log.Logger) func(delegate http.Handler) http.Handler {
@@ -117,8 +121,8 @@ func svalinn(arguments []string) int {
 	config := new(SvalinnConfig)
 	v.Unmarshal(config)
 
-	requestQueue := make(chan wrp.Message, config.QueueSize)
-	pruneQueue := make(chan string, config.QueueSize)
+	requestQueue := make(chan wrp.Message, config.ParseQueueSize)
+	insertQueue := make(chan db.Record, config.InsertQueueSize)
 
 	/*authHandler := handler.AuthorizationHandler{
 		HeaderName:          "Authorization",
@@ -180,24 +184,34 @@ func svalinn(arguments []string) int {
 	inserter := db.CreateRetryInsertService(dbConn, config.InsertRetries, config.RetryInterval, metricsRegistry)
 	updater := db.CreateRetryUpdateService(dbConn, config.PruneRetries, config.RetryInterval, metricsRegistry)
 
-	requestHandler := RequestHandler{
-		inserter:        inserter,
-		updater:         updater,
-		logger:          logger,
-		rules:           rules,
-		payloadMaxSize:  config.PayloadMaxSize,
-		metadataMaxSize: config.MetadataMaxSize,
-		defaultTTL:      config.DefaultTTL,
-		prune:           config.Prune,
-		pruneQueue:      pruneQueue,
-		maxWorkers:      config.MaxWorkers,
-		workers:         semaphore.New(config.MaxWorkers),
-		measures:        measures,
+	if config.MaxBatchSize < 1 {
+		config.MaxBatchSize = defaultMaxBatchSize
 	}
-	requestHandler.wg.Add(1)
+
+	requestHandler := RequestHandler{
+		inserter:         inserter,
+		updater:          updater,
+		logger:           logger,
+		rules:            rules,
+		payloadMaxSize:   config.PayloadMaxSize,
+		metadataMaxSize:  config.MetadataMaxSize,
+		defaultTTL:       config.DefaultTTL,
+		insertQueue:      insertQueue,
+		maxParseWorkers:  config.MaxParseWorkers,
+		parseWorkers:     semaphore.New(config.MaxParseWorkers),
+		maxInsertWorkers: config.MaxInsertWorkers,
+		insertWorkers:    semaphore.New(config.MaxInsertWorkers),
+		maxBatchSize:     config.MaxBatchSize,
+		maxBatchWaitTime: config.MaxBatchWaitTime,
+		measures:         measures,
+	}
+	requestHandler.wg.Add(2)
 	go requestHandler.handleRequests(requestQueue)
-	if config.Prune {
-		go requestHandler.handlePruning()
+	go requestHandler.handleRecords()
+	stopPruning := make(chan struct{}, 1)
+	if config.PruneInterval > 0 {
+		requestHandler.wg.Add(1)
+		go requestHandler.handlePruning(stopPruning, config.PruneInterval)
 	}
 
 	serverHealth := codex.Health.NewHealth(logger)
@@ -230,6 +244,9 @@ func svalinn(arguments []string) int {
 	}
 
 	close(shutdown)
+	close(requestQueue)
+	stopPruning <- struct{}{}
+	close(requestHandler.insertQueue)
 	waitGroup.Wait()
 	requestHandler.wg.Wait()
 	err = dbConn.Close()

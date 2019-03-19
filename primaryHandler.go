@@ -46,40 +46,35 @@ var (
 )
 
 type RequestHandler struct {
-	inserter        db.RetryInsertService
-	updater         db.RetryUpdateService
-	logger          log.Logger
-	rules           []rule
-	metadataMaxSize int
-	payloadMaxSize  int
-	defaultTTL      time.Duration
-	prune           bool
-	pruneQueue      chan string
-	maxWorkers      int
-	workers         semaphore.Interface
-	wg              sync.WaitGroup
-	measures        *Measures
+	inserter         db.RetryInsertService
+	updater          db.RetryUpdateService
+	logger           log.Logger
+	rules            []rule
+	metadataMaxSize  int
+	payloadMaxSize   int
+	defaultTTL       time.Duration
+	insertQueue      chan db.Record
+	maxParseWorkers  int
+	parseWorkers     semaphore.Interface
+	maxInsertWorkers int
+	insertWorkers    semaphore.Interface
+	maxBatchSize     int
+	maxBatchWaitTime time.Duration
+	wg               sync.WaitGroup
+	measures         *Measures
 }
 
-func (r *RequestHandler) handleRequests(requestQueue chan wrp.Message) {
+func (r *RequestHandler) handlePruning(quit chan struct{}, interval time.Duration) {
 	defer r.wg.Done()
-	for request := range requestQueue {
-		if r.measures != nil {
-			r.measures.DepthQueue.Add(-1.0)
+	t := time.NewTicker(interval)
+	defer t.Stop()
+	for {
+		select {
+		case <-quit:
+			return
+		case <-t.C:
+			r.pruneDevice()
 		}
-		r.workers.Acquire()
-		go r.handleRequest(request)
-	}
-
-	// Grab all the workers to make sure they are done.
-	for i := 0; i < r.maxWorkers; i++ {
-		r.workers.Acquire()
-	}
-}
-
-func (r *RequestHandler) handlePruning() {
-	for _ = range r.pruneQueue {
-		go r.pruneDevice()
 	}
 }
 
@@ -94,8 +89,24 @@ func (r *RequestHandler) pruneDevice() {
 	return
 }
 
+func (r *RequestHandler) handleRequests(requestQueue chan wrp.Message) {
+	defer r.wg.Done()
+	for request := range requestQueue {
+		if r.measures != nil {
+			r.measures.ParsingQueue.Add(-1.0)
+		}
+		r.parseWorkers.Acquire()
+		go r.handleRequest(request)
+	}
+
+	// Grab all the workers to make sure they are done.
+	for i := 0; i < r.maxParseWorkers; i++ {
+		r.parseWorkers.Acquire()
+	}
+}
+
 func (r *RequestHandler) handleRequest(request wrp.Message) {
-	defer r.workers.Release()
+	defer r.parseWorkers.Release()
 	var (
 		deathDate time.Time
 	)
@@ -133,17 +144,10 @@ func (r *RequestHandler) handleRequest(request wrp.Message) {
 		Type:      db.UnmarshalEvent(rule.eventType),
 	}
 
-	err = r.inserter.InsertRecords(record)
-	if err != nil {
-		r.measures.DroppedEventsCount.With(reasonLabel, dbFailReason).Add(1.0)
-		logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
-			"Failed to add state information to the database", logging.ErrorKey(), err.Error())
-		return
+	if r.measures != nil {
+		r.measures.InsertingQeue.Add(1.0)
 	}
-	logging.Info(r.logger).Log(logging.MessageKey(), "Successfully upserted device information", "device", deviceId, "event", event, "record", record)
-	if r.prune {
-		r.pruneQueue <- deviceId
-	}
+	r.insertQueue <- record
 }
 
 func parseRequest(req wrp.Message, storePayload bool, payloadMaxSize int, metadataMaxSize int) (string, db.Event, error) {
@@ -219,6 +223,54 @@ func parseRequest(req wrp.Message, storePayload bool, payloadMaxSize int, metada
 	return deviceId, eventInfo, nil
 }
 
+func (r *RequestHandler) handleRecords() {
+	var (
+		records      []db.Record
+		timeToSubmit time.Time
+	)
+	defer r.wg.Done()
+	for record := range r.insertQueue {
+		// if we don't have any records, then this is our first and started
+		// the timer until submitting
+		if len(records) == 0 {
+			timeToSubmit = time.Now().Add(r.maxBatchWaitTime)
+		}
+
+		if r.measures != nil {
+			r.measures.InsertingQeue.Add(-1.0)
+		}
+		records = append(records, record)
+
+		// if we have filled up the batch or if we are out of time, we insert
+		// what we have
+		if len(records) >= r.maxBatchSize || time.Now().After(timeToSubmit) {
+			r.insertWorkers.Acquire()
+			go r.insertRecords(records)
+			// don't need to remake an array each time, just remove the values
+			records = records[:0]
+		}
+
+	}
+
+	// Grab all the workers to make sure they are done.
+	for i := 0; i < r.maxInsertWorkers; i++ {
+		r.insertWorkers.Acquire()
+	}
+}
+
+func (r *RequestHandler) insertRecords(records []db.Record) {
+	defer r.insertWorkers.Release()
+	err := r.inserter.InsertRecords(records...)
+	if err != nil {
+		r.measures.DroppedEventsCount.With(reasonLabel, dbFailReason).Add(float64(len(records)))
+		logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
+			"Failed to add records to the database", logging.ErrorKey(), err.Error())
+		return
+	}
+	logging.Debug(r.logger).Log(logging.MessageKey(), "Successfully upserted device information", "records", records)
+	logging.Info(r.logger).Log(logging.MessageKey(), "Successfully upserted device information", "number of records", len(records))
+}
+
 type App struct {
 	requestQueue chan wrp.Message
 	logger       log.Logger
@@ -271,7 +323,7 @@ func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
 	logging.Debug(app.logger).Log(logging.MessageKey(), "message info", "message type", message.Type, "full", message)
 	app.requestQueue <- message
 	if app.measures != nil {
-		app.measures.DepthQueue.Add(1.0)
+		app.measures.ParsingQueue.Add(1.0)
 	}
 	writer.WriteHeader(http.StatusAccepted)
 }
