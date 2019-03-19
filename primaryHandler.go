@@ -267,7 +267,8 @@ func (r *RequestHandler) insertRecords(records []db.Record) {
 			"Failed to add records to the database", logging.ErrorKey(), err.Error())
 		return
 	}
-	logging.Info(r.logger).Log(logging.MessageKey(), "Successfully upserted device information", "records", records)
+	logging.Debug(r.logger).Log(logging.MessageKey(), "Successfully upserted device information", "records", records)
+	logging.Info(r.logger).Log(logging.MessageKey(), "Successfully upserted device information", "number of records", len(records))
 }
 
 type App struct {

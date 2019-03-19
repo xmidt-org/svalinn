@@ -50,9 +50,10 @@ func Metrics() []xmetrics.Metric {
 			Type: "gauge",
 		},
 		{
-			Name: DroppedEventsCounter,
-			Help: "The total number of events dropped",
-			Type: "counter",
+			Name:       DroppedEventsCounter,
+			Help:       "The total number of events dropped",
+			Type:       "counter",
+			LabelNames: []string{reasonLabel},
 		},
 	}
 }

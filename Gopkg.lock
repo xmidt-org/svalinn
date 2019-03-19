@@ -2,12 +2,12 @@
 
 
 [[projects]]
-  digest = "1:2d7a4ee94b809972b9c2e450425b59e6e6a043a199a46519e40d0b31146734d2"
+  digest = "1:5967f3b3bc4f3fba1025e3f02f73af609d94ea7c1debc754072b3960d5e60de3"
   name = "github.com/Comcast/codex"
   packages = ["db"]
   pruneopts = "UT"
-  revision = "2d1ed51e084edd9d1cbd430a645439b48dba317d"
-  version = "v0.2.2"
+  revision = "ce949764b9adfc90a23a98c00d9c175865c00cd6"
+  version = "v0.2.3"
 
 [[projects]]
   digest = "1:4f9e6e76de50580cf05463bd2c7a90be6051116744968d44603f7ff269dc0edf"
@@ -329,7 +329,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:0573a48c92e778ad732779bf1e5064a5085ab3fbd236ad71e53cab5753ef3e6e"
+  digest = "1:c31163bd62461e0c5f7ddc7363e39ef8d9e929693e77b5c11c709b05f9cb9219"
   name = "github.com/prometheus/procfs"
   packages = [
     ".",
@@ -339,7 +339,7 @@
     "xfs",
   ]
   pruneopts = "UT"
-  revision = "e56f2e22fc761e82a34aca553f6725e2aff4fe6c"
+  revision = "40f3c57fb1983891f95378042bd0bfd590f52384"
 
 [[projects]]
   digest = "1:3e39bafd6c2f4bf3c76c3bfd16a2e09e016510ad5db90dc02b88e2f565d6d595"
@@ -412,11 +412,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:f36c7b9a36158e62ffe5d8b02d1b5955500c13106cdaeebf5323d88863cae96f"
+  digest = "1:5637b3b43405643229e55140bb3049dfa7d73957ba9ecfccc31cdadbfbe0b1f9"
   name = "golang.org/x/sys"
   packages = ["unix"]
   pruneopts = "UT"
-  revision = "fead79001313d15903fb4605b4a1b781532cd93e"
+  revision = "6c81ef8f67ca3f42fc9cd71dfbd5f35b0c4b5771"
 
 [[projects]]
   digest = "1:8029e9743749d4be5bc9f7d42ea1659471767860f0cdc34d37c3111bd308a295"
@@ -463,7 +463,10 @@
     "github.com/Comcast/webpa-common/server",
     "github.com/Comcast/webpa-common/wrp",
     "github.com/Comcast/webpa-common/xhttp/xcontext",
+    "github.com/Comcast/webpa-common/xmetrics",
     "github.com/go-kit/kit/log",
+    "github.com/go-kit/kit/metrics",
+    "github.com/go-kit/kit/metrics/provider",
     "github.com/go-kit/kit/transport/http",
     "github.com/goph/emperror",
     "github.com/gorilla/mux",
