@@ -1,1 +1,5 @@
-
+ - Limited number of goroutine workers running at one time
+ - Enabled pprof
+ - Increased file limit
+ - Added metrics
+ - Added batching insertion to database
