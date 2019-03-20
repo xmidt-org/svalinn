@@ -79,7 +79,7 @@ func (r *RequestHandler) handlePruning(quit chan struct{}, interval time.Duratio
 }
 
 func (r *RequestHandler) pruneDevice() {
-	err := r.updater.PruneRecords(time.Now())
+	err := r.updater.PruneRecords(time.Now().Unix())
 	if err != nil {
 		logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 			"Failed to update event history", logging.ErrorKey(), err.Error())
@@ -138,8 +138,8 @@ func (r *RequestHandler) handleRequest(request wrp.Message) {
 
 	record := db.Record{
 		DeviceID:  deviceId,
-		BirthDate: birthDate,
-		DeathDate: deathDate,
+		BirthDate: birthDate.Unix(),
+		DeathDate: deathDate.Unix(),
 		Data:      marshalledEvent,
 		Type:      db.UnmarshalEvent(rule.eventType),
 	}
