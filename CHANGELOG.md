@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [v0.2.6]
+ - Bumped codex common
+ - Converted times to Unix for the `db` package
+
+
+
 ## [v0.2.5]
  - Bumped codex version
 
@@ -50,7 +56,8 @@ Bug Fix Caduceus config loading
 - Initial creation
 - Bumped codex version, modified code to match changes
 
-[Unreleased]: https://github.com/Comcast/codex-svalinn/compare/v0.2.5...HEAD
+[Unreleased]: https://github.com/Comcast/codex-svalinn/compare/v0.2.6...HEAD
+[v0.2.6]: https://github.com/Comcast/codex-svalinn/compare/v0.2.5...v0.2.6
 [v0.2.5]: https://github.com/Comcast/codex-svalinn/compare/v0.2.4...v0.2.5
 [v0.2.4]: https://github.com/Comcast/codex-svalinn/compare/v0.2.3...v0.2.4
 [v0.2.3]: https://github.com/Comcast/codex-svalinn/compare/v0.2.2...v0.2.3
