@@ -1,6 +1,6 @@
 [[constraint]]
   name = "github.com/Comcast/codex"
-  version= "v0.2.4"
+  version= "v0.2.5"
 
 [[override]]
   name = "github.com/prometheus/client_golang"
