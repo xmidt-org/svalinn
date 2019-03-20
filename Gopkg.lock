@@ -2,12 +2,12 @@
 
 
 [[projects]]
-  digest = "1:5fd3ebda9977d30647212ad317a63ab23f5a07cf6398a7082addaa953828dc94"
+  digest = "1:e9778d5b2e3e8ae3988546095e1f9131517d4f80fb58b64d8f9e129aefadb4db"
   name = "github.com/Comcast/codex"
   packages = ["db"]
   pruneopts = "UT"
-  revision = "d11691d4cdc5152b831f1dd35ab0f1b9664d8c7d"
-  version = "v0.2.5"
+  revision = "f1d619756c4034ce6dbe32c99e1f1dcb1e828878"
+  version = "v0.2.6"
 
 [[projects]]
   digest = "1:4f9e6e76de50580cf05463bd2c7a90be6051116744968d44603f7ff269dc0edf"
