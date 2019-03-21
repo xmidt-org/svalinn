@@ -1,16 +1,8 @@
-FROM golang:alpine as builder
-MAINTAINER Jack Murdock <jack_murdock@comcast.com>
-# build the binary
-WORKDIR /go/src/github.com/comcast/codex-svalinn
-COPY . .
-RUN go build -o svalinn_linux_amd64 github.com/comcast/codex-svalinn
-
-# the actual image
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates
 RUN mkdir -p /etc/svalinn
 VOLUME /etc/svalinn
 WORKDIR /root/
-COPY --from=builder  /go/src/github.com/comcast/codex-svalinn .
 COPY svalinn.yaml .
+COPY svalinn_linux_amd64 .
 ENTRYPOINT ["./svalinn_linux_amd64"]

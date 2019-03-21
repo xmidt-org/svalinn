@@ -60,6 +60,7 @@ docker:
 # build docker without running modules
 .PHONY: local-docker
 local-docker:
+	GOOS=linux  GOARCH=amd64 go build -o svalinn_linux_amd64
 	docker build -f ./deploy/Dockerfile.local -t svalinn:local .
 
 .PHONY: style
