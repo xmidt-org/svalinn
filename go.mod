@@ -20,4 +20,5 @@ require (
 	github.com/spf13/pflag v1.0.3
 	github.com/spf13/viper v1.3.2
 	github.com/stretchr/testify v1.3.0
+	github.com/ugorji/go v1.1.2-0.20181022190402-e5e69e061d4f // indirect
 )
