@@ -49,7 +49,7 @@ install: go-mod-vendor
 	echo go build -o $(SVALINN) $(PROGVER)
 
 .PHONY: release-artifacts
-release-artifacts:
+release-artifacts: go-mod-vendor
 	GOOS=darwin GOARCH=amd64 go build -o ./OPATH/svalinn-$(PROGVER).darwin-amd64
 	GOOS=linux  GOARCH=amd64 go build -o ./OPATH/svalinn-$(PROGVER).linux-amd64
 
