@@ -23,9 +23,7 @@ The shield to protect our users from incoming events for the codex project.
 aka. The receiver of data from XMiDT Caduceus
 
 %build
-go get -u github.com/golang/dep/...
-dep ensure
-go build -o $RPM_SOURCE_DIR/%{name} %{_topdir}/..
+GO111MODULE=on go build -o $RPM_SOURCE_DIR/%{name} %{_topdir}/..
 
 %install
 echo rm -rf %{buildroot}
