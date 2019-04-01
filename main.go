@@ -19,6 +19,7 @@ package main
 
 import (
 	"fmt"
+	olog "log"
 	"net/http"
 	_ "net/http/pprof"
 
@@ -27,6 +28,7 @@ import (
 	"github.com/go-kit/kit/log"
 
 	"github.com/Comcast/codex/db"
+	"github.com/Comcast/codex/healthlogger"
 	"github.com/Comcast/webpa-common/concurrent"
 	"github.com/Comcast/webpa-common/logging"
 	"github.com/Comcast/webpa-common/secure"
@@ -48,6 +50,9 @@ import (
 	"github.com/Comcast/webpa-common/server"
 	"github.com/Comcast/webpa-common/wrp"
 	"github.com/Comcast/webpa-common/xhttp/xcontext"
+
+	"github.com/InVisionApp/go-health"
+	"github.com/InVisionApp/go-health/handlers"
 )
 
 const (
@@ -75,6 +80,12 @@ type SvalinnConfig struct {
 	Db               db.Config
 	Webhook          WebhookConfig
 	RegexRules       []RuleConfig
+	Health           HealthConfig
+}
+
+type HealthConfig struct {
+	Port     string
+	Endpoint string
 }
 
 func SetLogger(logger log.Logger) func(delegate http.Handler) http.Handler {
@@ -118,6 +129,9 @@ func svalinn(arguments []string) int {
 		return 1
 	}*/
 
+	serverHealth := health.New()
+	serverHealth.Logger = healthlogger.NewHealthLogger(logger)
+
 	config := new(SvalinnConfig)
 	v.Unmarshal(config)
 
@@ -131,7 +145,7 @@ func svalinn(arguments []string) int {
 		Logger:              logger,
 	}*/
 
-	dbConn, err := db.CreateDbConnection(config.Db, metricsRegistry)
+	dbConn, err := db.CreateDbConnection(config.Db, metricsRegistry, serverHealth)
 	if err != nil {
 		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to initialize database connection",
 			logging.ErrorKey(), err.Error())
@@ -214,10 +228,20 @@ func svalinn(arguments []string) int {
 		go requestHandler.handlePruning(stopPruning, config.PruneInterval)
 	}
 
-	serverHealth := codex.Health.NewHealth(logger)
+	if config.Health.Endpoint != "" && config.Health.Port != "" {
+		err = serverHealth.Start()
+		if err != nil {
+			logging.Error(logger).Log(logging.MessageKey(), "failed to start health", logging.ErrorKey(), err)
+		}
+		//router.Handler(config.Health.Address, handlers)
+		http.HandleFunc(config.Health.Endpoint, handlers.NewJSONHandlerFunc(serverHealth, nil))
+		go func() {
+			olog.Fatal(http.ListenAndServe(config.Health.Port, nil))
+		}()
+	}
 
 	// MARK: Starting the server
-	_, runnable, done := codex.Prepare(logger, serverHealth, metricsRegistry, router)
+	_, runnable, done := codex.Prepare(logger, nil, metricsRegistry, router)
 
 	waitGroup, shutdown, err := concurrent.Execute(runnable)
 	if err != nil {
