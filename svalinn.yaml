@@ -23,12 +23,16 @@ pruneInterval: 0s
 pruneRetries: 3
 retryInterval: 10s
 defaultTTL: 5s
+health:
+  port: ":80"
+  endpoint: "/health"
 db:
   server: "db:26257"
   username: "roachadmin"
   database: "devices"
   numRetries: 4
   waitTimeMult: 5
+  pingInterval: 1s
   connectTimeout: 1m
   opTimeout: 3s
 regexRules:
