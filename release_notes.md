@@ -1,1 +1,2 @@
  - modified health metric to reflect unhealthy when pinging the database fails
+ - device IDs are inserted into the db in lowercase
