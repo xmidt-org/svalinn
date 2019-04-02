@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -81,6 +82,31 @@ func TestParseRequest(t *testing.T) {
 			storePayload:     true,
 			maxMetadataSize:  500,
 			maxPayloadSize:   500,
+		},
+		{
+			description: "Success Uppercase Device ID",
+			req: wrp.Message{
+				Source:          goodEvent.Source,
+				Destination:     strings.ToUpper(goodEvent.Destination),
+				PartnerIDs:      goodEvent.PartnerIDs,
+				TransactionUUID: goodEvent.TransactionUUID,
+				Type:            wrp.SimpleEventMessageType,
+				Payload:         []byte(`{"ts":"2019-02-13T21:19:02.614191735Z"}`),
+				Metadata:        map[string]string{"testkey": "testvalue"},
+			},
+			expectedDeviceID: "test",
+			expectedEvent: db.Event{
+				Time:            goodEvent.Time,
+				Source:          goodEvent.Source,
+				Destination:     strings.ToUpper(goodEvent.Destination),
+				PartnerIDs:      goodEvent.PartnerIDs,
+				TransactionUUID: goodEvent.TransactionUUID,
+				Payload:         goodEvent.Payload,
+				Details:         goodEvent.Details,
+			},
+			storePayload:    true,
+			maxMetadataSize: 500,
+			maxPayloadSize:  500,
 		},
 		{
 			description: "Success Empty Metadata",
