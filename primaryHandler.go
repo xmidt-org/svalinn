@@ -162,6 +162,7 @@ func parseRequest(req wrp.Message, storePayload bool, payloadMaxSize int, metada
 	if deviceId == "" {
 		return "", db.Event{}, emperror.WrapWith(errEmptyID, "id check failed", "request destination", req.Destination, "full message", req)
 	}
+	deviceId = strings.ToLower(deviceId)
 
 	// verify wrp is the right type
 	msg := req
