@@ -178,18 +178,18 @@ func parseRequest(req wrp.Message, storePayload bool, payloadMaxSize int, metada
 	if msg.Payload != nil && len(msg.Payload) > 0 {
 		err = json.Unmarshal(msg.Payload, &payload)
 		if err != nil {
-			return "", db.Event{}, emperror.WrapWith(err, "failed to unmarshal payload", "payload", msg.Payload)
+			return "", db.Event{}, emperror.WrapWith(err, "failed to unmarshal payload", "full message", req, "payload", msg.Payload)
 		}
 	}
 
 	// parse the time from the payload
 	timeString, ok := payload["ts"].(string)
 	if !ok {
-		return "", db.Event{}, emperror.WrapWith(errTimestampString, "failed to parse timestamp", "payload", payload)
+		return "", db.Event{}, emperror.WrapWith(errTimestampString, "failed to parse timestamp", "full message", req, "payload", payload)
 	}
 	parsedTime, err := time.Parse(time.RFC3339Nano, timeString)
 	if err != nil {
-		return "", db.Event{}, emperror.Wrap(err, "failed to parse timestamp")
+		return "", db.Event{}, emperror.WrapWith(err, "failed to parse timestamp", "full message", req)
 	}
 	eventInfo.Time = parsedTime.Unix()
 
@@ -209,7 +209,7 @@ func parseRequest(req wrp.Message, storePayload bool, payloadMaxSize int, metada
 	// if metadata is too large, store a message explaining that instead of the metadata
 	marshaledMetadata, err := json.Marshal(msg.Metadata)
 	if err != nil {
-		return "", db.Event{}, emperror.WrapWith(err, "failed to marshal metadata to determine size", "metadata", msg.Metadata)
+		return "", db.Event{}, emperror.WrapWith(err, "failed to marshal metadata to determine size", "metadata", msg.Metadata, "full message", req)
 	}
 	if len(marshaledMetadata) > metadataMaxSize {
 		eventInfo.Details["error"] = "metadata provided exceeds size limit - too big to store"
