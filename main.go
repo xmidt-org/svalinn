@@ -153,24 +153,13 @@ func svalinn(arguments []string) int {
 		fmt.Fprintf(os.Stderr, "Database Initialize Failed: %#v\n", err)
 		return 2
 	}
-
-	var encrypter cipher.Enrypt
-	cipherConfig, err := cipher.Load(v)
-	if err == nil {
-		encrypter, err = cipher.LoadPublicKey(cipherConfig)
-		if err != nil {
-			logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to initialize LoadPublicKey",
-				logging.ErrorKey(), err.Error())
-			fmt.Fprintf(os.Stderr, "LoadPublicKey Initialize Failed: %#v\n", err)
-			encrypter = &cipher.NOOP{}
-			logging.Warn(logger).Log(logging.MessageKey(), "Using noop encryption")
-		} else {
-			logging.Error(logger).Log(logging.MessageKey(), "successfully loaded private key", "config", fmt.Sprintf("%#v", cipherConfig))
-		}
-	} else {
-		encrypter = &cipher.NOOP{}
-		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to load cipher using noop ecryption",
+	
+	encrypter, err := cipher.LoadPublic(v)
+	if err != nil {
+		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to initialize cipher",
 			logging.ErrorKey(), err.Error())
+		fmt.Fprintf(os.Stderr, "Cipher Initialize Failed: %#v\n", err)
+		return 2
 	}
 
 	// Create Metrics
