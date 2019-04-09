@@ -153,7 +153,7 @@ func svalinn(arguments []string) int {
 		fmt.Fprintf(os.Stderr, "Database Initialize Failed: %#v\n", err)
 		return 2
 	}
-	
+
 	encrypter, err := cipher.LoadPublic(v)
 	if err != nil {
 		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to initialize cipher",
