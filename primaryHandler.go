@@ -131,19 +131,19 @@ func (r *RequestHandler) handleRequest(request wrp.Message) {
 		return
 	}
 
-	birthDate := time.Unix(event.Time, 0)
-	if rule.ttl == 0 {
-		deathDate = birthDate.Add(r.defaultTTL)
-	} else {
-		deathDate = birthDate.Add(rule.ttl)
-	}
-
 	encyptedData, err := r.encypter.EncryptMessage(marshalledEvent)
 	if err != nil {
 		r.measures.DroppedEventsCount.With(reasonLabel, encryptFailReason).Add(1.0)
 		logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 			"Failed to marshal event", logging.ErrorKey(), err.Error())
 		return
+	}
+
+	birthDate := time.Unix(event.Time, 0)
+	if rule.ttl == 0 {
+		deathDate = birthDate.Add(r.defaultTTL)
+	} else {
+		deathDate = birthDate.Add(rule.ttl)
 	}
 
 	record := db.Record{

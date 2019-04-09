@@ -40,3 +40,12 @@ func (sg *mockSecretGetter) GetSecret() (string, error) {
 	args := sg.Called()
 	return args.String(0), args.Error(1)
 }
+
+type mockEncrypter struct {
+	mock.Mock
+}
+
+func (md *mockEncrypter) EncryptMessage(message []byte) ([]byte, error) {
+	args := md.Called(message)
+	return message, args.Error(0)
+}
