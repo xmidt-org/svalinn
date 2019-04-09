@@ -33,6 +33,7 @@ const (
 	reasonLabel            = "reason"
 	parseFailReason        = "parsing failed"
 	marshalFailReason      = "marshaling failed"
+	encryptFailReason      = "encryption failed"
 	invalidBirthdateReason = "invalid birthdate"
 	dbFailReason           = "database request failed"
 )

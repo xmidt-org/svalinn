@@ -19,6 +19,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/Comcast/codex/cipher"
 	olog "log"
 	"net/http"
 	_ "net/http/pprof"
@@ -153,6 +154,25 @@ func svalinn(arguments []string) int {
 		return 2
 	}
 
+	var encrypter cipher.Enrypt
+	cipherConfig, err := cipher.Load(v)
+	if err == nil {
+		encrypter, err = cipher.LoadPublicKey(cipherConfig)
+		if err != nil {
+			logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to initialize LoadPublicKey",
+				logging.ErrorKey(), err.Error())
+			fmt.Fprintf(os.Stderr, "LoadPublicKey Initialize Failed: %#v\n", err)
+			encrypter = &cipher.NOOP{}
+			logging.Warn(logger).Log(logging.MessageKey(), "Using noop encryption")
+		} else {
+			logging.Error(logger).Log(logging.MessageKey(), "successfully loaded private key", "config", fmt.Sprintf("%#v", cipherConfig))
+		}
+	} else {
+		encrypter = &cipher.NOOP{}
+		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to load cipher using noop ecryption",
+			logging.ErrorKey(), err.Error())
+	}
+
 	// Create Metrics
 	measures := NewMeasures(metricsRegistry)
 
@@ -206,6 +226,7 @@ func svalinn(arguments []string) int {
 		inserter:         inserter,
 		updater:          updater,
 		logger:           logger,
+		encypter:         encrypter,
 		rules:            rules,
 		payloadMaxSize:   config.PayloadMaxSize,
 		metadataMaxSize:  config.MetadataMaxSize,

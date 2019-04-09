@@ -23,6 +23,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"github.com/Comcast/codex/cipher"
 	"io/ioutil"
 	"net/http"
 	"path"
@@ -49,6 +50,7 @@ type RequestHandler struct {
 	inserter         db.RetryInsertService
 	updater          db.RetryUpdateService
 	logger           log.Logger
+	encypter         cipher.Enrypt
 	rules            []rule
 	metadataMaxSize  int
 	payloadMaxSize   int
@@ -136,11 +138,19 @@ func (r *RequestHandler) handleRequest(request wrp.Message) {
 		deathDate = birthDate.Add(rule.ttl)
 	}
 
+	encyptedData, err := r.encypter.EncryptMessage(marshalledEvent)
+	if err != nil {
+		r.measures.DroppedEventsCount.With(reasonLabel, encryptFailReason).Add(1.0)
+		logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
+			"Failed to marshal event", logging.ErrorKey(), err.Error())
+		return
+	}
+
 	record := db.Record{
 		DeviceID:  deviceId,
 		BirthDate: birthDate.Unix(),
 		DeathDate: deathDate.Unix(),
-		Data:      marshalledEvent,
+		Data:      encyptedData,
 		Type:      db.UnmarshalEvent(rule.eventType),
 	}
 
