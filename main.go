@@ -19,6 +19,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/Comcast/codex/cipher"
 	olog "log"
 	"net/http"
 	_ "net/http/pprof"
@@ -153,6 +154,14 @@ func svalinn(arguments []string) int {
 		return 2
 	}
 
+	encrypter, err := cipher.LoadPublic(v)
+	if err != nil {
+		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to initialize cipher",
+			logging.ErrorKey(), err.Error())
+		fmt.Fprintf(os.Stderr, "Cipher Initialize Failed: %#v\n", err)
+		return 2
+	}
+
 	// Create Metrics
 	measures := NewMeasures(metricsRegistry)
 
@@ -206,6 +215,7 @@ func svalinn(arguments []string) int {
 		inserter:         inserter,
 		updater:          updater,
 		logger:           logger,
+		encypter:         encrypter,
 		rules:            rules,
 		payloadMaxSize:   config.PayloadMaxSize,
 		metadataMaxSize:  config.MetadataMaxSize,

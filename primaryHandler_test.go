@@ -24,6 +24,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/Comcast/webpa-common/semaphore"
+	"github.com/Comcast/webpa-common/xmetrics/xmetricstest"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -37,6 +41,130 @@ import (
 	"github.com/Comcast/webpa-common/logging"
 	"github.com/Comcast/webpa-common/wrp"
 )
+
+func TestHandleRequest(t *testing.T) {
+	require := require.New(t)
+	goodTime, err := time.Parse(time.RFC3339Nano, "2019-02-13T21:19:02.614191735Z")
+	require.NoError(err)
+	goodEvent := db.Event{
+		Time:            goodTime.Unix(),
+		Source:          "test source",
+		Destination:     "/test/",
+		PartnerIDs:      []string{"test1", "test2"},
+		TransactionUUID: "transaction test uuid",
+		Payload:         []byte(`{"ts":"2019-02-13T21:19:02.614191735Z"}`),
+		Details:         map[string]interface{}{"testkey": "testvalue"},
+	}
+	tests := []struct {
+		description        string
+		req                wrp.Message
+		encryptErr         error
+		expectEncryptCount float64
+		expectMarshalCount float64
+		expectParseCount   float64
+	}{
+		{
+			description: "Encrypt Error",
+			req: wrp.Message{
+				Source:          goodEvent.Source,
+				Destination:     goodEvent.Destination,
+				PartnerIDs:      goodEvent.PartnerIDs,
+				TransactionUUID: goodEvent.TransactionUUID,
+				Type:            wrp.SimpleEventMessageType,
+				Payload:         []byte(`{"ts":"2019-02-13T21:19:02.614191735Z"}`),
+				Metadata:        map[string]string{"testkey": "testvalue"},
+			},
+			encryptErr:         errors.New("encrypt failed"),
+			expectEncryptCount: 1.0,
+		},
+		{
+			description: "Empty ID Error",
+			req: wrp.Message{
+				Destination: "//",
+			},
+			expectParseCount: 1.0,
+		},
+		{
+			description: "Unexpected WRP Type Error",
+			req: wrp.Message{
+				Destination: "/device/",
+				Type:        5,
+			},
+			expectParseCount: 1.0,
+		},
+		{
+			description: "Unmarshal Payload Error",
+			req: wrp.Message{
+				Destination: "/device/",
+				Type:        wrp.SimpleEventMessageType,
+				Payload:     []byte("test"),
+			},
+			expectParseCount: 1.0,
+		},
+		{
+			description: "Empty Payload String Error",
+			req: wrp.Message{
+				Destination: "/device/",
+				Type:        wrp.SimpleEventMessageType,
+				Payload:     []byte(``),
+			},
+			expectParseCount: 1.0,
+		},
+		{
+			description: "Non-String Timestamp Error",
+			req: wrp.Message{
+				Destination: "/device/",
+				Type:        wrp.SimpleEventMessageType,
+				Payload:     []byte(`{"ts":5}`),
+			},
+			expectParseCount: 1.0,
+		},
+		{
+			description: "Parse Timestamp Error",
+			req: wrp.Message{
+				Destination: "/device/",
+				Type:        wrp.SimpleEventMessageType,
+				Payload:     []byte(`{"ts":"2345"}`),
+			},
+			expectParseCount: 1.0,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			encrypter := new(mockEncrypter)
+			encrypter.On("EncryptMessage", mock.Anything).Return(tc.encryptErr)
+
+			p := xmetricstest.NewProvider(nil, Metrics)
+			m := NewMeasures(p)
+
+			handler := RequestHandler{
+				//rules: []rule{},
+				encypter:         encrypter,
+				payloadMaxSize:   9999,
+				metadataMaxSize:  9999,
+				defaultTTL:       time.Second,
+				insertQueue:      make(chan db.Record, 10),
+				maxParseWorkers:  5,
+				parseWorkers:     semaphore.New(5),
+				maxInsertWorkers: 5,
+				insertWorkers:    semaphore.New(5),
+				maxBatchSize:     5,
+				maxBatchWaitTime: time.Millisecond,
+				measures:         m,
+				logger:           logging.NewTestLogger(nil, t),
+			}
+
+			handler.parseWorkers.Acquire()
+			handler.handleRequest(tc.req)
+			p.Assert(t, DroppedEventsCounter, reasonLabel, encryptFailReason)(xmetricstest.Value(tc.expectEncryptCount))
+			p.Assert(t, DroppedEventsCounter, reasonLabel, marshalFailReason)(xmetricstest.Value(tc.expectMarshalCount))
+			p.Assert(t, DroppedEventsCounter, reasonLabel, parseFailReason)(xmetricstest.Value(tc.expectParseCount))
+			p.Assert(t, DroppedEventsCounter, reasonLabel, dbFailReason)(xmetricstest.Value(0.0))
+
+		})
+	}
+}
 
 func TestParseRequest(t *testing.T) {
 	testassert := assert.New(t)
