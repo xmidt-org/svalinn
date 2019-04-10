@@ -1,1 +1,2 @@
 - adding basic level of encryption
+- store event as wrp.Message
