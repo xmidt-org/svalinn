@@ -19,10 +19,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/Comcast/codex/cipher"
 	olog "log"
 	"net/http"
 	_ "net/http/pprof"
+
+	"github.com/Comcast/codex/cipher"
 
 	"github.com/Comcast/webpa-common/semaphore"
 
@@ -177,7 +178,7 @@ func svalinn(arguments []string) int {
 		go registerer.registerAtInterval()
 	}
 
-	customLogInfo := xcontext.Populate(0,
+	customLogInfo := xcontext.Populate(
 		logginghttp.SetLogger(logger,
 			logginghttp.RequestInfo,
 		),
@@ -215,7 +216,7 @@ func svalinn(arguments []string) int {
 		inserter:         inserter,
 		updater:          updater,
 		logger:           logger,
-		encypter:         encrypter,
+		encrypter:        encrypter,
 		rules:            rules,
 		payloadMaxSize:   config.PayloadMaxSize,
 		metadataMaxSize:  config.MetadataMaxSize,

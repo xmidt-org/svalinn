@@ -23,13 +23,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"github.com/Comcast/codex/cipher"
 	"io/ioutil"
 	"net/http"
 	"path"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Comcast/codex/cipher"
 
 	"github.com/Comcast/webpa-common/semaphore"
 
@@ -50,7 +51,7 @@ type RequestHandler struct {
 	inserter         db.RetryInsertService
 	updater          db.RetryUpdateService
 	logger           log.Logger
-	encypter         cipher.Enrypt
+	encrypter        cipher.Enrypt
 	rules            []rule
 	metadataMaxSize  int
 	payloadMaxSize   int
@@ -109,49 +110,19 @@ func (r *RequestHandler) handleRequests(requestQueue chan wrp.Message) {
 
 func (r *RequestHandler) handleRequest(request wrp.Message) {
 	defer r.parseWorkers.Release()
-	var (
-		deathDate time.Time
-	)
+
 	rule, err := findRule(r.rules, request.Destination)
 	if err != nil {
 		logging.Info(r.logger).Log(logging.MessageKey(), "Could not get rule", logging.ErrorKey(), err, "destination", request.Destination)
 	}
-	deviceId, event, err := parseRequest(request, rule.storePayload, r.payloadMaxSize, r.metadataMaxSize)
-	if err != nil {
-		r.measures.DroppedEventsCount.With(reasonLabel, parseFailReason).Add(1.0)
-		logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
-			"Failed to parse request", logging.ErrorKey(), err.Error())
-		return
-	}
-	marshalledEvent, err := json.Marshal(event)
-	if err != nil {
-		r.measures.DroppedEventsCount.With(reasonLabel, marshalFailReason).Add(1.0)
-		logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
-			"Failed to marshal event", logging.ErrorKey(), err.Error())
-		return
-	}
 
-	encyptedData, err := r.encypter.EncryptMessage(marshalledEvent)
+	eventType := db.UnmarshalEvent(rule.eventType)
+	record, reason, err := r.createRecord(request, rule, eventType)
 	if err != nil {
-		r.measures.DroppedEventsCount.With(reasonLabel, encryptFailReason).Add(1.0)
+		r.measures.DroppedEventsCount.With(reasonLabel, reason).Add(1.0)
 		logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
-			"Failed to marshal event", logging.ErrorKey(), err.Error())
+			"Failed to create record", logging.ErrorKey(), err.Error())
 		return
-	}
-
-	birthDate := time.Unix(event.Time, 0)
-	if rule.ttl == 0 {
-		deathDate = birthDate.Add(r.defaultTTL)
-	} else {
-		deathDate = birthDate.Add(rule.ttl)
-	}
-
-	record := db.Record{
-		DeviceID:  deviceId,
-		BirthDate: birthDate.Unix(),
-		DeathDate: deathDate.Unix(),
-		Data:      encyptedData,
-		Type:      db.UnmarshalEvent(rule.eventType),
 	}
 
 	if r.measures != nil {
@@ -160,19 +131,20 @@ func (r *RequestHandler) handleRequest(request wrp.Message) {
 	r.insertQueue <- record
 }
 
-func parseRequest(req wrp.Message, storePayload bool, payloadMaxSize int, metadataMaxSize int) (string, db.Event, error) {
+func (r *RequestHandler) createRecord(req wrp.Message, rule rule, eventType int) (db.Record, string, error) {
 	var (
-		eventInfo db.Event
-		err       error
+		err         error
+		emptyRecord db.Record
+		record      = db.Record{Type: eventType}
 	)
 
 	// get state and id from dest
 	base, _ := path.Split(req.Destination)
 	base, deviceId := path.Split(path.Base(base))
 	if deviceId == "" {
-		return "", db.Event{}, emperror.WrapWith(errEmptyID, "id check failed", "request destination", req.Destination, "full message", req)
+		return emptyRecord, parseFailReason, emperror.WrapWith(errEmptyID, "id check failed", "request destination", req.Destination, "full message", req)
 	}
-	deviceId = strings.ToLower(deviceId)
+	record.DeviceID = strings.ToLower(deviceId)
 
 	// verify wrp is the right type
 	msg := req
@@ -180,7 +152,7 @@ func parseRequest(req wrp.Message, storePayload bool, payloadMaxSize int, metada
 	case wrp.SimpleEventMessageType:
 
 	default:
-		return "", db.Event{}, emperror.WrapWith(errUnexpectedWRPType, "message type check failed", "type", msg.Type, "full message", msg)
+		return emptyRecord, parseFailReason, emperror.WrapWith(errUnexpectedWRPType, "message type check failed", "type", msg.Type, "full message", req)
 	}
 
 	// get timestamp from wrp payload
@@ -188,50 +160,55 @@ func parseRequest(req wrp.Message, storePayload bool, payloadMaxSize int, metada
 	if msg.Payload != nil && len(msg.Payload) > 0 {
 		err = json.Unmarshal(msg.Payload, &payload)
 		if err != nil {
-			return "", db.Event{}, emperror.WrapWith(err, "failed to unmarshal payload", "full message", req, "payload", msg.Payload)
+			return emptyRecord, parseFailReason, emperror.WrapWith(err, "failed to unmarshal payload", "full message", req, "payload", msg.Payload)
 		}
+	}
+
+	// determine ttl
+	ttl := r.defaultTTL
+	if rule.ttl != 0 {
+		ttl = rule.ttl
 	}
 
 	// parse the time from the payload
 	timeString, ok := payload["ts"].(string)
 	if !ok {
-		return "", db.Event{}, emperror.WrapWith(errTimestampString, "failed to parse timestamp", "full message", req, "payload", payload)
+		return emptyRecord, parseFailReason, emperror.WrapWith(errTimestampString, "failed to parse timestamp", "full message", req, "payload", payload)
 	}
-	parsedTime, err := time.Parse(time.RFC3339Nano, timeString)
+	birthDate, err := time.Parse(time.RFC3339Nano, timeString)
 	if err != nil {
-		return "", db.Event{}, emperror.WrapWith(err, "failed to parse timestamp", "full message", req)
+		return emptyRecord, parseFailReason, emperror.WrapWith(err, "failed to parse timestamp", "full message", req)
 	}
-	eventInfo.Time = parsedTime.Unix()
-
-	// store the source, destination, partner ids, and transaction uuid if present
-	eventInfo.Source = msg.Source
-	eventInfo.Destination = msg.Destination
-	eventInfo.PartnerIDs = msg.PartnerIDs
-	eventInfo.TransactionUUID = msg.TransactionUUID
+	record.BirthDate = birthDate.Unix()
+	record.DeathDate = birthDate.Add(ttl).Unix()
 
 	// store the payload if we are supposed to and it's not too big
-	if storePayload && len(msg.Payload) <= payloadMaxSize {
-		eventInfo.Payload = msg.Payload
+	if !rule.storePayload || len(msg.Payload) > r.payloadMaxSize {
+		msg.Payload = nil
 	}
-
-	eventInfo.Details = make(map[string]interface{})
 
 	// if metadata is too large, store a message explaining that instead of the metadata
 	marshaledMetadata, err := json.Marshal(msg.Metadata)
 	if err != nil {
-		return "", db.Event{}, emperror.WrapWith(err, "failed to marshal metadata to determine size", "metadata", msg.Metadata, "full message", req)
+		return emptyRecord, parseFailReason, emperror.WrapWith(err, "failed to marshal metadata to determine size", "metadata", msg.Metadata, "full message", req)
 	}
-	if len(marshaledMetadata) > metadataMaxSize {
-		eventInfo.Details["error"] = "metadata provided exceeds size limit - too big to store"
-		return deviceId, eventInfo, nil
-	}
-
-	// store all metadata if all is good
-	for key, val := range msg.Metadata {
-		eventInfo.Details[key] = val
+	if len(marshaledMetadata) > r.metadataMaxSize {
+		msg.Metadata = make(map[string]string)
+		msg.Metadata["error"] = "metadata provided exceeds size limit - too big to store"
 	}
 
-	return deviceId, eventInfo, nil
+	marshalledEvent, err := json.Marshal(msg)
+	if err != nil {
+		return emptyRecord, marshalFailReason, emperror.WrapWith(err, "failed to marshal event", "full message", req)
+	}
+
+	encyptedData, err := r.encrypter.EncryptMessage(marshalledEvent)
+	if err != nil {
+		return emptyRecord, encryptFailReason, emperror.WrapWith(err, "failed to encrypt message")
+	}
+	record.Data = encyptedData
+
+	return record, "", nil
 }
 
 func (r *RequestHandler) handleRecords() {

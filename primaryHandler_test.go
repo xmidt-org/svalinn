@@ -22,60 +22,52 @@ import (
 	"crypto/hmac"
 	"crypto/sha1"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/Comcast/webpa-common/semaphore"
-	"github.com/Comcast/webpa-common/xmetrics/xmetricstest"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/Comcast/codex/db"
+	"github.com/Comcast/webpa-common/semaphore"
+	"github.com/Comcast/webpa-common/xmetrics/xmetricstest"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/Comcast/codex/db"
 	"github.com/Comcast/webpa-common/logging"
 	"github.com/Comcast/webpa-common/wrp"
 )
 
-func TestHandleRequest(t *testing.T) {
-	require := require.New(t)
-	goodTime, err := time.Parse(time.RFC3339Nano, "2019-02-13T21:19:02.614191735Z")
-	require.NoError(err)
-	goodEvent := db.Event{
-		Time:            goodTime.Unix(),
+var (
+	goodEvent = wrp.Message{
 		Source:          "test source",
 		Destination:     "/test/",
+		Type:            wrp.SimpleEventMessageType,
 		PartnerIDs:      []string{"test1", "test2"},
 		TransactionUUID: "transaction test uuid",
 		Payload:         []byte(`{"ts":"2019-02-13T21:19:02.614191735Z"}`),
-		Details:         map[string]interface{}{"testkey": "testvalue"},
+		Metadata:        map[string]string{"testkey": "testvalue"},
 	}
+)
+
+func TestHandleRequest(t *testing.T) {
+	//require := require.New(t)
+	//goodTime, err := time.Parse(time.RFC3339Nano, "2019-02-13T21:19:02.614191735Z")
+	//require.NoError(err)
 	tests := []struct {
 		description        string
 		req                wrp.Message
 		encryptErr         error
 		expectEncryptCount float64
-		expectMarshalCount float64
 		expectParseCount   float64
 	}{
 		{
-			description: "Encrypt Error",
-			req: wrp.Message{
-				Source:          goodEvent.Source,
-				Destination:     goodEvent.Destination,
-				PartnerIDs:      goodEvent.PartnerIDs,
-				TransactionUUID: goodEvent.TransactionUUID,
-				Type:            wrp.SimpleEventMessageType,
-				Payload:         []byte(`{"ts":"2019-02-13T21:19:02.614191735Z"}`),
-				Metadata:        map[string]string{"testkey": "testvalue"},
-			},
-			encryptErr:         errors.New("encrypt failed"),
-			expectEncryptCount: 1.0,
+			description: "Success",
+			req:         goodEvent,
 		},
 		{
 			description: "Empty ID Error",
@@ -85,48 +77,10 @@ func TestHandleRequest(t *testing.T) {
 			expectParseCount: 1.0,
 		},
 		{
-			description: "Unexpected WRP Type Error",
-			req: wrp.Message{
-				Destination: "/device/",
-				Type:        5,
-			},
-			expectParseCount: 1.0,
-		},
-		{
-			description: "Unmarshal Payload Error",
-			req: wrp.Message{
-				Destination: "/device/",
-				Type:        wrp.SimpleEventMessageType,
-				Payload:     []byte("test"),
-			},
-			expectParseCount: 1.0,
-		},
-		{
-			description: "Empty Payload String Error",
-			req: wrp.Message{
-				Destination: "/device/",
-				Type:        wrp.SimpleEventMessageType,
-				Payload:     []byte(``),
-			},
-			expectParseCount: 1.0,
-		},
-		{
-			description: "Non-String Timestamp Error",
-			req: wrp.Message{
-				Destination: "/device/",
-				Type:        wrp.SimpleEventMessageType,
-				Payload:     []byte(`{"ts":5}`),
-			},
-			expectParseCount: 1.0,
-		},
-		{
-			description: "Parse Timestamp Error",
-			req: wrp.Message{
-				Destination: "/device/",
-				Type:        wrp.SimpleEventMessageType,
-				Payload:     []byte(`{"ts":"2345"}`),
-			},
-			expectParseCount: 1.0,
+			description:        "Encrypt Error",
+			req:                goodEvent,
+			encryptErr:         errors.New("encrypt failed"),
+			expectEncryptCount: 1.0,
 		},
 	}
 
@@ -140,7 +94,7 @@ func TestHandleRequest(t *testing.T) {
 
 			handler := RequestHandler{
 				//rules: []rule{},
-				encypter:         encrypter,
+				encrypter:        encrypter,
 				payloadMaxSize:   9999,
 				metadataMaxSize:  9999,
 				defaultTTL:       time.Second,
@@ -158,7 +112,6 @@ func TestHandleRequest(t *testing.T) {
 			handler.parseWorkers.Acquire()
 			handler.handleRequest(tc.req)
 			p.Assert(t, DroppedEventsCounter, reasonLabel, encryptFailReason)(xmetricstest.Value(tc.expectEncryptCount))
-			p.Assert(t, DroppedEventsCounter, reasonLabel, marshalFailReason)(xmetricstest.Value(tc.expectMarshalCount))
 			p.Assert(t, DroppedEventsCounter, reasonLabel, parseFailReason)(xmetricstest.Value(tc.expectParseCount))
 			p.Assert(t, DroppedEventsCounter, reasonLabel, dbFailReason)(xmetricstest.Value(0.0))
 
@@ -166,45 +119,26 @@ func TestHandleRequest(t *testing.T) {
 	}
 }
 
-func TestParseRequest(t *testing.T) {
+func TestCreateRecord(t *testing.T) {
 	testassert := assert.New(t)
 	goodTime, err := time.Parse(time.RFC3339Nano, "2019-02-13T21:19:02.614191735Z")
 	testassert.Nil(err)
-	goodEvent := db.Event{
-		Time:            goodTime.Unix(),
-		Source:          "test source",
-		Destination:     "/test/",
-		PartnerIDs:      []string{"test1", "test2"},
-		TransactionUUID: "transaction test uuid",
-		Payload:         []byte(`{"ts":"2019-02-13T21:19:02.614191735Z"}`),
-		Details:         map[string]interface{}{"testkey": "testvalue"},
-	}
-	goodEventNoMetadata := db.Event{
-		Time:        goodTime.Unix(),
-		Destination: "/test/",
-		Details:     map[string]interface{}{"error": "metadata provided exceeds size limit - too big to store"},
-	}
 	tests := []struct {
 		description      string
 		req              wrp.Message
 		storePayload     bool
 		maxPayloadSize   int
 		maxMetadataSize  int
+		encryptErr       error
 		expectedDeviceID string
-		expectedEvent    db.Event
+		expectedEvent    wrp.Message
+		emptyRecord      bool
+		expectedReason   string
 		expectedErr      error
 	}{
 		{
-			description: "Success",
-			req: wrp.Message{
-				Source:          goodEvent.Source,
-				Destination:     goodEvent.Destination,
-				PartnerIDs:      goodEvent.PartnerIDs,
-				TransactionUUID: goodEvent.TransactionUUID,
-				Type:            wrp.SimpleEventMessageType,
-				Payload:         []byte(`{"ts":"2019-02-13T21:19:02.614191735Z"}`),
-				Metadata:        map[string]string{"testkey": "testvalue"},
-			},
+			description:      "Success",
+			req:              goodEvent,
 			expectedDeviceID: "test",
 			expectedEvent:    goodEvent,
 			storePayload:     true,
@@ -218,44 +152,46 @@ func TestParseRequest(t *testing.T) {
 				Destination:     strings.ToUpper(goodEvent.Destination),
 				PartnerIDs:      goodEvent.PartnerIDs,
 				TransactionUUID: goodEvent.TransactionUUID,
-				Type:            wrp.SimpleEventMessageType,
-				Payload:         []byte(`{"ts":"2019-02-13T21:19:02.614191735Z"}`),
-				Metadata:        map[string]string{"testkey": "testvalue"},
+				Type:            goodEvent.Type,
+				Payload:         goodEvent.Payload,
+				Metadata:        goodEvent.Metadata,
 			},
 			expectedDeviceID: "test",
-			expectedEvent: db.Event{
-				Time:            goodEvent.Time,
+			expectedEvent: wrp.Message{
 				Source:          goodEvent.Source,
 				Destination:     strings.ToUpper(goodEvent.Destination),
 				PartnerIDs:      goodEvent.PartnerIDs,
 				TransactionUUID: goodEvent.TransactionUUID,
+				Type:            goodEvent.Type,
 				Payload:         goodEvent.Payload,
-				Details:         goodEvent.Details,
+				Metadata:        goodEvent.Metadata,
 			},
 			storePayload:    true,
 			maxMetadataSize: 500,
 			maxPayloadSize:  500,
 		},
 		{
-			description: "Success Empty Metadata",
-			req: wrp.Message{
-				Source:          goodEventNoMetadata.Source,
-				Destination:     goodEventNoMetadata.Destination,
-				PartnerIDs:      goodEventNoMetadata.PartnerIDs,
-				TransactionUUID: goodEventNoMetadata.TransactionUUID,
-				Type:            wrp.SimpleEventMessageType,
-				Payload:         []byte(`{"ts":"2019-02-13T21:19:02.614191735Z"}`),
-				Metadata:        map[string]string{"testkey": "testvalue"},
-			},
+			description:      "Success Empty Metadata/Payload",
+			req:              goodEvent,
 			expectedDeviceID: "test",
-			expectedEvent:    goodEventNoMetadata,
+			expectedEvent: wrp.Message{
+				Source:          goodEvent.Source,
+				Destination:     goodEvent.Destination,
+				PartnerIDs:      goodEvent.PartnerIDs,
+				TransactionUUID: goodEvent.TransactionUUID,
+				Type:            goodEvent.Type,
+				Payload:         nil,
+				Metadata:        map[string]string{"error": "metadata provided exceeds size limit - too big to store"},
+			},
 		},
 		{
 			description: "Empty ID Error",
 			req: wrp.Message{
 				Destination: "//",
 			},
-			expectedErr: errEmptyID,
+			emptyRecord:    true,
+			expectedReason: parseFailReason,
+			expectedErr:    errEmptyID,
 		},
 		{
 			description: "Unexpected WRP Type Error",
@@ -263,7 +199,9 @@ func TestParseRequest(t *testing.T) {
 				Destination: "/device/",
 				Type:        5,
 			},
-			expectedErr: errUnexpectedWRPType,
+			emptyRecord:    true,
+			expectedReason: parseFailReason,
+			expectedErr:    errUnexpectedWRPType,
 		},
 		{
 			description: "Unmarshal Payload Error",
@@ -272,7 +210,9 @@ func TestParseRequest(t *testing.T) {
 				Type:        wrp.SimpleEventMessageType,
 				Payload:     []byte("test"),
 			},
-			expectedErr: errors.New("failed to unmarshal payload"),
+			emptyRecord:    true,
+			expectedReason: parseFailReason,
+			expectedErr:    errors.New("failed to unmarshal payload"),
 		},
 		{
 			description: "Empty Payload String Error",
@@ -281,7 +221,9 @@ func TestParseRequest(t *testing.T) {
 				Type:        wrp.SimpleEventMessageType,
 				Payload:     []byte(``),
 			},
-			expectedErr: errTimestampString,
+			emptyRecord:    true,
+			expectedReason: parseFailReason,
+			expectedErr:    errTimestampString,
 		},
 		{
 			description: "Non-String Timestamp Error",
@@ -290,7 +232,9 @@ func TestParseRequest(t *testing.T) {
 				Type:        wrp.SimpleEventMessageType,
 				Payload:     []byte(`{"ts":5}`),
 			},
-			expectedErr: errTimestampString,
+			emptyRecord:    true,
+			expectedReason: parseFailReason,
+			expectedErr:    errTimestampString,
 		},
 		{
 			description: "Parse Timestamp Error",
@@ -299,16 +243,49 @@ func TestParseRequest(t *testing.T) {
 				Type:        wrp.SimpleEventMessageType,
 				Payload:     []byte(`{"ts":"2345"}`),
 			},
-			expectedErr: errors.New("failed to parse timestamp"),
+			emptyRecord:    true,
+			expectedReason: parseFailReason,
+			expectedErr:    errors.New("failed to parse timestamp"),
+		},
+		{
+			description:    "Encrypt Error",
+			req:            goodEvent,
+			encryptErr:     errors.New("encrypt failed"),
+			emptyRecord:    true,
+			expectedReason: encryptFailReason,
+			expectedErr:    errors.New("failed to encrypt message"),
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
-			id, event, err := parseRequest(tc.req, tc.storePayload, tc.maxPayloadSize, tc.maxMetadataSize)
-			assert.Equal(tc.expectedDeviceID, id)
-			assert.Equal(tc.expectedEvent, event)
+			marshaledEvent, err := json.Marshal(tc.expectedEvent)
+			assert.Nil(err)
+			var expectedRecord db.Record
+			if !tc.emptyRecord {
+				expectedRecord = db.Record{
+					Type:      0,
+					DeviceID:  tc.expectedDeviceID,
+					BirthDate: goodTime.Unix(),
+					DeathDate: goodTime.Add(time.Second).Unix(),
+					Data:      marshaledEvent,
+				}
+			}
+			rule := rule{
+				storePayload: tc.storePayload,
+				ttl:          time.Second,
+			}
+			encrypter := new(mockEncrypter)
+			encrypter.On("EncryptMessage", mock.Anything).Return(tc.encryptErr)
+			handler := RequestHandler{
+				encrypter:       encrypter,
+				payloadMaxSize:  tc.maxPayloadSize,
+				metadataMaxSize: tc.maxMetadataSize,
+			}
+			record, reason, err := handler.createRecord(tc.req, rule, 0)
+			assert.Equal(expectedRecord, record)
+			assert.Equal(tc.expectedReason, reason)
 			if tc.expectedErr == nil || err == nil {
 				assert.Equal(tc.expectedErr, err)
 			} else {
