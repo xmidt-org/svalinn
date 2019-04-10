@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [v0.4.0]
+- adding basic level of encryption
+- store event as wrp.Message
+
+
+
 ## [v0.3.0]
  - modified health metric to reflect unhealthy when pinging the database fails
  - device IDs are inserted into the db in lowercase
@@ -69,7 +75,8 @@ Bug Fix Caduceus config loading
 - Initial creation
 - Bumped codex version, modified code to match changes
 
-[Unreleased]: https://github.com/Comcast/codex-svalinn/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/Comcast/codex-svalinn/compare/v0.4.0...HEAD
+[v0.4.0]: https://github.com/Comcast/codex-svalinn/compare/v0.3.0...v0.4.0
 [v0.3.0]: https://github.com/Comcast/codex-svalinn/compare/v0.2.7...v0.3.0
 [v0.2.7]: https://github.com/Comcast/codex-svalinn/compare/v0.2.6...v0.2.7
 [v0.2.6]: https://github.com/Comcast/codex-svalinn/compare/v0.2.5...v0.2.6
