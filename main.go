@@ -256,10 +256,14 @@ func svalinn(arguments []string) int {
 		}
 	}
 
+	err = serverHealth.Stop()
+	if err != nil {
+		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "stopping health endpoint failed",
+			logging.ErrorKey(), err.Error())
+	}
 	close(shutdown)
-	close(requestQueue)
-	close(requestHandler.insertQueue)
 	waitGroup.Wait()
+	close(requestQueue)
 	requestHandler.wg.Wait()
 	err = dbConn.Close()
 	if err != nil {

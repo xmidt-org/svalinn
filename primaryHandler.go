@@ -80,6 +80,7 @@ func (r *RequestHandler) handleRequests(requestQueue chan wrp.Message) {
 	for i := 0; i < r.maxParseWorkers; i++ {
 		r.parseWorkers.Acquire()
 	}
+	close(r.insertQueue)
 }
 
 func (r *RequestHandler) handleRequest(request wrp.Message) {
