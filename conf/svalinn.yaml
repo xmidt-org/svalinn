@@ -30,6 +30,7 @@ payloadMaxSize: 1000
 insertRetries: 3
 retryInterval: 10s
 defaultTTL: 5s
+blacklistInterval: 1m
 
 cipher:
   hashName: "noop"
