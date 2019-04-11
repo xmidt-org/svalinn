@@ -49,3 +49,14 @@ func (md *mockEncrypter) EncryptMessage(message []byte) ([]byte, error) {
 	args := md.Called(message)
 	return message, args.Error(0)
 }
+
+type mockBlacklist struct {
+	mock.Mock
+}
+
+func (mb *mockBlacklist) InList(ID string) (reason string, ok bool) {
+	args := mb.Called(ID)
+	reason = args.String(0)
+	ok = args.Bool(1)
+	return
+}

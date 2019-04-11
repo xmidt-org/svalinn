@@ -89,6 +89,9 @@ func TestHandleRequest(t *testing.T) {
 			encrypter := new(mockEncrypter)
 			encrypter.On("EncryptMessage", mock.Anything).Return(tc.encryptErr)
 
+			mblacklist := new(mockBlacklist)
+			mblacklist.On("InList", mock.Anything).Return("", false).Once()
+
 			p := xmetricstest.NewProvider(nil, Metrics)
 			m := NewMeasures(p)
 
@@ -107,6 +110,7 @@ func TestHandleRequest(t *testing.T) {
 				maxBatchWaitTime: time.Millisecond,
 				measures:         m,
 				logger:           logging.NewTestLogger(nil, t),
+				blacklist:        mblacklist,
 			}
 
 			handler.parseWorkers.Acquire()
@@ -278,10 +282,13 @@ func TestCreateRecord(t *testing.T) {
 			}
 			encrypter := new(mockEncrypter)
 			encrypter.On("EncryptMessage", mock.Anything).Return(tc.encryptErr)
+			mblacklist := new(mockBlacklist)
+			mblacklist.On("InList", mock.Anything).Return("", false).Once()
 			handler := RequestHandler{
 				encrypter:       encrypter,
 				payloadMaxSize:  tc.maxPayloadSize,
 				metadataMaxSize: tc.maxMetadataSize,
+				blacklist:       mblacklist,
 			}
 			record, reason, err := handler.createRecord(tc.req, rule, 0)
 			assert.Equal(expectedRecord, record)

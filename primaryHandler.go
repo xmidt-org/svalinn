@@ -23,6 +23,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"github.com/Comcast/codex/blacklist"
 	"io/ioutil"
 	"net/http"
 	"path"
@@ -45,6 +46,7 @@ var (
 	errEmptyID           = errors.New("Empty id is invalid")
 	errUnexpectedWRPType = errors.New("Unexpected wrp message type")
 	errTimestampString   = errors.New("timestamp couldn't be found and converted to string")
+	errBlacklist         = errors.New("device is in blacklist")
 )
 
 type RequestHandler struct {
@@ -64,6 +66,7 @@ type RequestHandler struct {
 	maxBatchWaitTime time.Duration
 	wg               sync.WaitGroup
 	measures         *Measures
+	blacklist        blacklist.List
 }
 
 func (r *RequestHandler) handleRequests(requestQueue chan wrp.Message) {
@@ -120,6 +123,10 @@ func (r *RequestHandler) createRecord(req wrp.Message, rule rule, eventType int)
 		return emptyRecord, parseFailReason, emperror.WrapWith(errEmptyID, "id check failed", "request destination", req.Destination, "full message", req)
 	}
 	record.DeviceID = strings.ToLower(deviceId)
+
+	if reason, ok := r.blacklist.InList(record.DeviceID); ok {
+		return emptyRecord, blackListReason, emperror.With(errBlacklist, "reason", reason)
+	}
 
 	// verify wrp is the right type
 	msg := req

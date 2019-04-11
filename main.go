@@ -19,6 +19,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/Comcast/codex/blacklist"
 	olog "log"
 	"net/http"
 	_ "net/http/pprof"
@@ -65,22 +66,23 @@ const (
 )
 
 type SvalinnConfig struct {
-	Endpoint         string
-	ParseQueueSize   int
-	InsertQueueSize  int
-	MaxParseWorkers  int
-	MaxInsertWorkers int
-	MaxBatchSize     int
-	MaxBatchWaitTime time.Duration
-	PayloadMaxSize   int
-	MetadataMaxSize  int
-	InsertRetries    int
-	DefaultTTL       time.Duration
-	RetryInterval    time.Duration
-	Db               db.Config
-	Webhook          WebhookConfig
-	RegexRules       []RuleConfig
-	Health           HealthConfig
+	Endpoint          string
+	ParseQueueSize    int
+	InsertQueueSize   int
+	MaxParseWorkers   int
+	MaxInsertWorkers  int
+	MaxBatchSize      int
+	MaxBatchWaitTime  time.Duration
+	PayloadMaxSize    int
+	MetadataMaxSize   int
+	InsertRetries     int
+	DefaultTTL        time.Duration
+	RetryInterval     time.Duration
+	Db                db.Config
+	Webhook           WebhookConfig
+	RegexRules        []RuleConfig
+	Health            HealthConfig
+	BlacklistInterval time.Duration
 }
 
 type HealthConfig struct {
@@ -196,6 +198,12 @@ func svalinn(arguments []string) int {
 		config.MaxBatchSize = defaultMaxBatchSize
 	}
 
+	stopUpdateBlackList := make(chan struct{}, 1)
+	blacklistConfig := blacklist.RefresherConfig{
+		Logger:         logger,
+		UpdateInterval: config.BlacklistInterval,
+	}
+
 	requestHandler := RequestHandler{
 		inserter:         inserter,
 		logger:           logger,
@@ -212,6 +220,7 @@ func svalinn(arguments []string) int {
 		maxBatchSize:     config.MaxBatchSize,
 		maxBatchWaitTime: config.MaxBatchWaitTime,
 		measures:         measures,
+		blacklist:        blacklist.NewListRefresher(blacklistConfig, dbConn, stopUpdateBlackList),
 	}
 	requestHandler.wg.Add(2)
 	go requestHandler.handleRequests(requestQueue)
@@ -261,6 +270,7 @@ func svalinn(arguments []string) int {
 		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "stopping health endpoint failed",
 			logging.ErrorKey(), err.Error())
 	}
+	close(stopUpdateBlackList)
 	close(shutdown)
 	waitGroup.Wait()
 	close(requestQueue)

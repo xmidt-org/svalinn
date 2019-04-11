@@ -31,6 +31,7 @@ const (
 
 const (
 	reasonLabel            = "reason"
+	blackListReason        = "blacklist"
 	parseFailReason        = "parsing failed"
 	marshalFailReason      = "marshaling failed"
 	encryptFailReason      = "encryption failed"
