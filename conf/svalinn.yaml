@@ -4,7 +4,8 @@ server: locahost
 primary:
   address: ":7000"
 health:
-  address: ":7001"
+  port: ":7001"
+  endpoint: "/health"
 pprof:
   address: ":7002"
 metric:
@@ -17,27 +18,54 @@ log:
   maxBackup: 3
   json: true
 
+endpoint: "/device-status"
+parseQueueSize: 3000
+insertQueueSize: 3000
+maxParseWorkers: 10000
+maxInsertWorkers: 1000
+maxBatchSize: 30
+maxBatchWaitTime: 10ms
+metadataMaxSize: 1000
+payloadMaxSize: 1000
+insertRetries: 3
+retryInterval: 10s
+defaultTTL: 5s
 
-config:
-  endpoint: "/device-status"
-  queueSize: 3000
-  stateLimitPerDevice: 3
-  db:
-    server: "127.0.0.1:11210"
-    username: "Administrator"
-    password: "somepassword"
-    bucket: "devices"
-    numRetries: 4
-    timeout: 10m
-  tombstoneKeys:
-    online: ".*/online$"
-    offline: ".*/offline$"
+cipher:
+  hashName: "noop"
+
+db:
+  server: "db:26257"
+  username: "roachadmin"
+  database: "devices"
+  numRetries: 4
+  waitTimeMult: 5
+  pingInterval: 1s
+  connectTimeout: 1m
+  opTimeout: 3s
+
+regexRules:
+  - regex: ".*/online$"
+    storePayload: true
+    ruleTTL: 30s
+    eventType: "state"
+  - regex: ".*/offline$"
+    storePayload: true
+    ruleTTL: 30s
+    eventType: "state"
 
 authHeader: ["YXV0aEhlYWRlcg=="]
 
 webhook:
-  secret: "Basic YXV0aEhlYWRlcg=="
+  secret: "super secret"
   registrationInterval: "4m"
   url: "http://host.docker.internal:8181/api/v1/device-status"
   timeout: "1m"
-  registrationURL: "http://127.0.0.1:6000/hook"
+  registrationURL: "https://127.0.0.1:6000/hook"
+  eventsToWatch: ["device-status.*"]
+  basic:
+  sat:
+    client: ""
+    secret: ""
+    satURL: ""
+    timeout: "1m"

@@ -75,8 +75,6 @@ type SvalinnConfig struct {
 	PayloadMaxSize   int
 	MetadataMaxSize  int
 	InsertRetries    int
-	PruneInterval    time.Duration
-	PruneRetries     int
 	DefaultTTL       time.Duration
 	RetryInterval    time.Duration
 	Db               db.Config
@@ -125,12 +123,6 @@ func svalinn(arguments []string) int {
 	}
 	logging.Info(logger).Log(logging.MessageKey(), "Successfully loaded config file", "configurationFile", v.ConfigFileUsed())
 
-	/*validator, err := server.GetValidator(v, DEFAULT_KEY_ID)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Validator error: %v\n", err)
-		return 1
-	}*/
-
 	serverHealth := health.New()
 	serverHealth.Logger = healthlogger.NewHealthLogger(logger)
 
@@ -139,13 +131,6 @@ func svalinn(arguments []string) int {
 
 	requestQueue := make(chan wrp.Message, config.ParseQueueSize)
 	insertQueue := make(chan db.Record, config.InsertQueueSize)
-
-	/*authHandler := handler.AuthorizationHandler{
-		HeaderName:          "Authorization",
-		ForbiddenStatusCode: 403,
-		Validator:           validator,
-		Logger:              logger,
-	}*/
 
 	dbConn, err := db.CreateDbConnection(config.Db, metricsRegistry, serverHealth)
 	if err != nil {
@@ -206,7 +191,6 @@ func svalinn(arguments []string) int {
 	router.Handle(apiBase+config.Endpoint, svalinnHandler.ThenFunc(app.handleWebhook))
 
 	inserter := db.CreateRetryInsertService(dbConn, config.InsertRetries, config.RetryInterval, metricsRegistry)
-	updater := db.CreateRetryUpdateService(dbConn, config.PruneRetries, config.RetryInterval, metricsRegistry)
 
 	if config.MaxBatchSize < 1 {
 		config.MaxBatchSize = defaultMaxBatchSize
@@ -214,7 +198,6 @@ func svalinn(arguments []string) int {
 
 	requestHandler := RequestHandler{
 		inserter:         inserter,
-		updater:          updater,
 		logger:           logger,
 		encrypter:        encrypter,
 		rules:            rules,
@@ -233,11 +216,6 @@ func svalinn(arguments []string) int {
 	requestHandler.wg.Add(2)
 	go requestHandler.handleRequests(requestQueue)
 	go requestHandler.handleRecords()
-	stopPruning := make(chan struct{}, 1)
-	if config.PruneInterval > 0 {
-		requestHandler.wg.Add(1)
-		go requestHandler.handlePruning(stopPruning, config.PruneInterval)
-	}
 
 	if config.Health.Endpoint != "" && config.Health.Port != "" {
 		err = serverHealth.Start()
@@ -280,7 +258,6 @@ func svalinn(arguments []string) int {
 
 	close(shutdown)
 	close(requestQueue)
-	stopPruning <- struct{}{}
 	close(requestHandler.insertQueue)
 	waitGroup.Wait()
 	requestHandler.wg.Wait()
