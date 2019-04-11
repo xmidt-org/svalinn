@@ -23,8 +23,6 @@ maxBatchWaitTime: 10ms
 metadataMaxSize: 1000
 payloadMaxSize: 1000
 insertRetries: 3
-pruneInterval: 0s
-pruneRetries: 3
 retryInterval: 10s
 defaultTTL: 5s
 

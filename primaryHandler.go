@@ -49,7 +49,6 @@ var (
 
 type RequestHandler struct {
 	inserter         db.RetryInsertService
-	updater          db.RetryUpdateService
 	logger           log.Logger
 	encrypter        cipher.Enrypt
 	rules            []rule
@@ -65,31 +64,6 @@ type RequestHandler struct {
 	maxBatchWaitTime time.Duration
 	wg               sync.WaitGroup
 	measures         *Measures
-}
-
-func (r *RequestHandler) handlePruning(quit chan struct{}, interval time.Duration) {
-	defer r.wg.Done()
-	t := time.NewTicker(interval)
-	defer t.Stop()
-	for {
-		select {
-		case <-quit:
-			return
-		case <-t.C:
-			r.pruneDevice()
-		}
-	}
-}
-
-func (r *RequestHandler) pruneDevice() {
-	err := r.updater.PruneRecords(time.Now().Unix())
-	if err != nil {
-		logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
-			"Failed to update event history", logging.ErrorKey(), err.Error())
-		return
-	}
-	logging.Debug(r.logger).Log(logging.MessageKey(), "Successfully pruned events")
-	return
 }
 
 func (r *RequestHandler) handleRequests(requestQueue chan wrp.Message) {
