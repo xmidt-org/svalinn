@@ -4,6 +4,10 @@ server: locahost:8181
 primary:
   address: ":8181"
 
+health:
+  port: ":80"
+  endpoint: "/health"
+
 log:
   file: "stdout"
   level: "DEBUG"
@@ -23,9 +27,10 @@ pruneInterval: 0s
 pruneRetries: 3
 retryInterval: 10s
 defaultTTL: 5s
-health:
-  port: ":80"
-  endpoint: "/health"
+
+cipher:
+  hashName: "noop"
+
 db:
   server: "db:26257"
   username: "roachadmin"
@@ -35,6 +40,7 @@ db:
   pingInterval: 1s
   connectTimeout: 1m
   opTimeout: 3s
+
 regexRules:
   - regex: ".*/online$"
     storePayload: true
