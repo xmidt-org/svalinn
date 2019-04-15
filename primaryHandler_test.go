@@ -274,6 +274,7 @@ func TestCreateRecord(t *testing.T) {
 					BirthDate: goodTime.Unix(),
 					DeathDate: goodTime.Add(time.Second).Unix(),
 					Data:      marshaledEvent,
+					Nonce:     []byte{},
 				}
 			}
 			rule := rule{
