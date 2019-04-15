@@ -23,13 +23,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"github.com/Comcast/codex/blacklist"
 	"io/ioutil"
 	"net/http"
 	"path"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Comcast/codex/blacklist"
 
 	"github.com/Comcast/codex/cipher"
 
@@ -94,7 +95,7 @@ func (r *RequestHandler) handleRequest(request wrp.Message) {
 		logging.Info(r.logger).Log(logging.MessageKey(), "Could not get rule", logging.ErrorKey(), err, "destination", request.Destination)
 	}
 
-	eventType := db.UnmarshalEvent(rule.eventType)
+	eventType := db.ParseEventType(rule.eventType)
 	record, reason, err := r.createRecord(request, rule, eventType)
 	if err != nil {
 		r.measures.DroppedEventsCount.With(reasonLabel, reason).Add(1.0)
@@ -109,7 +110,7 @@ func (r *RequestHandler) handleRequest(request wrp.Message) {
 	r.insertQueue <- record
 }
 
-func (r *RequestHandler) createRecord(req wrp.Message, rule rule, eventType int) (db.Record, string, error) {
+func (r *RequestHandler) createRecord(req wrp.Message, rule rule, eventType db.EventType) (db.Record, string, error) {
 	var (
 		err         error
 		emptyRecord db.Record
