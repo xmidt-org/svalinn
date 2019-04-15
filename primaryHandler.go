@@ -53,7 +53,7 @@ var (
 type RequestHandler struct {
 	inserter         db.RetryInsertService
 	logger           log.Logger
-	encrypter        cipher.Enrypt
+	encrypter        cipher.Encrypt
 	rules            []rule
 	metadataMaxSize  int
 	payloadMaxSize   int
@@ -185,11 +185,12 @@ func (r *RequestHandler) createRecord(req wrp.Message, rule rule, eventType db.E
 		return emptyRecord, marshalFailReason, emperror.WrapWith(err, "failed to marshal event", "full message", req)
 	}
 
-	encyptedData, err := r.encrypter.EncryptMessage(marshalledEvent)
+	encyptedData, nonce, err := r.encrypter.EncryptMessage(marshalledEvent)
 	if err != nil {
 		return emptyRecord, encryptFailReason, emperror.WrapWith(err, "failed to encrypt message")
 	}
 	record.Data = encyptedData
+	record.Nonce = nonce
 
 	return record, "", nil
 }

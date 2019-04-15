@@ -28,7 +28,8 @@ defaultTTL: 5s
 blacklistInterval: 1m
 
 cipher:
-  hashName: "noop"
+  algorithm:
+    type: "noop"
 
 db:
   server: "db:26257"
@@ -59,7 +60,7 @@ webhook:
   timeout: "1m"
   registrationURL: "https://127.0.0.1:6000/hook"
   eventsToWatch: ["device-status.*"]
-  basic: 
+  basic:
   sat:
     client: ""
     secret: ""

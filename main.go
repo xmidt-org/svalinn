@@ -142,11 +142,20 @@ func svalinn(arguments []string) int {
 		return 2
 	}
 
-	encrypter, err := cipher.LoadPublic(v)
+	cipherOptions, err := cipher.FromViper(cipher.Sub(v))
+	cipherOptions.Logger = logger
 	if err != nil {
-		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to initialize cipher",
+		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to initialize cipher options",
 			logging.ErrorKey(), err.Error())
-		fmt.Fprintf(os.Stderr, "Cipher Initialize Failed: %#v\n", err)
+		fmt.Fprintf(os.Stderr, "Cipher Options Initialize Failed: %#v\n", err)
+		return 2
+	}
+
+	encrypter, err := cipherOptions.LoadEncrypt()
+	if err != nil {
+		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to load cipher decrypter",
+			logging.ErrorKey(), err.Error())
+		fmt.Fprintf(os.Stderr, "Cipher decrypter Initialize Failed: %#v\n", err)
 		return 2
 	}
 

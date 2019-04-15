@@ -45,9 +45,9 @@ type mockEncrypter struct {
 	mock.Mock
 }
 
-func (md *mockEncrypter) EncryptMessage(message []byte) ([]byte, error) {
+func (md *mockEncrypter) EncryptMessage(message []byte) ([]byte, []byte, error) {
 	args := md.Called(message)
-	return message, args.Error(0)
+	return message, []byte{}, args.Error(0)
 }
 
 type mockBlacklist struct {
