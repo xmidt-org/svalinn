@@ -19,10 +19,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/Comcast/codex/blacklist"
 	olog "log"
 	"net/http"
 	_ "net/http/pprof"
+
+	"github.com/Comcast/codex/blacklist"
 
 	"github.com/Comcast/codex/cipher"
 
@@ -213,27 +214,33 @@ func svalinn(arguments []string) int {
 		UpdateInterval: config.BlacklistInterval,
 	}
 
-	requestHandler := RequestHandler{
+	requestParser := requestParser{
+		encrypter:       encrypter,
+		blacklist:       blacklist.NewListRefresher(blacklistConfig, dbConn, stopUpdateBlackList),
+		rules:           rules,
+		payloadMaxSize:  config.PayloadMaxSize,
+		metadataMaxSize: config.MetadataMaxSize,
+		defaultTTL:      config.DefaultTTL,
+		insertQueue:     insertQueue,
+		maxParseWorkers: config.MaxParseWorkers,
+		parseWorkers:    semaphore.New(config.MaxParseWorkers),
+		measures:        measures,
+		logger:          logger,
+	}
+	batchInserter := batchInserter{
 		inserter:         inserter,
 		logger:           logger,
-		encrypter:        encrypter,
-		rules:            rules,
-		payloadMaxSize:   config.PayloadMaxSize,
-		metadataMaxSize:  config.MetadataMaxSize,
-		defaultTTL:       config.DefaultTTL,
 		insertQueue:      insertQueue,
-		maxParseWorkers:  config.MaxParseWorkers,
-		parseWorkers:     semaphore.New(config.MaxParseWorkers),
 		maxInsertWorkers: config.MaxInsertWorkers,
 		insertWorkers:    semaphore.New(config.MaxInsertWorkers),
 		maxBatchSize:     config.MaxBatchSize,
 		maxBatchWaitTime: config.MaxBatchWaitTime,
 		measures:         measures,
-		blacklist:        blacklist.NewListRefresher(blacklistConfig, dbConn, stopUpdateBlackList),
 	}
-	requestHandler.wg.Add(2)
-	go requestHandler.handleRequests(requestQueue)
-	go requestHandler.handleRecords()
+	requestParser.wg.Add(1)
+	go requestParser.parseRequests(requestQueue)
+	batchInserter.wg.Add(1)
+	go batchInserter.batchRecords()
 
 	if config.Health.Endpoint != "" && config.Health.Port != "" {
 		err = serverHealth.Start()
@@ -283,7 +290,9 @@ func svalinn(arguments []string) int {
 	close(shutdown)
 	waitGroup.Wait()
 	close(requestQueue)
-	requestHandler.wg.Wait()
+	requestParser.wg.Wait()
+	close(insertQueue)
+	batchInserter.wg.Wait()
 	err = dbConn.Close()
 	if err != nil {
 		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "closing database threads failed",

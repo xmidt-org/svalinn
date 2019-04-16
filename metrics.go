@@ -25,7 +25,7 @@ import (
 
 const (
 	ParsingQueueDepth    = "parsing_queue_depth"
-	InsertingQeueDepth   = "inserting_queue_depth"
+	InsertingQueueDepth  = "inserting_queue_depth"
 	DroppedEventsCounter = "dropped_events_count"
 )
 
@@ -47,7 +47,7 @@ func Metrics() []xmetrics.Metric {
 			Type: "gauge",
 		},
 		{
-			Name: InsertingQeueDepth,
+			Name: InsertingQueueDepth,
 			Help: "The depth of the insert queue",
 			Type: "gauge",
 		},
@@ -62,7 +62,7 @@ func Metrics() []xmetrics.Metric {
 
 type Measures struct {
 	ParsingQueue       metrics.Gauge
-	InsertingQeue      metrics.Gauge
+	InsertingQueue     metrics.Gauge
 	DroppedEventsCount metrics.Counter
 }
 
@@ -70,7 +70,7 @@ type Measures struct {
 func NewMeasures(p provider.Provider) *Measures {
 	return &Measures{
 		ParsingQueue:       p.NewGauge(ParsingQueueDepth),
-		InsertingQeue:      p.NewGauge(InsertingQeueDepth),
+		InsertingQueue:     p.NewGauge(InsertingQueueDepth),
 		DroppedEventsCount: p.NewCounter(DroppedEventsCounter),
 	}
 }

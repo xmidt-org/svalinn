@@ -28,7 +28,7 @@ var (
 	}
 )
 
-func TestHandleRequest(t *testing.T) {
+func TestParseRequest(t *testing.T) {
 	//require := require.New(t)
 	//goodTime, err := time.Parse(time.RFC3339Nano, "2019-02-13T21:19:02.614191735Z")
 	//require.NoError(err)
@@ -69,26 +69,22 @@ func TestHandleRequest(t *testing.T) {
 			p := xmetricstest.NewProvider(nil, Metrics)
 			m := NewMeasures(p)
 
-			handler := RequestHandler{
+			handler := requestParser{
 				//rules: []rule{},
-				encrypter:        encrypter,
-				payloadMaxSize:   9999,
-				metadataMaxSize:  9999,
-				defaultTTL:       time.Second,
-				insertQueue:      make(chan db.Record, 10),
-				maxParseWorkers:  5,
-				parseWorkers:     semaphore.New(5),
-				maxInsertWorkers: 5,
-				insertWorkers:    semaphore.New(5),
-				maxBatchSize:     5,
-				maxBatchWaitTime: time.Millisecond,
-				measures:         m,
-				logger:           logging.NewTestLogger(nil, t),
-				blacklist:        mblacklist,
+				encrypter:       encrypter,
+				payloadMaxSize:  9999,
+				metadataMaxSize: 9999,
+				defaultTTL:      time.Second,
+				insertQueue:     make(chan db.Record, 10),
+				maxParseWorkers: 5,
+				parseWorkers:    semaphore.New(2),
+				measures:        m,
+				logger:          logging.NewTestLogger(nil, t),
+				blacklist:       mblacklist,
 			}
 
 			handler.parseWorkers.Acquire()
-			handler.handleRequest(tc.req)
+			handler.parseRequest(tc.req)
 			p.Assert(t, DroppedEventsCounter, reasonLabel, encryptFailReason)(xmetricstest.Value(tc.expectEncryptCount))
 			p.Assert(t, DroppedEventsCounter, reasonLabel, parseFailReason)(xmetricstest.Value(tc.expectParseCount))
 			p.Assert(t, DroppedEventsCounter, reasonLabel, dbFailReason)(xmetricstest.Value(0.0))
@@ -215,7 +211,7 @@ func TestCreateRecord(t *testing.T) {
 			encrypter.On("EncryptMessage", mock.Anything).Return(tc.encryptErr)
 			mblacklist := new(mockBlacklist)
 			mblacklist.On("InList", mock.Anything).Return("", false).Once()
-			handler := RequestHandler{
+			handler := requestParser{
 				encrypter:       encrypter,
 				payloadMaxSize:  tc.maxPayloadSize,
 				metadataMaxSize: tc.maxMetadataSize,

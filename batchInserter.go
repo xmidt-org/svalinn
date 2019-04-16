@@ -1,36 +1,51 @@
 package main
 
 import (
+	"sync"
 	"time"
 
 	"github.com/Comcast/codex/db"
 	"github.com/Comcast/webpa-common/logging"
+	"github.com/Comcast/webpa-common/semaphore"
+	"github.com/go-kit/kit/log"
 	"github.com/goph/emperror"
 )
 
-func (r *RequestHandler) handleRecords() {
+type batchInserter struct {
+	insertQueue      chan db.Record
+	inserter         db.RetryInsertService
+	maxInsertWorkers int
+	insertWorkers    semaphore.Interface
+	maxBatchSize     int
+	maxBatchWaitTime time.Duration
+	wg               sync.WaitGroup
+	measures         *Measures
+	logger           log.Logger
+}
+
+func (b *batchInserter) batchRecords() {
 	var (
 		records      []db.Record
 		timeToSubmit time.Time
 	)
-	defer r.wg.Done()
-	for record := range r.insertQueue {
+	defer b.wg.Done()
+	for record := range b.insertQueue {
 		// if we don't have any records, then this is our first and started
 		// the timer until submitting
 		if len(records) == 0 {
-			timeToSubmit = time.Now().Add(r.maxBatchWaitTime)
+			timeToSubmit = time.Now().Add(b.maxBatchWaitTime)
 		}
 
-		if r.measures != nil {
-			r.measures.InsertingQeue.Add(-1.0)
+		if b.measures != nil {
+			b.measures.InsertingQueue.Add(-1.0)
 		}
 		records = append(records, record)
 
 		// if we have filled up the batch or if we are out of time, we insert
 		// what we have
-		if len(records) >= r.maxBatchSize || time.Now().After(timeToSubmit) {
-			r.insertWorkers.Acquire()
-			go r.insertRecords(records)
+		if len(records) >= b.maxBatchSize || time.Now().After(timeToSubmit) {
+			b.insertWorkers.Acquire()
+			go b.insertRecords(records)
 			// don't need to remake an array each time, just remove the values
 			records = records[:0]
 		}
@@ -38,20 +53,22 @@ func (r *RequestHandler) handleRecords() {
 	}
 
 	// Grab all the workers to make sure they are done.
-	for i := 0; i < r.maxInsertWorkers; i++ {
-		r.insertWorkers.Acquire()
+	for i := 0; i < b.maxInsertWorkers; i++ {
+		b.insertWorkers.Acquire()
 	}
 }
 
-func (r *RequestHandler) insertRecords(records []db.Record) {
-	defer r.insertWorkers.Release()
-	err := r.inserter.InsertRecords(records...)
+func (b *batchInserter) insertRecords(records []db.Record) {
+	defer b.insertWorkers.Release()
+	err := b.inserter.InsertRecords(records...)
 	if err != nil {
-		r.measures.DroppedEventsCount.With(reasonLabel, dbFailReason).Add(float64(len(records)))
-		logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
+		if b.measures != nil {
+			b.measures.DroppedEventsCount.With(reasonLabel, dbFailReason).Add(float64(len(records)))
+		}
+		logging.Error(b.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 			"Failed to add records to the database", logging.ErrorKey(), err.Error())
 		return
 	}
-	logging.Debug(r.logger).Log(logging.MessageKey(), "Successfully upserted device information", "records", records)
-	logging.Info(r.logger).Log(logging.MessageKey(), "Successfully upserted device information", "number of records", len(records))
+	logging.Debug(b.logger).Log(logging.MessageKey(), "Successfully upserted device information", "records", records)
+	logging.Info(b.logger).Log(logging.MessageKey(), "Successfully upserted device information", "number of records", len(records))
 }

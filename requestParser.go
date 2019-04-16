@@ -25,44 +25,38 @@ var (
 	errBlacklist         = errors.New("device is in blacklist")
 )
 
-type RequestHandler struct {
-	inserter         db.RetryInsertService
-	logger           log.Logger
-	encrypter        cipher.Encrypt
-	rules            []rule
-	metadataMaxSize  int
-	payloadMaxSize   int
-	defaultTTL       time.Duration
-	insertQueue      chan db.Record
-	maxParseWorkers  int
-	parseWorkers     semaphore.Interface
-	maxInsertWorkers int
-	insertWorkers    semaphore.Interface
-	maxBatchSize     int
-	maxBatchWaitTime time.Duration
-	wg               sync.WaitGroup
-	measures         *Measures
-	blacklist        blacklist.List
+type requestParser struct {
+	encrypter       cipher.Encrypt
+	blacklist       blacklist.List
+	rules           []rule
+	defaultTTL      time.Duration
+	metadataMaxSize int
+	payloadMaxSize  int
+	insertQueue     chan db.Record
+	maxParseWorkers int
+	parseWorkers    semaphore.Interface
+	wg              sync.WaitGroup
+	measures        *Measures
+	logger          log.Logger
 }
 
-func (r *RequestHandler) handleRequests(requestQueue chan wrp.Message) {
+func (r *requestParser) parseRequests(requestQueue chan wrp.Message) {
 	defer r.wg.Done()
 	for request := range requestQueue {
 		if r.measures != nil {
 			r.measures.ParsingQueue.Add(-1.0)
 		}
 		r.parseWorkers.Acquire()
-		go r.handleRequest(request)
+		go r.parseRequest(request)
 	}
 
 	// Grab all the workers to make sure they are done.
 	for i := 0; i < r.maxParseWorkers; i++ {
 		r.parseWorkers.Acquire()
 	}
-	close(r.insertQueue)
 }
 
-func (r *RequestHandler) handleRequest(request wrp.Message) {
+func (r *requestParser) parseRequest(request wrp.Message) {
 	defer r.parseWorkers.Release()
 
 	rule, err := findRule(r.rules, request.Destination)
@@ -80,12 +74,12 @@ func (r *RequestHandler) handleRequest(request wrp.Message) {
 	}
 
 	if r.measures != nil {
-		r.measures.InsertingQeue.Add(1.0)
+		r.measures.InsertingQueue.Add(1.0)
 	}
 	r.insertQueue <- record
 }
 
-func (r *RequestHandler) createRecord(req wrp.Message, rule rule, eventType db.EventType) (db.Record, string, error) {
+func (r *requestParser) createRecord(req wrp.Message, rule rule, eventType db.EventType) (db.Record, string, error) {
 	var (
 		err         error
 		emptyRecord db.Record
