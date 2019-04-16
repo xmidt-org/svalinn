@@ -1,3 +1,1 @@
- - Create timestamp if it doesn't exist in payload
- - If request for acquiring SAT for webhook registration receives a non 200, return an error
- - Bumped codex-common to v0.3.3
+
