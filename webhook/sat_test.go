@@ -35,11 +35,12 @@ func TestSatAcquireSuccess(t *testing.T) {
 	goodToken := "Bearer test token"
 
 	tests := []struct {
-		description   string
-		satToken      interface{}
-		satURL        string
-		expectedToken string
-		expectedErr   error
+		description        string
+		satToken           interface{}
+		satURL             string
+		returnUnauthorized bool
+		expectedToken      string
+		expectedErr        error
 	}{
 		{
 			description:   "Success",
@@ -53,6 +54,13 @@ func TestSatAcquireSuccess(t *testing.T) {
 			expectedToken: "",
 			satURL:        "/",
 			expectedErr:   errors.New("error acquiring SAT token"),
+		},
+		{
+			description:        "HTTP Unauthorized Error",
+			satToken:           goodSat,
+			returnUnauthorized: true,
+			expectedToken:      "",
+			expectedErr:        errors.New("received non 200 code"),
 		},
 		{
 			description:   "Unmarshal Error",
@@ -69,6 +77,10 @@ func TestSatAcquireSuccess(t *testing.T) {
 			// Start a local HTTP server
 			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 				// Send response to be tested
+				if tc.returnUnauthorized {
+					rw.WriteHeader(http.StatusUnauthorized)
+					return
+				}
 				marshaledSat, err := json.Marshal(tc.satToken)
 				assert.Nil(err)
 				rw.Write(marshaledSat)

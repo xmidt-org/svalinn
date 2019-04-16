@@ -54,6 +54,10 @@ func (s *SatAcquirer) Acquire() (string, error) {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("received non 200 code acquiring SAT: code %v", resp.Status)
+	}
+
 	respBody, errRead := ioutil.ReadAll(resp.Body)
 	if errRead != nil {
 
