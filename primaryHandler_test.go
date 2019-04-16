@@ -208,50 +208,6 @@ func TestCreateRecord(t *testing.T) {
 			expectedErr:    errUnexpectedWRPType,
 		},
 		{
-			description: "Unmarshal Payload Error",
-			req: wrp.Message{
-				Destination: "/device/",
-				Type:        wrp.SimpleEventMessageType,
-				Payload:     []byte("test"),
-			},
-			emptyRecord:    true,
-			expectedReason: parseFailReason,
-			expectedErr:    errors.New("failed to unmarshal payload"),
-		},
-		{
-			description: "Empty Payload String Error",
-			req: wrp.Message{
-				Destination: "/device/",
-				Type:        wrp.SimpleEventMessageType,
-				Payload:     []byte(``),
-			},
-			emptyRecord:    true,
-			expectedReason: parseFailReason,
-			expectedErr:    errTimestampString,
-		},
-		{
-			description: "Non-String Timestamp Error",
-			req: wrp.Message{
-				Destination: "/device/",
-				Type:        wrp.SimpleEventMessageType,
-				Payload:     []byte(`{"ts":5}`),
-			},
-			emptyRecord:    true,
-			expectedReason: parseFailReason,
-			expectedErr:    errTimestampString,
-		},
-		{
-			description: "Parse Timestamp Error",
-			req: wrp.Message{
-				Destination: "/device/",
-				Type:        wrp.SimpleEventMessageType,
-				Payload:     []byte(`{"ts":"2345"}`),
-			},
-			emptyRecord:    true,
-			expectedReason: parseFailReason,
-			expectedErr:    errors.New("failed to parse timestamp"),
-		},
-		{
 			description:    "Encrypt Error",
 			req:            goodEvent,
 			encryptErr:     errors.New("encrypt failed"),
@@ -299,6 +255,49 @@ func TestCreateRecord(t *testing.T) {
 			} else {
 				assert.Contains(err.Error(), tc.expectedErr.Error())
 			}
+		})
+	}
+}
+
+func TestGetBirthDate(t *testing.T) {
+	testassert := assert.New(t)
+	goodTime, err := time.Parse(time.RFC3339Nano, "2019-02-13T21:19:02.614191735Z")
+	testassert.Nil(err)
+	tests := []struct {
+		description   string
+		payload       []byte
+		expectedTime  time.Time
+		expectedFound bool
+	}{
+		{
+			description:   "Success",
+			payload:       goodEvent.Payload,
+			expectedTime:  goodTime,
+			expectedFound: true,
+		},
+		{
+			description: "Unmarshal Payload Error",
+			payload:     []byte("test"),
+		},
+		{
+			description: "Empty Payload String Error",
+			payload:     []byte(``),
+		},
+		{
+			description: "Non-String Timestamp Error",
+			payload:     []byte(`{"ts":5}`),
+		},
+		{
+			description: "Parse Timestamp Error",
+			payload:     []byte(`{"ts":"2345"}`),
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			assert := assert.New(t)
+			time, found := getBirthDate(tc.payload)
+			assert.Equal(time, tc.expectedTime)
+			assert.Equal(found, tc.expectedFound)
 		})
 	}
 }

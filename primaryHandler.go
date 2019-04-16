@@ -139,30 +139,17 @@ func (r *RequestHandler) createRecord(req wrp.Message, rule rule, eventType db.E
 	}
 
 	// get timestamp from wrp payload
-	payload := make(map[string]interface{})
-	if msg.Payload != nil && len(msg.Payload) > 0 {
-		err = json.Unmarshal(msg.Payload, &payload)
-		if err != nil {
-			return emptyRecord, parseFailReason, emperror.WrapWith(err, "failed to unmarshal payload", "full message", req, "payload", msg.Payload)
-		}
+	birthDate, ok := getBirthDate(msg.Payload)
+	if !ok {
+		birthDate = time.Now()
 	}
+	record.BirthDate = birthDate.Unix()
 
-	// determine ttl
+	// determine ttl for deathdate
 	ttl := r.defaultTTL
 	if rule.ttl != 0 {
 		ttl = rule.ttl
 	}
-
-	// parse the time from the payload
-	timeString, ok := payload["ts"].(string)
-	if !ok {
-		return emptyRecord, parseFailReason, emperror.WrapWith(errTimestampString, "failed to parse timestamp", "full message", req, "payload", payload)
-	}
-	birthDate, err := time.Parse(time.RFC3339Nano, timeString)
-	if err != nil {
-		return emptyRecord, parseFailReason, emperror.WrapWith(err, "failed to parse timestamp", "full message", req)
-	}
-	record.BirthDate = birthDate.Unix()
 	record.DeathDate = birthDate.Add(ttl).Unix()
 
 	// store the payload if we are supposed to and it's not too big
@@ -193,6 +180,28 @@ func (r *RequestHandler) createRecord(req wrp.Message, rule rule, eventType db.E
 	record.Nonce = nonce
 
 	return record, "", nil
+}
+
+func getBirthDate(payload []byte) (time.Time, bool) {
+	p := make(map[string]interface{})
+	if payload == nil || len(payload) == 0 {
+		return time.Time{}, false
+	}
+	err := json.Unmarshal(payload, &p)
+	if err != nil {
+		return time.Time{}, false
+	}
+
+	// parse the time from the payload
+	timeString, ok := p["ts"].(string)
+	if !ok {
+		return time.Time{}, false
+	}
+	birthDate, err := time.Parse(time.RFC3339Nano, timeString)
+	if err != nil {
+		return time.Time{}, false
+	}
+	return birthDate, true
 }
 
 func (r *RequestHandler) handleRecords() {
