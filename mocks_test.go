@@ -18,6 +18,7 @@
 package main
 
 import (
+	"github.com/Comcast/codex/cipher"
 	"net/http"
 
 	"github.com/stretchr/testify/mock"
@@ -48,6 +49,14 @@ type mockEncrypter struct {
 func (md *mockEncrypter) EncryptMessage(message []byte) ([]byte, []byte, error) {
 	args := md.Called(message)
 	return message, []byte{}, args.Error(0)
+}
+
+func (*mockEncrypter) GetAlgorithm() cipher.AlgorithmType {
+	return cipher.None
+}
+
+func (*mockEncrypter) GetKID() string {
+	return "none"
 }
 
 type mockBlacklist struct {

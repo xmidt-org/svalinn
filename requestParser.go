@@ -147,6 +147,8 @@ func (r *requestParser) createRecord(req wrp.Message, rule rule, eventType db.Ev
 	}
 	record.Data = encyptedData
 	record.Nonce = nonce
+	record.Alg = string(r.encrypter.GetAlgorithm())
+	record.KID = r.encrypter.GetKID()
 
 	return record, "", nil
 }
