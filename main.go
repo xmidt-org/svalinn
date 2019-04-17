@@ -62,7 +62,7 @@ import (
 const (
 	applicationName, apiBase = "svalinn", "/api/v1"
 	DEFAULT_KEY_ID           = "current"
-	applicationVersion       = "0.5.1"
+	applicationVersion       = "0.6.0"
 	defaultMaxBatchSize      = 10
 )
 
