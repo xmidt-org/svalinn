@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"github.com/Comcast/codex/cipher"
 	"strings"
 	"testing"
 	"time"
@@ -201,6 +202,8 @@ func TestCreateRecord(t *testing.T) {
 					DeathDate: goodTime.Add(time.Second).Unix(),
 					Data:      marshaledEvent,
 					Nonce:     []byte{},
+					Alg:       string(cipher.None),
+					KID:       "none",
 				}
 			}
 			rule := rule{
