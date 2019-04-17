@@ -73,10 +73,10 @@ func (r *requestParser) parseRequest(request wrp.Message) {
 		return
 	}
 
+	r.insertQueue <- record
 	if r.measures != nil {
 		r.measures.InsertingQueue.Add(1.0)
 	}
-	r.insertQueue <- record
 }
 
 func (r *requestParser) createRecord(req wrp.Message, rule rule, eventType db.EventType) (db.Record, string, error) {
