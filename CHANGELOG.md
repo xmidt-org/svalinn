@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [v0.6.1]
+- fixed cipher yaml loading
+
+
+
 ## [v0.6.0]
 - bumped codex to v0.4.0 for cipher upgrades
 
@@ -95,7 +100,8 @@ Bug Fix Caduceus config loading
 - Initial creation
 - Bumped codex version, modified code to match changes
 
-[Unreleased]: https://github.com/Comcast/codex-svalinn/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/Comcast/codex-svalinn/compare/v0.6.1...HEAD
+[v0.6.1]: https://github.com/Comcast/codex-svalinn/compare/v0.6.0...v0.6.1
 [v0.6.0]: https://github.com/Comcast/codex-svalinn/compare/v0.5.1...v0.6.0
 [v0.5.1]: https://github.com/Comcast/codex-svalinn/compare/v0.5.0...v0.5.1
 [v0.5.0]: https://github.com/Comcast/codex-svalinn/compare/v0.4.0...v0.5.0
