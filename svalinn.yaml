@@ -28,8 +28,8 @@ defaultTTL: 5s
 blacklistInterval: 1m
 
 cipher:
-  algorithm:
-    type: "noop"
+  - type: none
+    kid: none
 
 db:
   server: "db:26257"
