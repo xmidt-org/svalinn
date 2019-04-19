@@ -24,6 +24,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
+
+	"github.com/goph/emperror"
 )
 
 type SatAcquirer struct {
@@ -43,7 +45,10 @@ func (s *SatAcquirer) Acquire() (string, error) {
 	httpclient := &http.Client{
 		Timeout: s.Timeout,
 	}
-	req, _ := http.NewRequest("GET", s.SatURL, bytes.NewBuffer(jsonStr))
+	req, err := http.NewRequest("GET", s.SatURL, bytes.NewBuffer(jsonStr))
+	if err != nil {
+		return "", emperror.Wrap(err, "failed to create new request for SAT")
+	}
 	req.Header.Set("X-Client-Id", s.Client)
 	req.Header.Set("X-Client-Secret", s.Secret)
 
@@ -67,7 +72,7 @@ func (s *SatAcquirer) Acquire() (string, error) {
 	var sat SatToken
 
 	if errUnmarshal := json.Unmarshal(respBody, &sat); errUnmarshal != nil {
-		return "", fmt.Errorf("unable to read json in SAT response: [%s]", errUnmarshal.Error())
+		return "", emperror.Wrap(errUnmarshal, "unable to read json in SAT response")
 	}
 	return fmt.Sprintf("Bearer %s", sat.Token), nil
 }

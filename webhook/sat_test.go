@@ -49,6 +49,13 @@ func TestSatAcquireSuccess(t *testing.T) {
 			expectedErr:   nil,
 		},
 		{
+			description:   "HTTP Make Request Error",
+			satToken:      goodSat,
+			expectedToken: "",
+			satURL:        "/\b",
+			expectedErr:   errors.New("failed to create new request for SAT"),
+		},
+		{
 			description:   "HTTP Do Error",
 			satToken:      goodSat,
 			expectedToken: "",
