@@ -19,9 +19,10 @@ import (
 )
 
 var (
-	errEmptyID           = errors.New("Empty id is invalid")
-	errUnexpectedWRPType = errors.New("Unexpected wrp message type")
+	errEmptyID           = errors.New("empty id is invalid")
+	errUnexpectedWRPType = errors.New("unexpected wrp message type")
 	errTimestampString   = errors.New("timestamp couldn't be found and converted to string")
+	errFutureBirthdate   = errors.New("birthdate is too far in the future")
 	errBlacklist         = errors.New("device is in blacklist")
 )
 
@@ -151,6 +152,10 @@ func (r *requestParser) createRecord(req wrp.Message, rule rule, eventType db.Ev
 		birthDate = time.Now()
 	}
 	record.BirthDate = birthDate.Unix()
+
+	if birthDate.After(time.Now().Add(time.Hour)) {
+		return emptyRecord, invalidBirthdateReason, emperror.WrapWith(errFutureBirthdate, "invalid birthdate", "birthdate", birthDate.String())
+	}
 
 	// determine ttl for deathdate
 	ttl := r.defaultTTL

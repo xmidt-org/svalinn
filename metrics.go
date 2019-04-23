@@ -35,7 +35,7 @@ const (
 	parseFailReason        = "parsing failed"
 	marshalFailReason      = "marshaling failed"
 	encryptFailReason      = "encryption failed"
-	invalidBirthdateReason = "invalid birthdate"
+	invalidBirthdateReason = "birthdate too far in the future"
 	dbFailReason           = "database request failed"
 )
 
