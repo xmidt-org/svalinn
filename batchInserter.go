@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"sync"
 	"time"
 
@@ -11,9 +12,15 @@ import (
 	"github.com/goph/emperror"
 )
 
+const (
+	minMaxInsertWorkers = 5
+	minMaxBatchSize     = 1
+	minMaxBatchWaitTime = time.Duration(0) * time.Second
+)
+
 type batchInserter struct {
 	insertQueue      chan db.Record
-	inserter         db.RetryInsertService
+	inserter         db.Inserter
 	maxInsertWorkers int
 	insertWorkers    semaphore.Interface
 	maxBatchSize     int
@@ -21,6 +28,31 @@ type batchInserter struct {
 	wg               sync.WaitGroup
 	measures         *Measures
 	logger           log.Logger
+}
+
+func (b *batchInserter) validateAndStartInserter() error {
+	if b.insertQueue == nil {
+		return errors.New("no insert queue")
+	}
+	if b.inserter == nil {
+		return errors.New("invalid inserter")
+	}
+	if b.maxInsertWorkers < minMaxInsertWorkers {
+		b.maxInsertWorkers = minMaxInsertWorkers
+	}
+	if b.insertWorkers == nil {
+		return errors.New("no insert worker semaphore")
+	}
+	if b.maxBatchSize < minMaxBatchSize {
+		b.maxBatchSize = minMaxBatchSize
+	}
+	if b.maxBatchWaitTime < minMaxBatchWaitTime {
+		b.maxBatchWaitTime = minMaxBatchWaitTime
+	}
+
+	b.wg.Add(1)
+	go b.batchRecords()
+	return nil
 }
 
 func (b *batchInserter) batchRecords() {
