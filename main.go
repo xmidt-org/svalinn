@@ -27,8 +27,6 @@ import (
 
 	"github.com/Comcast/codex/cipher"
 
-	"github.com/Comcast/webpa-common/semaphore"
-
 	"github.com/go-kit/kit/log"
 
 	"github.com/Comcast/codex/db"
@@ -60,10 +58,11 @@ import (
 )
 
 const (
-	applicationName, apiBase = "svalinn", "/api/v1"
-	DEFAULT_KEY_ID           = "current"
-	applicationVersion       = "0.6.1"
-	defaultMaxBatchSize      = 10
+	applicationName, apiBase  = "svalinn", "/api/v1"
+	DEFAULT_KEY_ID            = "current"
+	applicationVersion        = "0.6.1"
+	defaultMinParseQueueSize  = 5
+	defaultMinInsertQueueSize = 5
 )
 
 type SvalinnConfig struct {
@@ -131,6 +130,13 @@ func svalinn(arguments []string) int {
 
 	config := new(SvalinnConfig)
 	v.Unmarshal(config)
+
+	if config.ParseQueueSize < defaultMinParseQueueSize {
+		config.ParseQueueSize = defaultMinParseQueueSize
+	}
+	if config.InsertQueueSize < defaultMinInsertQueueSize {
+		config.InsertQueueSize = defaultMinInsertQueueSize
+	}
 
 	requestQueue := make(chan wrp.Message, config.ParseQueueSize)
 	insertQueue := make(chan db.Record, config.InsertQueueSize)
@@ -201,11 +207,7 @@ func svalinn(arguments []string) int {
 	// TODO: Fix Caduces acutal register
 	router.Handle(apiBase+config.Endpoint, svalinnHandler.ThenFunc(app.handleWebhook))
 
-	inserter := db.CreateRetryInsertService(dbConn, config.InsertRetries, config.RetryInterval, metricsRegistry)
-
-	if config.MaxBatchSize < 1 {
-		config.MaxBatchSize = defaultMaxBatchSize
-	}
+	inserter := db.CreateRetryInsertService(dbConn, db.WithRetries(config.InsertRetries), db.WithInterval(config.RetryInterval), db.WithMeasures(metricsRegistry))
 
 	stopUpdateBlackList := make(chan struct{}, 1)
 	blacklistConfig := blacklist.RefresherConfig{
@@ -220,9 +222,9 @@ func svalinn(arguments []string) int {
 		payloadMaxSize:  config.PayloadMaxSize,
 		metadataMaxSize: config.MetadataMaxSize,
 		defaultTTL:      config.DefaultTTL,
+		requestQueue:    requestQueue,
 		insertQueue:     insertQueue,
 		maxParseWorkers: config.MaxParseWorkers,
-		parseWorkers:    semaphore.New(config.MaxParseWorkers),
 		measures:        measures,
 		logger:          logger,
 	}
@@ -231,15 +233,24 @@ func svalinn(arguments []string) int {
 		logger:           logger,
 		insertQueue:      insertQueue,
 		maxInsertWorkers: config.MaxInsertWorkers,
-		insertWorkers:    semaphore.New(config.MaxInsertWorkers),
 		maxBatchSize:     config.MaxBatchSize,
 		maxBatchWaitTime: config.MaxBatchWaitTime,
 		measures:         measures,
 	}
-	requestParser.wg.Add(1)
-	go requestParser.parseRequests(requestQueue)
-	batchInserter.wg.Add(1)
-	go batchInserter.batchRecords()
+	err = requestParser.validateAndStartParser()
+	if err != nil {
+		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to validate and start parser",
+			logging.ErrorKey(), err.Error())
+		fmt.Fprintf(os.Stderr, "Validating and starting parser failed: %#v\n", err)
+		return 2
+	}
+	err = batchInserter.validateAndStartInserter()
+	if err != nil {
+		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to validate and start inserter",
+			logging.ErrorKey(), err.Error())
+		fmt.Fprintf(os.Stderr, "Validating and starting inserter failed: %#v\n", err)
+		return 2
+	}
 
 	if config.Health.Endpoint != "" && config.Health.Port != "" {
 		err = serverHealth.Start()

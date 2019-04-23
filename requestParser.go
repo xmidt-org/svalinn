@@ -25,6 +25,11 @@ var (
 	errBlacklist         = errors.New("device is in blacklist")
 )
 
+const (
+	defaultTTL         = time.Duration(5) * time.Minute
+	minMaxParseWorkers = 5
+)
+
 type requestParser struct {
 	encrypter       cipher.Encrypt
 	blacklist       blacklist.List
@@ -32,6 +37,7 @@ type requestParser struct {
 	defaultTTL      time.Duration
 	metadataMaxSize int
 	payloadMaxSize  int
+	requestQueue    chan wrp.Message
 	insertQueue     chan db.Record
 	maxParseWorkers int
 	parseWorkers    semaphore.Interface
@@ -40,9 +46,41 @@ type requestParser struct {
 	logger          log.Logger
 }
 
-func (r *requestParser) parseRequests(requestQueue chan wrp.Message) {
+// make sure the
+func (r *requestParser) validateAndStartParser() error {
+	if r.encrypter == nil {
+		return errors.New("invalid encrypter")
+	}
+	if r.blacklist == nil {
+		return errors.New("invalid blacklist")
+	}
+	if r.defaultTTL == 0 {
+		r.defaultTTL = defaultTTL
+	}
+	if r.metadataMaxSize < 0 {
+		r.metadataMaxSize = 0
+	}
+	if r.payloadMaxSize < 0 {
+		r.payloadMaxSize = 0
+	}
+	if r.requestQueue == nil {
+		return errors.New("no request queue")
+	}
+	if r.insertQueue == nil {
+		return errors.New("no insert queue")
+	}
+	if r.maxParseWorkers < minMaxParseWorkers {
+		r.maxParseWorkers = minMaxParseWorkers
+	}
+	r.wg.Add(1)
+	go r.parseRequests()
+	return nil
+}
+
+func (r *requestParser) parseRequests() {
 	defer r.wg.Done()
-	for request := range requestQueue {
+	r.parseWorkers = semaphore.New(r.maxParseWorkers)
+	for request := range r.requestQueue {
 		if r.measures != nil {
 			r.measures.ParsingQueue.Add(-1.0)
 		}
