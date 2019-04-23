@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/json"
+	"bytes"
 	"errors"
 	"github.com/Comcast/codex/cipher"
 	"strings"
@@ -11,8 +11,8 @@ import (
 	"github.com/Comcast/codex/db"
 	"github.com/Comcast/webpa-common/logging"
 	"github.com/Comcast/webpa-common/semaphore"
-	"github.com/Comcast/webpa-common/wrp"
 	"github.com/Comcast/webpa-common/xmetrics/xmetricstest"
+	"github.com/Comcast/wrp-go/wrp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -191,7 +191,9 @@ func TestCreateRecord(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
-			marshaledEvent, err := json.Marshal(tc.expectedEvent)
+			var buffer bytes.Buffer
+			wrpEncoder := wrp.NewEncoder(&buffer, wrp.Msgpack)
+			err := wrpEncoder.Encode(&tc.expectedEvent)
 			assert.Nil(err)
 			var expectedRecord db.Record
 			if !tc.emptyRecord {
@@ -200,7 +202,7 @@ func TestCreateRecord(t *testing.T) {
 					DeviceID:  tc.expectedDeviceID,
 					BirthDate: goodTime.Unix(),
 					DeathDate: goodTime.Add(time.Second).Unix(),
-					Data:      marshaledEvent,
+					Data:      buffer.Bytes(),
 					Nonce:     []byte{},
 					Alg:       string(cipher.None),
 					KID:       "none",

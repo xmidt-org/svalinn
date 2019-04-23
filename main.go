@@ -50,7 +50,7 @@ import (
 	"github.com/Comcast/webpa-common/bookkeeping"
 	"github.com/Comcast/webpa-common/logging/logginghttp"
 	"github.com/Comcast/webpa-common/server"
-	"github.com/Comcast/webpa-common/wrp"
+	"github.com/Comcast/wrp-go/wrp"
 	"github.com/Comcast/webpa-common/xhttp/xcontext"
 
 	"github.com/InVisionApp/go-health"
