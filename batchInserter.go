@@ -40,9 +40,6 @@ func (b *batchInserter) validateAndStartInserter() error {
 	if b.maxInsertWorkers < minMaxInsertWorkers {
 		b.maxInsertWorkers = minMaxInsertWorkers
 	}
-	if b.insertWorkers == nil {
-		return errors.New("no insert worker semaphore")
-	}
 	if b.maxBatchSize < minMaxBatchSize {
 		b.maxBatchSize = minMaxBatchSize
 	}
@@ -61,6 +58,7 @@ func (b *batchInserter) batchRecords() {
 		timeToSubmit time.Time
 	)
 	defer b.wg.Done()
+	b.insertWorkers = semaphore.New(b.maxInsertWorkers)
 	for record := range b.insertQueue {
 		// if we don't have any records, then this is our first and started
 		// the timer until submitting

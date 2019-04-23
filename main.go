@@ -27,8 +27,6 @@ import (
 
 	"github.com/Comcast/codex/cipher"
 
-	"github.com/Comcast/webpa-common/semaphore"
-
 	"github.com/go-kit/kit/log"
 
 	"github.com/Comcast/codex/db"
@@ -235,7 +233,6 @@ func svalinn(arguments []string) int {
 		logger:           logger,
 		insertQueue:      insertQueue,
 		maxInsertWorkers: config.MaxInsertWorkers,
-		insertWorkers:    semaphore.New(config.MaxInsertWorkers),
 		maxBatchSize:     config.MaxBatchSize,
 		maxBatchWaitTime: config.MaxBatchWaitTime,
 		measures:         measures,
