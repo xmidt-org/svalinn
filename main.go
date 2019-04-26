@@ -60,7 +60,7 @@ import (
 const (
 	applicationName, apiBase  = "svalinn", "/api/v1"
 	DEFAULT_KEY_ID            = "current"
-	applicationVersion        = "0.6.1"
+	applicationVersion        = "0.7.0"
 	defaultMinParseQueueSize  = 5
 	defaultMinInsertQueueSize = 5
 )
