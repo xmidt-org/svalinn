@@ -1,7 +1,1 @@
- - Stopped building other services for integ tests
- - Added error check for making the request for getting the SAT
- - Added config defaults
- - If the birthdate is too far in the future, drop the event
- - Bumped `codex` and `bascule`
- - Added `wrp-go`
- - Store the wrp message as Msgpack
+
