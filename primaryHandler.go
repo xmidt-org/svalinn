@@ -26,7 +26,7 @@ import (
 	"strings"
 
 	"github.com/Comcast/webpa-common/logging"
-	"github.com/Comcast/webpa-common/wrp"
+	"github.com/Comcast/wrp-go/wrp"
 	"github.com/go-kit/kit/log"
 )
 
@@ -71,7 +71,6 @@ func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// TODO: Update WRP library
 	err = wrp.NewDecoderBytes(msgBytes, wrp.Msgpack).Decode(&message)
 	if err != nil {
 		logging.Error(app.logger).Log(logging.MessageKey(), "Could not decode request body", logging.ErrorKey(), err.Error())

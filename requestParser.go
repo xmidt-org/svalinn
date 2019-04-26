@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"path"
@@ -13,7 +14,7 @@ import (
 	"github.com/Comcast/codex/db"
 	"github.com/Comcast/webpa-common/logging"
 	"github.com/Comcast/webpa-common/semaphore"
-	"github.com/Comcast/webpa-common/wrp"
+	"github.com/Comcast/wrp-go/wrp"
 	"github.com/go-kit/kit/log"
 	"github.com/goph/emperror"
 )
@@ -179,12 +180,14 @@ func (r *requestParser) createRecord(req wrp.Message, rule rule, eventType db.Ev
 		msg.Metadata["error"] = "metadata provided exceeds size limit - too big to store"
 	}
 
-	marshalledEvent, err := json.Marshal(msg)
+	var buffer bytes.Buffer
+	msgEncoder := wrp.NewEncoder(&buffer, wrp.Msgpack)
+	err = msgEncoder.Encode(&msg)
 	if err != nil {
 		return emptyRecord, marshalFailReason, emperror.WrapWith(err, "failed to marshal event", "full message", req)
 	}
 
-	encyptedData, nonce, err := r.encrypter.EncryptMessage(marshalledEvent)
+	encyptedData, nonce, err := r.encrypter.EncryptMessage(buffer.Bytes())
 	if err != nil {
 		return emptyRecord, encryptFailReason, emperror.WrapWith(err, "failed to encrypt message")
 	}
