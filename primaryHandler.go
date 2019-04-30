@@ -41,6 +41,7 @@ type App struct {
 func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
 	var message wrp.Message
 	msgBytes, err := ioutil.ReadAll(req.Body)
+	req.Body.Close()
 	if err != nil {
 		logging.Error(app.logger).Log(logging.MessageKey(), "Could not read request body", logging.ErrorKey(), err.Error())
 		writer.WriteHeader(http.StatusBadRequest)
