@@ -3,7 +3,7 @@ module github.com/Comcast/codex-svalinn
 go 1.12
 
 require (
-	github.com/Comcast/codex v0.4.2
+	github.com/Comcast/codex v0.4.3-0.20190501235205-77020a90c851
 	github.com/Comcast/webpa-common v1.0.0
 	github.com/Comcast/wrp-go v1.0.1-0.20190425181536-16cc54c2efd1
 	github.com/InVisionApp/go-health v2.1.0+incompatible
