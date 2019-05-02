@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [v0.7.2+alpha.3]
+- builder failed, ignore me
+
+
+
 ## [v0.7.2+alpha.2]
 - Added abitlity to turn off max batch size
 
@@ -126,7 +131,8 @@ Bug Fix Caduceus config loading
 - Initial creation
 - Bumped codex version, modified code to match changes
 
-[Unreleased]: https://github.com/Comcast/codex-svalinn/compare/v0.7.2+alpha.2...HEAD
+[Unreleased]: https://github.com/Comcast/codex-svalinn/compare/v0.7.2+alpha.3...HEAD
+[v0.7.2+alpha.3]: https://github.com/Comcast/codex-svalinn/compare/v0.7.2+alpha.2...v0.7.2+alpha.3
 [v0.7.2+alpha.2]: https://github.com/Comcast/codex-svalinn/compare/v0.7.2+alpha.1...v0.7.2+alpha.2
 [v0.7.2+alpha.1]: https://github.com/Comcast/codex-svalinn/compare/v0.7.1...v0.7.2+alpha.1
 [v0.7.1]: https://github.com/Comcast/codex-svalinn/compare/v0.7.0...v0.7.1
