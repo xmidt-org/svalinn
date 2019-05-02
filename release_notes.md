@@ -1,1 +1,1 @@
-
+- Added abitlity to turn off max batch size
