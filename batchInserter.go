@@ -102,5 +102,5 @@ func (b *batchInserter) insertRecords(records []db.Record) {
 		return
 	}
 	logging.Debug(b.logger).Log(logging.MessageKey(), "Successfully upserted device information", "records", records)
-	logging.Info(b.logger).Log(logging.MessageKey(), "Successfully upserted device information", "number of records", len(records))
+	logging.Info(b.logger).Log(logging.MessageKey(), "Successfully upserted device information", "records", len(records))
 }
