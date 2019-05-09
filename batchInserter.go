@@ -13,9 +13,11 @@ import (
 )
 
 const (
-	minMaxInsertWorkers = 5
-	minMaxBatchSize     = 1
-	minMaxBatchWaitTime = time.Duration(0) * time.Second
+	minMaxInsertWorkers     = 1
+	defaultMaxInsertWorkers = 5
+	minMaxBatchSize         = 0
+	defaultMaxBatchSize     = 1
+	minMaxBatchWaitTime     = time.Duration(0) * time.Second
 )
 
 type batchInserter struct {
@@ -38,10 +40,10 @@ func (b *batchInserter) validateAndStartInserter() error {
 		return errors.New("invalid inserter")
 	}
 	if b.maxInsertWorkers < minMaxInsertWorkers {
-		b.maxInsertWorkers = minMaxInsertWorkers
+		b.maxInsertWorkers = defaultMaxInsertWorkers
 	}
 	if b.maxBatchSize < minMaxBatchSize {
-		b.maxBatchSize = minMaxBatchSize
+		b.maxBatchSize = defaultMaxBatchSize
 	}
 	if b.maxBatchWaitTime < minMaxBatchWaitTime {
 		b.maxBatchWaitTime = minMaxBatchWaitTime
@@ -73,7 +75,7 @@ func (b *batchInserter) batchRecords() {
 
 		// if we have filled up the batch or if we are out of time, we insert
 		// what we have
-		if len(records) >= b.maxBatchSize || time.Now().After(timeToSubmit) {
+		if (b.maxBatchSize != 0 && len(records) >= b.maxBatchSize) || time.Now().After(timeToSubmit) {
 			b.insertWorkers.Acquire()
 			go b.insertRecords(records)
 			// don't need to remake an array each time, just remove the values
