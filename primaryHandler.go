@@ -79,7 +79,7 @@ func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	logging.Debug(app.logger).Log(logging.MessageKey(), "message info", "message type", message.Type, "full", message)
+	logging.Debug(app.logger).Log(logging.MessageKey(), "message info", "messageType", message.Type, "fullMsg", message)
 	app.requestQueue <- message
 	if app.measures != nil {
 		app.measures.ParsingQueue.Add(1.0)
