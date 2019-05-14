@@ -1,2 +1,3 @@
-- update codex to v0.5.0
-- return 429 status code on full queue
+- Added ability to turn off max batch size
+- Bumped codex to v0.5.0
+- Return 429 status code on full queue
