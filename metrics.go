@@ -37,6 +37,7 @@ const (
 	encryptFailReason      = "encryption failed"
 	invalidBirthdateReason = "birthdate too far in the future"
 	dbFailReason           = "database request failed"
+	queueFullReason        = "queue full"
 )
 
 func Metrics() []xmetrics.Metric {

@@ -133,3 +133,41 @@ func TestHandleWebhook(t *testing.T) {
 		})
 	}
 }
+
+func TestFullQueue(t *testing.T) {
+	assert := assert.New(t)
+
+	secret := "abcdefgh"
+	goodMsg := wrp.Message{
+		Type:        wrp.SimpleEventMessageType,
+		Source:      "test",
+		Destination: "test",
+	}
+
+	queue := make(chan wrp.Message, 0)
+	mockSecretGetter := new(mockSecretGetter)
+	mockSecretGetter.On("GetSecret").Return(secret, nil).Once()
+
+	app := &App{
+		requestQueue: queue,
+		secretGetter: mockSecretGetter,
+		logger:       logging.DefaultLogger(),
+	}
+	rr := httptest.NewRecorder()
+	var marshaledMsg []byte
+	var err error
+
+	err = wrp.NewEncoderBytes(&marshaledMsg, wrp.Msgpack).Encode(goodMsg)
+	assert.Nil(err)
+	assert.NotNil(marshaledMsg)
+
+	request, err := http.NewRequest(http.MethodGet, "/", bytes.NewReader(marshaledMsg))
+	h := hmac.New(sha1.New, []byte(secret))
+	h.Write(marshaledMsg)
+	sig := fmt.Sprintf("sha1=%s", hex.EncodeToString(h.Sum(nil)))
+	request.Header.Set("X-Webpa-Signature", sig)
+
+	app.handleWebhook(rr, request)
+	mockSecretGetter.AssertExpectations(t)
+	assert.Equal(http.StatusTooManyRequests, rr.Code)
+}

@@ -80,9 +80,17 @@ func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
 	}
 
 	logging.Debug(app.logger).Log(logging.MessageKey(), "message info", "messageType", message.Type, "fullMsg", message)
-	app.requestQueue <- message
-	if app.measures != nil {
-		app.measures.ParsingQueue.Add(1.0)
+	select {
+	case app.requestQueue <- message:
+		if app.measures != nil {
+			app.measures.ParsingQueue.Add(1.0)
+		}
+		writer.WriteHeader(http.StatusAccepted)
+	default:
+		if app.measures != nil {
+			app.measures.DroppedEventsCount.With(reasonLabel, queueFullReason).Add(1.0)
+		}
+		logging.Warn(app.logger).Log(logging.MessageKey(), "Queue Full")
+		writer.WriteHeader(http.StatusTooManyRequests)
 	}
-	writer.WriteHeader(http.StatusAccepted)
 }
