@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [v0.8.0]
+- Added ability to turn off max batch size
+- Bumped codex to v0.5.0
+- Return 429 status code on full queue
+
+
+
 ## [v0.7.1]
  - close request body after reading it
 
@@ -116,7 +123,8 @@ Bug Fix Caduceus config loading
 - Initial creation
 - Bumped codex version, modified code to match changes
 
-[Unreleased]: https://github.com/Comcast/codex-svalinn/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/Comcast/codex-svalinn/compare/v0.8.0...HEAD
+[v0.8.0]: https://github.com/Comcast/codex-svalinn/compare/v0.7.1...v0.8.0
 [v0.7.1]: https://github.com/Comcast/codex-svalinn/compare/v0.7.0...v0.7.1
 [v0.7.0]: https://github.com/Comcast/codex-svalinn/compare/v0.6.1...v0.7.0
 [v0.6.1]: https://github.com/Comcast/codex-svalinn/compare/v0.6.0...v0.6.1
