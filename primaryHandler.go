@@ -93,5 +93,4 @@ func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
 		logging.Warn(app.logger).Log(logging.MessageKey(), "Queue Full")
 		writer.WriteHeader(http.StatusTooManyRequests)
 	}
-
 }
