@@ -84,13 +84,6 @@ func TestHandleWebhook(t *testing.T) {
 			expectedHeader:     http.StatusForbidden,
 			expectedMsgOnQueue: goodMsg,
 		},
-		{
-			description:        "Full Queue",
-			requestBody:        goodMsg,
-			getSecretCalled:    true,
-			expectedHeader:     http.StatusTooManyRequests,
-			expectedMsgOnQueue: goodMsg,
-		},
 	}
 
 	for _, tc := range tests {
