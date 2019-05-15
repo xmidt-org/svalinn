@@ -13,7 +13,7 @@ go-mod-vendor:
 
 .PHONY: build
 build: go-mod-vendor
-	$(GO) build
+	$(GO) build -o svalinn
 
 rpm:
 	mkdir -p ./OPATH/SOURCES

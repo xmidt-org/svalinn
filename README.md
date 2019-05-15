@@ -151,7 +151,7 @@ version 1.11 or greater. Find more information on the [Go website](https://golan
 
 You can directly use `go get` to put the Svalinn binary into your `GOPATH`:
 ```bash
-go get github.com/Comcast/codex-svalinn
+GO111MODULE=on go get github.com/Comcast/codex-svalinn
 ```
 
 You can also clone the repository yourself and build using make:
