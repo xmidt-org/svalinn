@@ -161,7 +161,7 @@ mkdir -p $GOPATH/src/github.com/Comcast
 cd $GOPATH/src/github.com/Comcast
 git clone git@github.com:Comcast/codex-svalinn.git
 cd codex-svalinn
-make build -o svalinn
+make build
 ```
 
 ### Makefile
