@@ -126,13 +126,20 @@ func (r *requestParser) createRecord(req wrp.Message, rule rule, eventType db.Ev
 		record      = db.Record{Type: eventType}
 	)
 
-	// get state and id from dest
-	base, _ := path.Split(req.Destination)
-	base, deviceId := path.Split(path.Base(base))
-	if deviceId == "" {
-		return emptyRecord, parseFailReason, emperror.WrapWith(errEmptyID, "id check failed", "request destination", req.Destination, "full message", req)
+	if eventType == db.State {
+		// get state and id from dest if this is a state event
+		base, _ := path.Split(req.Destination)
+		base, deviceId := path.Split(path.Base(base))
+		if deviceId == "" {
+			return emptyRecord, parseFailReason, emperror.WrapWith(errEmptyID, "id check failed", "request destination", req.Destination, "full message", req)
+		}
+		record.DeviceID = strings.ToLower(deviceId)
+	} else {
+		if req.Source == "" {
+			return emptyRecord, parseFailReason, emperror.WrapWith(errEmptyID, "id check failed", "request Source", req.Source, "full message", req)
+		}
+		record.DeviceID = strings.ToLower(req.Source)
 	}
-	record.DeviceID = strings.ToLower(deviceId)
 
 	if reason, ok := r.blacklist.InList(record.DeviceID); ok {
 		return emptyRecord, blackListReason, emperror.With(errBlacklist, "reason", reason)

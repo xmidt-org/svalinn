@@ -330,16 +330,22 @@ blacklistInterval: 1m
 # live in the database (ruleTTL).  If no rules are provided, the payload isn't 
 # stored, the event type is the default, and the record's TTL is the defaultTTL. 
 # Svalinn uses the first rule whose regex matches an event's destination.
+#
+# The eventType indicates where to find the device id in the event.  If the 
+# event type is "State", the device id is parsed out of the event Destination.
+# Otherwise, the event Source is used as the device id.
+# eventType options: "State", "Default" 
+#
 # (Optional)
 regexRules:
   - regex: ".*/online$"
     storePayload: true
     ruleTTL: 30s
-    eventType: "state"
+    eventType: "State"
   - regex: ".*/offline$"
     storePayload: true
     ruleTTL: 30s
-    eventType: "state"
+    eventType: "State"
 
 
 ########################################
