@@ -3,10 +3,11 @@ package main
 import (
 	"bytes"
 	"errors"
-	"github.com/Comcast/codex/cipher"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Comcast/codex/cipher"
 
 	"github.com/Comcast/codex/db"
 	"github.com/Comcast/webpa-common/logging"
@@ -102,6 +103,8 @@ func TestCreateRecord(t *testing.T) {
 		description      string
 		req              wrp.Message
 		storePayload     bool
+		eventType        db.EventType
+		inBlacklist      bool
 		maxPayloadSize   int
 		maxMetadataSize  int
 		encryptErr       error
@@ -117,6 +120,7 @@ func TestCreateRecord(t *testing.T) {
 			expectedDeviceID: "test",
 			expectedEvent:    goodEvent,
 			storePayload:     true,
+			eventType:        db.State,
 			maxMetadataSize:  500,
 			maxPayloadSize:   500,
 		},
@@ -141,6 +145,7 @@ func TestCreateRecord(t *testing.T) {
 				Payload:         goodEvent.Payload,
 				Metadata:        goodEvent.Metadata,
 			},
+			eventType:       db.State,
 			storePayload:    true,
 			maxMetadataSize: 500,
 			maxPayloadSize:  500,
@@ -158,15 +163,34 @@ func TestCreateRecord(t *testing.T) {
 				Payload:         nil,
 				Metadata:        map[string]string{"error": "metadata provided exceeds size limit - too big to store"},
 			},
+			eventType: db.State,
 		},
 		{
-			description: "Empty ID Error",
+			description: "Empty Dest ID Error",
 			req: wrp.Message{
 				Destination: "//",
 			},
+			eventType:      db.State,
 			emptyRecord:    true,
 			expectedReason: parseFailReason,
 			expectedErr:    errEmptyID,
+		},
+		{
+			description:    "Empty Source ID Error",
+			req:            wrp.Message{},
+			emptyRecord:    true,
+			expectedReason: parseFailReason,
+			expectedErr:    errEmptyID,
+		},
+		{
+			description: "Blacklist Error",
+			req: wrp.Message{
+				Source: " ",
+			},
+			emptyRecord:    true,
+			inBlacklist:    true,
+			expectedReason: blackListReason,
+			expectedErr:    errBlacklist,
 		},
 		{
 			description: "Unexpected WRP Type Error",
@@ -174,6 +198,7 @@ func TestCreateRecord(t *testing.T) {
 				Destination: "/device/",
 				Type:        5,
 			},
+			eventType:      db.State,
 			emptyRecord:    true,
 			expectedReason: parseFailReason,
 			expectedErr:    errUnexpectedWRPType,
@@ -198,7 +223,7 @@ func TestCreateRecord(t *testing.T) {
 			var expectedRecord db.Record
 			if !tc.emptyRecord {
 				expectedRecord = db.Record{
-					Type:      0,
+					Type:      tc.eventType,
 					DeviceID:  tc.expectedDeviceID,
 					BirthDate: goodTime.Unix(),
 					DeathDate: goodTime.Add(time.Second).Unix(),
@@ -215,14 +240,14 @@ func TestCreateRecord(t *testing.T) {
 			encrypter := new(mockEncrypter)
 			encrypter.On("EncryptMessage", mock.Anything).Return(tc.encryptErr)
 			mblacklist := new(mockBlacklist)
-			mblacklist.On("InList", mock.Anything).Return("", false).Once()
+			mblacklist.On("InList", mock.Anything).Return("", tc.inBlacklist).Once()
 			handler := requestParser{
 				encrypter:       encrypter,
 				payloadMaxSize:  tc.maxPayloadSize,
 				metadataMaxSize: tc.maxMetadataSize,
 				blacklist:       mblacklist,
 			}
-			record, reason, err := handler.createRecord(tc.req, rule, 0)
+			record, reason, err := handler.createRecord(tc.req, rule, tc.eventType)
 			assert.Equal(expectedRecord, record)
 			assert.Equal(tc.expectedReason, reason)
 			if tc.expectedErr == nil || err == nil {
