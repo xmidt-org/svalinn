@@ -141,48 +141,6 @@ log:
   json: true
 
 ########################################
-#   Authorization Related Configuration
-########################################
-
-# Any combination of these configurations may be used for authorization.
-# If ANY match, the request goes onwards.  If none are provided, no requests 
-# will be accepted.
-
-# authHeader provides the list of basic auth headers that svalinn will accept
-# as authorization
-# (Optional)
-authHeader: ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx=","dXNlcjpwYXNzCg=="]
-
-# jwtValidator provides the details about where to get the keys for JWT
-# kid values and their associated information (expiration, etc) for JWTs
-# used as authorization
-# (Optional)
-jwtValidator:
-  keys:
-    factory:
-      uri: "https://jwt.example.com/keys/{keyId}"
-    purpose: 0
-    updateInterval: 604800000000000
-
-# capabilityConfig provides the details needed for checking an incoming JWT's
-# capabilities.  If this isn't provided, no checking is done.  The capability 
-# is expected to have the format:
-#
-# {firstPiece}:{secondPiece}:{thirdPiece}:{endpoint}:{method}
-#
-# The first three pieces have a single expectation given in this configuration.
-# The endpoint is a regular expression that should match the endpoint the 
-# request was sent to. The method is usually the method of the request, such as 
-# GET.  The accept all method is a catchall string that indicates the capability 
-# is approved for all methods.
-# (Optional)
-capabilityConfig:
-  firstPiece: "p1"
-  secondPiece: "p2"
-  thirdPiece: "p3"
-  acceptAllMethod: "all"
-
-########################################
 #   Database Related Configuration
 ########################################
 
@@ -296,28 +254,28 @@ maxBatchWaitTime: 10ms
 # the first cipher on the list that loads successfully.
 cipher:
   - 
-    # type is the type of decryption.
-    type: none
-
-    # kid is the a further identifier for what kind of decryption should be used.
-    kid: none
-
-  - 
-    # type is the type of decryption.
+    # type is the type of encryption.
     type: rsa-sym
 
-    # kid is a further identifier for what kind of decryption should be used.
+    # kid is a further identifier for what kind of encryption should be used.
     kid: "basic-sha"
 
-    # params are further information for a type of decryption.
+    # params are further information for a type of encryption.
     # (Optional)
     params:
       hash: SHA512
     
-    # keys are the keys to use for this form of decryption.
+    # keys are the keys to use for this form of encryption.
     # (Optional)
     keys:
-      privateKey: "/etc/gungnir/private.pem"
+      publicKey: "/etc/svalinn/public.pem"
+
+  - 
+    # type is the type of encryption.
+    type: none
+
+    # kid is the a further identifier for what kind of encryption should be used.
+    kid: none
 
 ########################################
 #   Event Parsing Related Configuration
