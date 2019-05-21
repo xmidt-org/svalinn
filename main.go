@@ -47,12 +47,7 @@ import (
 	"os/signal"
 	"time"
 
-	gokithttp "github.com/go-kit/kit/transport/http"
-
-	"github.com/Comcast/webpa-common/bookkeeping"
-	"github.com/Comcast/webpa-common/logging/logginghttp"
 	"github.com/Comcast/webpa-common/server"
-	"github.com/Comcast/webpa-common/xhttp/xcontext"
 	"github.com/Comcast/wrp-go/wrp"
 
 	"github.com/InVisionApp/go-health"
@@ -114,16 +109,6 @@ type HealthConfig struct {
 	Endpoint string
 }
 
-func SetLogger(logger log.Logger) func(delegate http.Handler) http.Handler {
-	return func(delegate http.Handler) http.Handler {
-		return http.HandlerFunc(
-			func(w http.ResponseWriter, r *http.Request) {
-				r.WithContext(logging.WithLogger(r.Context(), logger))
-				delegate.ServeHTTP(w, r.WithContext(logging.WithLogger(r.Context(), logger)))
-			})
-	}
-}
-
 func svalinn(arguments []string) {
 	start := time.Now()
 
@@ -143,16 +128,7 @@ func svalinn(arguments []string) {
 
 	config, s := initialize(logger, v, metricsRegistry, codex.Server)
 
-	customLogInfo := xcontext.Populate(
-		logginghttp.SetLogger(logger,
-			logginghttp.RequestInfo,
-		),
-		gokithttp.PopulateRequestContext,
-	)
-	// TODO: fix bookkeeping, add a decorator to add the bookkeeping requests and logger
-	bookkeeper := bookkeeping.New(bookkeeping.WithResponses(bookkeeping.Code))
-
-	svalinnHandler := alice.New(SetLogger(logger), bookkeeper, customLogInfo)
+	svalinnHandler := alice.New()
 	router := mux.NewRouter()
 	// MARK: Actual server logic
 
@@ -246,6 +222,10 @@ func initialize(logger log.Logger, v *viper.Viper, metricsRegistry xmetrics.Regi
 		config.InsertQueueSize = defaultMinInsertQueueSize
 	}
 
+	if config.Webhook.URL == "" {
+		config.Webhook.URL = server + apiBase + config.Endpoint
+	}
+
 	s.requestQueue = make(chan wrp.Message, config.ParseQueueSize)
 	s.insertQueue = make(chan db.Record, config.InsertQueueSize)
 
@@ -257,10 +237,6 @@ func initialize(logger log.Logger, v *viper.Viper, metricsRegistry xmetrics.Regi
 
 	// Create Metrics
 	s.measures = NewMeasures(metricsRegistry)
-
-	if config.Webhook.URL == "" {
-		config.Webhook.URL = server + apiBase + config.Endpoint
-	}
 
 	s.secretGetter = NewConstantSecret(config.Webhook.Secret)
 	// if the register interval is 0, don't register
