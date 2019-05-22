@@ -15,7 +15,7 @@
  *
  */
 
-package main
+package requestParser
 
 import (
 	"github.com/Comcast/webpa-common/xmetrics"
@@ -25,7 +25,6 @@ import (
 
 const (
 	ParsingQueueDepth    = "parsing_queue_depth"
-	InsertingQueueDepth  = "inserting_queue_depth"
 	DroppedEventsCounter = "dropped_events_count"
 )
 
@@ -36,7 +35,6 @@ const (
 	marshalFailReason      = "marshaling failed"
 	encryptFailReason      = "encryption failed"
 	invalidBirthdateReason = "birthdate too far in the future"
-	dbFailReason           = "database request failed"
 	queueFullReason        = "queue full"
 )
 
@@ -45,11 +43,6 @@ func Metrics() []xmetrics.Metric {
 		{
 			Name: ParsingQueueDepth,
 			Help: "The depth of the parsing queue",
-			Type: "gauge",
-		},
-		{
-			Name: InsertingQueueDepth,
-			Help: "The depth of the insert queue",
 			Type: "gauge",
 		},
 		{
@@ -63,7 +56,6 @@ func Metrics() []xmetrics.Metric {
 
 type Measures struct {
 	ParsingQueue       metrics.Gauge
-	InsertingQueue     metrics.Gauge
 	DroppedEventsCount metrics.Counter
 }
 
@@ -71,7 +63,6 @@ type Measures struct {
 func NewMeasures(p provider.Provider) *Measures {
 	return &Measures{
 		ParsingQueue:       p.NewGauge(ParsingQueueDepth),
-		InsertingQueue:     p.NewGauge(InsertingQueueDepth),
 		DroppedEventsCount: p.NewCounter(DroppedEventsCounter),
 	}
 }

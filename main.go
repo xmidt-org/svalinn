@@ -24,6 +24,9 @@ import (
 	_ "net/http/pprof"
 	"sync"
 
+	"github.com/Comcast/codex-svalinn/requestParser"
+	"github.com/Comcast/codex/db/batchInserter"
+
 	"github.com/Comcast/codex/blacklist"
 
 	"github.com/Comcast/codex/cipher"
@@ -48,52 +51,40 @@ import (
 	"time"
 
 	"github.com/Comcast/webpa-common/server"
-	"github.com/Comcast/wrp-go/wrp"
 
 	"github.com/InVisionApp/go-health"
 	"github.com/InVisionApp/go-health/handlers"
 )
 
 const (
-	applicationName, apiBase  = "svalinn", "/api/v1"
-	DEFAULT_KEY_ID            = "current"
-	applicationVersion        = "0.8.0"
-	defaultMinParseQueueSize  = 5
-	defaultMinInsertQueueSize = 5
+	applicationName, apiBase = "svalinn", "/api/v1"
+	DEFAULT_KEY_ID           = "current"
+	applicationVersion       = "0.8.0"
 )
 
 type SvalinnConfig struct {
 	Endpoint          string
-	ParseQueueSize    int
-	InsertQueueSize   int
-	MaxParseWorkers   int
-	MaxInsertWorkers  int
-	MaxBatchSize      int
-	MaxBatchWaitTime  time.Duration
-	PayloadMaxSize    int
-	MetadataMaxSize   int
-	InsertRetries     int
-	DefaultTTL        time.Duration
-	RetryInterval     time.Duration
-	Db                db.Config
-	Webhook           WebhookConfig
-	RegexRules        []RuleConfig
 	Health            HealthConfig
+	Webhook           WebhookConfig
+	RequestParser     requestParser.Config
+	BatchInserter     batchInserter.Config
+	Db                db.Config
+	InsertRetries     RetryConfig
 	BlacklistInterval time.Duration
 }
 
+type RetryConfig struct {
+	NumRetries   int
+	Interval     time.Duration
+	IntervalMult time.Duration
+}
+
 type Svalinn struct {
-	measures      *Measures
-	rules         []rule
-	requestQueue  chan wrp.Message
-	insertQueue   chan db.Record
-	secretGetter  secretGetter
-	encrypter     cipher.Encrypt
 	done          <-chan struct{}
 	shutdown      chan struct{}
 	waitGroup     *sync.WaitGroup
-	requestParser requestParser
-	batchInserter batchInserter
+	requestParser *requestParser.RequestParser
+	batchInserter *batchInserter.BatchInserter
 }
 
 type database struct {
@@ -114,7 +105,7 @@ func svalinn(arguments []string) {
 
 	var (
 		f, v                                = pflag.NewFlagSet(applicationName, pflag.ContinueOnError), viper.New()
-		logger, metricsRegistry, codex, err = server.Initialize(applicationName, arguments, f, v, secure.Metrics, db.Metrics, Metrics)
+		logger, metricsRegistry, codex, err = server.Initialize(applicationName, arguments, f, v, secure.Metrics, db.Metrics, requestParser.Metrics, batchInserter.Metrics)
 	)
 
 	if parseErr, done := printVersion(f, arguments); done {
@@ -126,53 +117,52 @@ func svalinn(arguments []string) {
 	exitIfError(logger, emperror.Wrap(err, "unable to initialize viper"))
 	logging.Info(logger).Log(logging.MessageKey(), "Successfully loaded config file", "configurationFile", v.ConfigFileUsed())
 
-	config, s := initialize(logger, v, metricsRegistry, codex.Server)
+	// set everything up
+	config := new(SvalinnConfig)
+	v.Unmarshal(config)
+
+	if config.Webhook.URL == "" {
+		config.Webhook.URL = codex.Server + apiBase + config.Endpoint
+	}
+
+	cipherOptions, err := cipher.FromViper(v)
+	exitIfError(logger, emperror.Wrap(err, "failed to initialize cipher options"))
+	encrypter, err := cipherOptions.GetEncrypter(logger)
+	exitIfError(logger, emperror.Wrap(err, "failed to load cipher encrypter"))
+
+	secretGetter := NewConstantSecret(config.Webhook.Secret)
 
 	svalinnHandler := alice.New()
 	router := mux.NewRouter()
-	// MARK: Actual server logic
-
-	app := &App{
-		logger:       logger,
-		requestQueue: s.requestQueue,
-		secretGetter: s.secretGetter,
-		measures:     s.measures,
-	}
-
-	// TODO: Fix Caduces acutal register
-	router.Handle(apiBase+config.Endpoint, svalinnHandler.ThenFunc(app.handleWebhook))
 
 	database, err := setupDb(config, logger, metricsRegistry)
 	exitIfError(logger, emperror.Wrap(err, "failed to initialize database connection"))
 
-	s.requestParser = requestParser{
-		encrypter:       s.encrypter,
-		blacklist:       database.blacklistRefresher,
-		rules:           s.rules,
-		payloadMaxSize:  config.PayloadMaxSize,
-		metadataMaxSize: config.MetadataMaxSize,
-		defaultTTL:      config.DefaultTTL,
-		requestQueue:    s.requestQueue,
-		insertQueue:     s.insertQueue,
-		maxParseWorkers: config.MaxParseWorkers,
-		measures:        s.measures,
-		logger:          logger,
-	}
-	s.batchInserter = batchInserter{
-		inserter:         database.inserter,
-		logger:           logger,
-		insertQueue:      s.insertQueue,
-		maxInsertWorkers: config.MaxInsertWorkers,
-		maxBatchSize:     config.MaxBatchSize,
-		maxBatchWaitTime: config.MaxBatchWaitTime,
-		measures:         s.measures,
-	}
-	err = s.requestParser.validateAndStartParser()
-	exitIfError(logger, emperror.Wrap(err, "failed to validate and start parser"))
-	err = s.batchInserter.validateAndStartInserter()
-	exitIfError(logger, emperror.Wrap(err, "failed to validate and start inserter"))
+	s := &Svalinn{}
+	s.batchInserter, err = batchInserter.NewBatchInserter(config.BatchInserter, logger, metricsRegistry, database.inserter)
+	exitIfError(logger, emperror.Wrap(err, "failed to create batch inserter"))
 
+	s.requestParser, err = requestParser.NewRequestParser(config.RequestParser, logger, metricsRegistry, s.batchInserter, database.blacklistRefresher, encrypter)
+	exitIfError(logger, emperror.Wrap(err, "failed to create request parser"))
+
+	app := &App{
+		logger:       logger,
+		parser:       s.requestParser,
+		secretGetter: secretGetter,
+	}
+
+	// MARK: Actual server logic
+	router.Handle(apiBase+config.Endpoint, svalinnHandler.ThenFunc(app.handleWebhook))
+	s.requestParser.Start()
+	s.batchInserter.Start()
 	startHealth(logger, database.health, config)
+	// if the register interval is 0, don't register
+	if config.Webhook.RegistrationInterval > 0 {
+		registerer := newPeriodicRegisterer(config.Webhook, secretGetter, logger)
+
+		// then continue to register
+		go registerer.registerAtInterval()
+	}
 
 	// MARK: Starting the server
 	var runnable concurrent.Runnable
@@ -209,54 +199,6 @@ func exitIfError(logger log.Logger, err error) {
 	}
 }
 
-func initialize(logger log.Logger, v *viper.Viper, metricsRegistry xmetrics.Registry, server string) (*SvalinnConfig, *Svalinn) {
-	var s Svalinn
-
-	config := new(SvalinnConfig)
-	v.Unmarshal(config)
-
-	if config.ParseQueueSize < defaultMinParseQueueSize {
-		config.ParseQueueSize = defaultMinParseQueueSize
-	}
-	if config.InsertQueueSize < defaultMinInsertQueueSize {
-		config.InsertQueueSize = defaultMinInsertQueueSize
-	}
-
-	if config.Webhook.URL == "" {
-		config.Webhook.URL = server + apiBase + config.Endpoint
-	}
-
-	s.requestQueue = make(chan wrp.Message, config.ParseQueueSize)
-	s.insertQueue = make(chan db.Record, config.InsertQueueSize)
-
-	cipherOptions, err := cipher.FromViper(v)
-	exitIfError(logger, emperror.Wrap(err, "failed to initialize cipher options"))
-
-	s.encrypter, err = cipherOptions.GetEncrypter(logger)
-	exitIfError(logger, emperror.Wrap(err, "failed to load cipher encrypter"))
-
-	// Create Metrics
-	s.measures = NewMeasures(metricsRegistry)
-
-	s.secretGetter = NewConstantSecret(config.Webhook.Secret)
-	// if the register interval is 0, don't register
-	if config.Webhook.RegistrationInterval > 0 {
-		registerer := newPeriodicRegisterer(config.Webhook, s.secretGetter, logger)
-
-		// then continue to register
-		go registerer.registerAtInterval()
-	}
-
-	s.rules, err = createRules(config.RegexRules)
-	if err != nil {
-		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "failed to create rules",
-			logging.ErrorKey(), err.Error())
-	}
-
-	return config, &s
-
-}
-
 func setupDb(config *SvalinnConfig, logger log.Logger, metricsRegistry xmetrics.Registry) (database, error) {
 	var (
 		d   database
@@ -270,7 +212,13 @@ func setupDb(config *SvalinnConfig, logger log.Logger, metricsRegistry xmetrics.
 		return database{}, err
 	}
 
-	d.inserter = db.CreateRetryInsertService(d.dbConn, db.WithRetries(config.InsertRetries), db.WithInterval(config.RetryInterval), db.WithMeasures(metricsRegistry))
+	d.inserter = db.CreateRetryInsertService(
+		d.dbConn,
+		db.WithRetries(config.InsertRetries.NumRetries),
+		db.WithInterval(config.InsertRetries.Interval),
+		db.WithIntervalMultiplier(config.InsertRetries.IntervalMult),
+		db.WithMeasures(metricsRegistry),
+	)
 
 	d.blacklistStop = make(chan struct{}, 1)
 	blacklistConfig := blacklist.RefresherConfig{
@@ -322,10 +270,8 @@ func waitUntilShutdown(logger log.Logger, s *Svalinn, database database) {
 	close(database.blacklistStop)
 	close(s.shutdown)
 	s.waitGroup.Wait()
-	close(s.requestQueue)
-	s.requestParser.wg.Wait()
-	close(s.insertQueue)
-	s.batchInserter.wg.Wait()
+	s.requestParser.Stop()
+	s.batchInserter.Stop()
 	err = database.dbConn.Close()
 	if err != nil {
 		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "closing database threads failed",
