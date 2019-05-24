@@ -25,15 +25,17 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Comcast/codex-svalinn/requestParser"
-
 	"github.com/Comcast/webpa-common/logging"
 	"github.com/Comcast/wrp-go/wrp"
 	"github.com/go-kit/kit/log"
 )
 
+type parser interface {
+	Parse(wrp.Message) error
+}
+
 type App struct {
-	parser       *requestParser.RequestParser
+	parser       parser
 	logger       log.Logger
 	token        string
 	secretGetter secretGetter

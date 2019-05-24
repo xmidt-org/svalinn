@@ -18,9 +18,9 @@
 package main
 
 import (
-	"github.com/Comcast/codex/cipher"
 	"net/http"
 
+	"github.com/Comcast/wrp-go/wrp"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -42,30 +42,11 @@ func (sg *mockSecretGetter) GetSecret() (string, error) {
 	return args.String(0), args.Error(1)
 }
 
-type mockEncrypter struct {
+type mockParser struct {
 	mock.Mock
 }
 
-func (md *mockEncrypter) EncryptMessage(message []byte) ([]byte, []byte, error) {
-	args := md.Called(message)
-	return message, []byte{}, args.Error(0)
-}
-
-func (*mockEncrypter) GetAlgorithm() cipher.AlgorithmType {
-	return cipher.None
-}
-
-func (*mockEncrypter) GetKID() string {
-	return "none"
-}
-
-type mockBlacklist struct {
-	mock.Mock
-}
-
-func (mb *mockBlacklist) InList(ID string) (reason string, ok bool) {
-	args := mb.Called(ID)
-	reason = args.String(0)
-	ok = args.Bool(1)
-	return
+func (p *mockParser) Parse(message wrp.Message) error {
+	args := p.Called(message)
+	return args.Error(0)
 }

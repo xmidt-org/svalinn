@@ -9,10 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Comcast/webpa-common/xmetrics"
+	"github.com/go-kit/kit/metrics/provider"
 
 	"github.com/Comcast/codex-svalinn/rules"
-	"github.com/Comcast/codex/db/batchInserter"
 
 	"github.com/Comcast/codex/blacklist"
 	"github.com/Comcast/codex/cipher"
@@ -31,6 +30,8 @@ var (
 	errFutureBirthdate   = errors.New("birthdate is too far in the future")
 	errBlacklist         = errors.New("device is in blacklist")
 	errQueueFull         = errors.New("Queue Full")
+
+	defaultLogger = log.NewNopLogger()
 )
 
 const (
@@ -38,6 +39,10 @@ const (
 	minMaxWorkers       = 5
 	defaultMinQueueSize = 5
 )
+
+type inserter interface {
+	Insert(record db.Record)
+}
 
 type Config struct {
 	MetadataMaxSize int
@@ -51,7 +56,7 @@ type Config struct {
 type RequestParser struct {
 	encrypter    cipher.Encrypt
 	blacklist    blacklist.List
-	inserter     *batchInserter.BatchInserter
+	inserter     inserter
 	rules        rules.Rules
 	requestQueue chan wrp.Message
 	parseWorkers semaphore.Interface
@@ -61,7 +66,7 @@ type RequestParser struct {
 	config       Config
 }
 
-func NewRequestParser(config Config, logger log.Logger, metricsRegistry xmetrics.Registry, inserter *batchInserter.BatchInserter, blacklist blacklist.List, encrypter cipher.Encrypt) (*RequestParser, error) {
+func NewRequestParser(config Config, logger log.Logger, metricsRegistry provider.Provider, inserter inserter, blacklist blacklist.List, encrypter cipher.Encrypt) (*RequestParser, error) {
 	if encrypter == nil {
 		return nil, errors.New("no encrypter")
 	}
@@ -92,8 +97,14 @@ func NewRequestParser(config Config, logger log.Logger, metricsRegistry xmetrics
 	if config.QueueSize < defaultMinQueueSize {
 		config.QueueSize = defaultMinQueueSize
 	}
+	if logger == nil {
+		logger = defaultLogger
+	}
 
-	measures := NewMeasures(metricsRegistry)
+	var measures *Measures
+	if metricsRegistry != nil {
+		measures = NewMeasures(metricsRegistry)
+	}
 	queue := make(chan wrp.Message, config.QueueSize)
 	workers := semaphore.New(config.MaxWorkers)
 	r := RequestParser{
