@@ -192,6 +192,9 @@ func TestParseRequest(t *testing.T) {
 
 			handler.parseWorkers.Acquire()
 			handler.parseRequest(tc.req)
+			mockInserter.AssertExpectations(t)
+			mblacklist.AssertExpectations(t)
+			encrypter.AssertExpectations(t)
 			p.Assert(t, DroppedEventsCounter, reasonLabel, encryptFailReason)(xmetricstest.Value(tc.expectEncryptCount))
 			p.Assert(t, DroppedEventsCounter, reasonLabel, parseFailReason)(xmetricstest.Value(tc.expectParseCount))
 
@@ -360,6 +363,8 @@ func TestCreateRecord(t *testing.T) {
 				blacklist: mblacklist,
 			}
 			record, reason, err := handler.createRecord(tc.req, rule, tc.eventType)
+			encrypter.AssertExpectations(t)
+			mblacklist.AssertExpectations(t)
 			assert.Equal(expectedRecord, record)
 			assert.Equal(tc.expectedReason, reason)
 			if tc.expectedErr == nil || err == nil {
