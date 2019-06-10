@@ -1,4 +1,4 @@
-package main
+package requestParser
 
 import (
 	"bytes"
@@ -8,6 +8,10 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/go-kit/kit/metrics/provider"
+
+	"github.com/Comcast/codex-svalinn/rules"
 
 	"github.com/Comcast/codex/blacklist"
 	"github.com/Comcast/codex/cipher"
@@ -25,63 +29,126 @@ var (
 	errTimestampString   = errors.New("timestamp couldn't be found and converted to string")
 	errFutureBirthdate   = errors.New("birthdate is too far in the future")
 	errBlacklist         = errors.New("device is in blacklist")
+	errQueueFull         = errors.New("Queue Full")
+
+	defaultLogger = log.NewNopLogger()
 )
 
 const (
-	defaultTTL         = time.Duration(5) * time.Minute
-	minMaxParseWorkers = 5
+	defaultTTL          = time.Duration(5) * time.Minute
+	minMaxWorkers       = 5
+	defaultMinQueueSize = 5
 )
 
-type requestParser struct {
-	encrypter       cipher.Encrypt
-	blacklist       blacklist.List
-	rules           []rule
-	defaultTTL      time.Duration
-	metadataMaxSize int
-	payloadMaxSize  int
-	requestQueue    chan wrp.Message
-	insertQueue     chan db.Record
-	maxParseWorkers int
-	parseWorkers    semaphore.Interface
-	wg              sync.WaitGroup
-	measures        *Measures
-	logger          log.Logger
+type inserter interface {
+	Insert(record db.Record)
 }
 
-// make sure the
-func (r *requestParser) validateAndStartParser() error {
-	if r.encrypter == nil {
-		return errors.New("invalid encrypter")
+type Config struct {
+	MetadataMaxSize int
+	PayloadMaxSize  int
+	QueueSize       int
+	MaxWorkers      int
+	DefaultTTL      time.Duration
+	RegexRules      []rules.RuleConfig
+}
+
+type RequestParser struct {
+	encrypter    cipher.Encrypt
+	blacklist    blacklist.List
+	inserter     inserter
+	rules        rules.Rules
+	requestQueue chan wrp.Message
+	parseWorkers semaphore.Interface
+	wg           sync.WaitGroup
+	measures     *Measures
+	logger       log.Logger
+	config       Config
+}
+
+func NewRequestParser(config Config, logger log.Logger, metricsRegistry provider.Provider, inserter inserter, blacklist blacklist.List, encrypter cipher.Encrypt) (*RequestParser, error) {
+	if encrypter == nil {
+		return nil, errors.New("no encrypter")
 	}
-	if r.blacklist == nil {
-		return errors.New("invalid blacklist")
+	if blacklist == nil {
+		return nil, errors.New("no blacklist")
 	}
-	if r.defaultTTL == 0 {
-		r.defaultTTL = defaultTTL
+	if inserter == nil {
+		return nil, errors.New("no inserter")
 	}
-	if r.metadataMaxSize < 0 {
-		r.metadataMaxSize = 0
+	rules, err := rules.NewRules(config.RegexRules)
+	if err != nil {
+		return nil, emperror.Wrap(err, "failed to create rules from config")
 	}
-	if r.payloadMaxSize < 0 {
-		r.payloadMaxSize = 0
+
+	if config.DefaultTTL == 0 {
+		config.DefaultTTL = defaultTTL
 	}
-	if r.requestQueue == nil {
-		return errors.New("no request queue")
+	if config.MetadataMaxSize < 0 {
+		config.MetadataMaxSize = 0
 	}
-	if r.insertQueue == nil {
-		return errors.New("no insert queue")
+	if config.PayloadMaxSize < 0 {
+		config.PayloadMaxSize = 0
 	}
-	if r.maxParseWorkers < minMaxParseWorkers {
-		r.maxParseWorkers = minMaxParseWorkers
+	if config.MaxWorkers < minMaxWorkers {
+		config.MaxWorkers = minMaxWorkers
 	}
+
+	if config.QueueSize < defaultMinQueueSize {
+		config.QueueSize = defaultMinQueueSize
+	}
+	if logger == nil {
+		logger = defaultLogger
+	}
+
+	var measures *Measures
+	if metricsRegistry != nil {
+		measures = NewMeasures(metricsRegistry)
+	}
+	queue := make(chan wrp.Message, config.QueueSize)
+	workers := semaphore.New(config.MaxWorkers)
+	r := RequestParser{
+		config:       config,
+		logger:       logger,
+		measures:     measures,
+		parseWorkers: workers,
+		requestQueue: queue,
+		inserter:     inserter,
+		rules:        rules,
+		blacklist:    blacklist,
+		encrypter:    encrypter,
+	}
+
+	return &r, nil
+}
+
+func (r *RequestParser) Start() {
 	r.wg.Add(1)
 	go r.parseRequests()
-	return nil
 }
 
-func (r *requestParser) parseRequests() {
+func (r *RequestParser) Parse(message wrp.Message) (err error) {
+	select {
+	case r.requestQueue <- message:
+		if r.measures != nil {
+			r.measures.ParsingQueue.Add(1.0)
+		}
+	default:
+		if r.measures != nil {
+			r.measures.DroppedEventsCount.With(reasonLabel, queueFullReason).Add(1.0)
+		}
+		err = errQueueFull
+	}
+	return
+}
+
+func (r *RequestParser) Stop() {
+	close(r.requestQueue)
+	r.wg.Wait()
+}
+
+func (r *RequestParser) parseRequests() {
 	defer r.wg.Done()
-	r.parseWorkers = semaphore.New(r.maxParseWorkers)
 	for request := range r.requestQueue {
 		if r.measures != nil {
 			r.measures.ParsingQueue.Add(-1.0)
@@ -91,20 +158,23 @@ func (r *requestParser) parseRequests() {
 	}
 
 	// Grab all the workers to make sure they are done.
-	for i := 0; i < r.maxParseWorkers; i++ {
+	for i := 0; i < r.config.MaxWorkers; i++ {
 		r.parseWorkers.Acquire()
 	}
 }
 
-func (r *requestParser) parseRequest(request wrp.Message) {
+func (r *RequestParser) parseRequest(request wrp.Message) {
 	defer r.parseWorkers.Release()
 
-	rule, err := findRule(r.rules, request.Destination)
+	rule, err := r.rules.FindRule(request.Destination)
 	if err != nil {
 		logging.Info(r.logger).Log(logging.MessageKey(), "Could not get rule", logging.ErrorKey(), err, "destination", request.Destination)
 	}
 
-	eventType := db.ParseEventType(rule.eventType)
+	eventType := db.Default
+	if rule != nil {
+		eventType = db.ParseEventType(rule.EventType())
+	}
 	record, reason, err := r.createRecord(request, rule, eventType)
 	if err != nil {
 		r.measures.DroppedEventsCount.With(reasonLabel, reason).Add(1.0)
@@ -113,13 +183,10 @@ func (r *requestParser) parseRequest(request wrp.Message) {
 		return
 	}
 
-	r.insertQueue <- record
-	if r.measures != nil {
-		r.measures.InsertingQueue.Add(1.0)
-	}
+	r.inserter.Insert(record)
 }
 
-func (r *requestParser) createRecord(req wrp.Message, rule rule, eventType db.EventType) (db.Record, string, error) {
+func (r *RequestParser) createRecord(req wrp.Message, rule *rules.Rule, eventType db.EventType) (db.Record, string, error) {
 	var (
 		err         error
 		emptyRecord db.Record
@@ -166,14 +233,18 @@ func (r *requestParser) createRecord(req wrp.Message, rule rule, eventType db.Ev
 	}
 
 	// determine ttl for deathdate
-	ttl := r.defaultTTL
-	if rule.ttl != 0 {
-		ttl = rule.ttl
+	ttl := r.config.DefaultTTL
+	if rule != nil && rule.TTL() != 0 {
+		ttl = rule.TTL()
 	}
 	record.DeathDate = birthDate.Add(ttl).Unix()
 
 	// store the payload if we are supposed to and it's not too big
-	if !rule.storePayload || len(msg.Payload) > r.payloadMaxSize {
+	storePayload := false
+	if rule != nil {
+		storePayload = rule.StorePayload()
+	}
+	if !storePayload || len(msg.Payload) > r.config.PayloadMaxSize {
 		msg.Payload = nil
 	}
 
@@ -182,7 +253,7 @@ func (r *requestParser) createRecord(req wrp.Message, rule rule, eventType db.Ev
 	if err != nil {
 		return emptyRecord, parseFailReason, emperror.WrapWith(err, "failed to marshal metadata to determine size", "metadata", msg.Metadata, "full message", req)
 	}
-	if len(marshaledMetadata) > r.metadataMaxSize {
+	if len(marshaledMetadata) > r.config.MetadataMaxSize {
 		msg.Metadata = make(map[string]string)
 		msg.Metadata["error"] = "metadata provided exceeds size limit - too big to store"
 	}

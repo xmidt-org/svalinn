@@ -29,6 +29,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/Comcast/webpa-common/logging"
 	"github.com/Comcast/wrp-go/wrp"
@@ -43,24 +44,23 @@ func TestHandleWebhook(t *testing.T) {
 	}
 
 	tests := []struct {
-		description        string
-		requestBody        interface{}
-		includeSignature   bool
-		getSecretCalled    bool
-		secret             string
-		getSecretErr       error
-		expectedHeader     int
-		expectingMsg       bool
-		expectedMsgOnQueue wrp.Message
+		description      string
+		requestBody      interface{}
+		includeSignature bool
+		getSecretCalled  bool
+		secret           string
+		getSecretErr     error
+		expectedHeader   int
+		parseCalled      bool
+		parseErr         error
 	}{
 		{
-			description:        "Success",
-			requestBody:        goodMsg,
-			includeSignature:   true,
-			getSecretCalled:    true,
-			expectedHeader:     http.StatusAccepted,
-			expectingMsg:       true,
-			expectedMsgOnQueue: goodMsg,
+			description:      "Success",
+			requestBody:      goodMsg,
+			includeSignature: true,
+			getSecretCalled:  true,
+			expectedHeader:   http.StatusAccepted,
+			parseCalled:      true,
 		},
 		{
 			description:      "Decode Body Error",
@@ -70,32 +70,43 @@ func TestHandleWebhook(t *testing.T) {
 			expectedHeader:   http.StatusBadRequest,
 		},
 		{
-			description:        "Get Secret Failure",
-			requestBody:        goodMsg,
-			getSecretCalled:    true,
-			getSecretErr:       errors.New("get secret test error"),
-			expectedHeader:     http.StatusInternalServerError,
-			expectedMsgOnQueue: goodMsg,
+			description:     "Get Secret Failure",
+			requestBody:     goodMsg,
+			getSecretCalled: true,
+			getSecretErr:    errors.New("get secret test error"),
+			expectedHeader:  http.StatusInternalServerError,
 		},
 		{
-			description:        "Mismatched Secret Error",
-			requestBody:        goodMsg,
-			getSecretCalled:    true,
-			expectedHeader:     http.StatusForbidden,
-			expectedMsgOnQueue: goodMsg,
+			description:     "Mismatched Secret Error",
+			requestBody:     goodMsg,
+			getSecretCalled: true,
+			expectedHeader:  http.StatusForbidden,
+		},
+		{
+			description:      "Parse Error",
+			requestBody:      goodMsg,
+			includeSignature: true,
+			getSecretCalled:  true,
+			expectedHeader:   http.StatusTooManyRequests,
+			parseCalled:      true,
+			parseErr:         errors.New("test parse error"),
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
-			queue := make(chan wrp.Message, 2)
 			mockSecretGetter := new(mockSecretGetter)
 			if tc.getSecretCalled {
 				mockSecretGetter.On("GetSecret").Return(secret, tc.getSecretErr).Once()
 			}
+			mockParser := new(mockParser)
+			if tc.parseCalled {
+				mockParser.On("Parse", mock.Anything).Return(tc.parseErr).Once()
+			}
+
 			app := &App{
-				requestQueue: queue,
+				parser:       mockParser,
 				secretGetter: mockSecretGetter,
 				logger:       logging.DefaultLogger(),
 			}
@@ -121,53 +132,8 @@ func TestHandleWebhook(t *testing.T) {
 
 			app.handleWebhook(rr, request)
 			mockSecretGetter.AssertExpectations(t)
+			mockParser.AssertExpectations(t)
 			assert.Equal(tc.expectedHeader, rr.Code)
-			if tc.expectingMsg {
-				select {
-				case msg := <-queue:
-					assert.Equal(tc.expectedMsgOnQueue, msg)
-				default:
-					assert.Fail("expected a message to be on the queue", "expected message", tc.expectedMsgOnQueue)
-				}
-			}
 		})
 	}
-}
-
-func TestFullQueue(t *testing.T) {
-	assert := assert.New(t)
-
-	secret := "abcdefgh"
-	goodMsg := wrp.Message{
-		Type:        wrp.SimpleEventMessageType,
-		Source:      "test",
-		Destination: "test",
-	}
-
-	queue := make(chan wrp.Message, 0)
-	mockSecretGetter := new(mockSecretGetter)
-	mockSecretGetter.On("GetSecret").Return(secret, nil).Once()
-
-	app := &App{
-		requestQueue: queue,
-		secretGetter: mockSecretGetter,
-		logger:       logging.DefaultLogger(),
-	}
-	rr := httptest.NewRecorder()
-	var marshaledMsg []byte
-	var err error
-
-	err = wrp.NewEncoderBytes(&marshaledMsg, wrp.Msgpack).Encode(goodMsg)
-	assert.Nil(err)
-	assert.NotNil(marshaledMsg)
-
-	request, err := http.NewRequest(http.MethodGet, "/", bytes.NewReader(marshaledMsg))
-	h := hmac.New(sha1.New, []byte(secret))
-	h.Write(marshaledMsg)
-	sig := fmt.Sprintf("sha1=%s", hex.EncodeToString(h.Sum(nil)))
-	request.Header.Set("X-Webpa-Signature", sig)
-
-	app.handleWebhook(rr, request)
-	mockSecretGetter.AssertExpectations(t)
-	assert.Equal(http.StatusTooManyRequests, rr.Code)
 }

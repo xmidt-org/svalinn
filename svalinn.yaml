@@ -209,40 +209,53 @@ db:
   # (Optional)I
   #maxOpenConns: 0
 
-# insertRetries provides the number of times to retry if a database request 
-# fails.  If insertRetries is set to a value below 0, it is set to 1.
+# insertRetries provides the information needed for making multiple attempts to 
+# insert the same batch of records.
+insertRetries: 
+  # numRetries provides the number of times to retry if a database request 
+  # fails.  If numRetries is set to a value below 0, it is set to 1.
+  # (Optional)
+  numRetries: 3
+
+  # interval provides the amount of time to wait in between attempts to query 
+  # the database.  Has no effect if the number of retries is 0.
+  # (Optional) defaults to 1s
+  interval: 10s
+
+  # intervalMult provides the number to multiple the interval by between each 
+  # attempt.  Has no effect if the number of retries is 0.  If it is set below 
+  # 1, it defaults to 1.
+  # (Optional) defaults to 1
+  intervalMult: 5
+
+# batchInserter provides the information needed for inserting multiple records 
+# in one query.
 # (Optional)
-insertRetries: 3
+batchInserter:
+  # queueSize provides the max number of records that can be stored on the 
+  # queue.  Once records are taken off the queue, they are batched together and 
+  # inserted.  If a value below 5 is chosen, it defaults to 5.
+  # (Optional) defaults to 5
+  queueSize: 3000
 
-# retryInterval provides the amount of time to wait in between attempts to 
-# query the database.  Has no effect if the number of retries is 0.
-# (Optional)
-retryInterval: 10s
+  # maxWorkers provides the maximum number of workers that can work on 
+  # inserting batches of records at one time.  If a value below 1 is chosen,
+  # it defaults to 5.
+  # (Optional) defaults to 5
+  maxWorkers: 1000
 
-# insertQueueSize provides the max number of records that can be stored on the 
-# queue.  Once records are taken off the queue, they are batched together and 
-# inserted.  If a value below 5 is chosen, it defaults to 5.
-# (Optional) defaults to 5
-insertQueueSize: 3000
+  # maxBatchSize provides the maximum number of records that can be grouped 
+  # together in a single insert.  If a value below 0 is chosen, it defaults to
+  # 1.  If the 0 value is chosen, there is no maximum and records are batched 
+  # together until the maxBatchWaitTime is reached.
+  # (Optional) defaults to 1
+  maxBatchSize: 30
 
-# maxInsertWorkers provides the maximum number of workers that can work on 
-# inserting batches of records at one time.  If a value below 1 is chosen,
-# it defaults to 5.
-# (Optional) defaults to 5
-maxInsertWorkers: 1000
-
-# maxBatchSize provides the maximum number of records that can be grouped 
-# together in a single insert.  If a value below 0 is chosen, it defaults to
-# 1.  If the 0 value is chosen, there is no maximum and records are batched 
-# together until the maxBatchWaitTime is reached.
-# (Optional) defaults to 1
-maxBatchSize: 30
-
-# maxBatchWaitTime provides the maximum amount of time to wait once the first 
-# record in a batch is received.  If a value below 0s is chosen, it defaults to 
-# 0s.
-# (Optional)
-maxBatchWaitTime: 10ms
+  # maxBatchWaitTime provides the maximum amount of time to wait once the first 
+  # record in a batch is received.  If a value below 0s is chosen, it defaults to 
+  # 0s.
+  # (Optional)
+  maxBatchWaitTime: 10ms
 
 ########################################
 #   Encryption Related Configuration
@@ -285,36 +298,64 @@ cipher:
 # api base.
 endpoint: "/device-status"
 
-# parseQueueSize provides the maximum number of events that can be added to the 
-# queue.  Once events are taken off the queue, they are parsed into records.  
-# If a value below 5 is chosen, it defaults to 5.
-# (Optional) defaults to 5
-parseQueueSize: 3000
-
-# maxParseWorkers provides the maximum number of workers parsing events at a 
-# time.  If a value below 5 is chosen, it defaults to 5.
-# (Optional) defaults to 5
-maxParseWorkers: 10000
-
-# metadataMaxSize provides the number of bytes that the marshaled metadata of 
-# an event must not exceed.  If the metadata is larger than that, it is removed 
-# from the event before the event is put in a record.  If a value below 0 is 
-# chosen, it defaults to 0.
+# requestParser provides the information needed for starting the parser, which 
+# turns events into records.
 # (Optional)
-metadataMaxSize: 1000
+requestParser:
+  # queueSize provides the maximum number of events that can be added to the 
+  # queue.  Once events are taken off the queue, they are parsed into records.  
+  # If a value below 5 is chosen, it defaults to 5.
+  # (Optional) defaults to 5
+  queueSize: 3000
 
-# payloadMaxSize provides the number of bytes that the payload of an event must 
-# not exceed.  If the payload is larger than that, it is removed from the event 
-# before the events is put in a record.  If a value below 0 is chosen, it 
-# defaults to 0.
-# (Optional)
-payloadMaxSize: 1000
+  # maxWorkers provides the maximum number of workers parsing events at a 
+  # time.  If a value below 5 is chosen, it defaults to 5.
+  # (Optional) defaults to 5
+  maxWorkers: 10000
 
-# defaultTTL provides the amount of time a record is kept in the database 
-# before it is removed.  This TTL is for any event that doesn't have a rule 
-# with a TTL specified.  If 0 is chosen, it defaults to 5m.
-# (Optional) defaults to 5m
-defaultTTL: 5s
+  # metadataMaxSize provides the number of bytes that the marshaled metadata of 
+  # an event must not exceed.  If the metadata is larger than that, it is removed 
+  # from the event before the event is put in a record.  If a value below 0 is 
+  # chosen, it defaults to 0.
+  # (Optional)
+  metadataMaxSize: 1000
+
+  # payloadMaxSize provides the number of bytes that the payload of an event must 
+  # not exceed.  If the payload is larger than that, it is removed from the event 
+  # before the events is put in a record.  If a value below 0 is chosen, it 
+  # defaults to 0.
+  # (Optional)
+  payloadMaxSize: 1000
+
+  # defaultTTL provides the amount of time a record is kept in the database 
+  # before it is removed.  This TTL is for any event that doesn't have a rule 
+  # with a TTL specified.  If 0 is chosen, it defaults to 5m.
+  # (Optional) defaults to 5m
+  defaultTTL: 5s
+
+  # regexRules provides rules for events whose destinations match the regular 
+  # expression.  If the event matches the regex of a rule, Svalinn gets 
+  # instructions on whether or not to store the event's payload (storePayload), 
+  # what the event type should be (eventType), and how long the record should 
+  # live in the database (ruleTTL).  If no rules are provided, the payload isn't 
+  # stored, the event type is the default, and the record's TTL is the defaultTTL. 
+  # Svalinn uses the first rule whose regex matches an event's destination.
+  #
+  # The eventType indicates where to find the device id in the event.  If the 
+  # event type is "State", the device id is parsed out of the event Destination.
+  # Otherwise, the event Source is used as the device id.
+  # eventType options: "State", "Default" 
+  #
+  # (Optional)
+  regexRules:
+    - regex: ".*/online$"
+      storePayload: true
+      ruleTTL: 30s
+      eventType: "State"
+    - regex: ".*/offline$"
+      storePayload: true
+      ruleTTL: 30s
+      eventType: "State"
 
 # blacklistInterval provides how often Svalinn should get the blacklist from 
 # the database.  If a device id matches a regular expression on the blacklist, 
@@ -322,30 +363,6 @@ defaultTTL: 5s
 # 1m.
 # (Oprional) defaults to 1m
 blacklistInterval: 1m
-
-# regexRules provides rules for events whose destinations match the regular 
-# expression.  If the event matches the regex of a rule, Svalinn gets 
-# instructions on whether or not to store the event's payload (storePayload), 
-# what the event type should be (eventType), and how long the record should 
-# live in the database (ruleTTL).  If no rules are provided, the payload isn't 
-# stored, the event type is the default, and the record's TTL is the defaultTTL. 
-# Svalinn uses the first rule whose regex matches an event's destination.
-#
-# The eventType indicates where to find the device id in the event.  If the 
-# event type is "State", the device id is parsed out of the event Destination.
-# Otherwise, the event Source is used as the device id.
-# eventType options: "State", "Default" 
-#
-# (Optional)
-regexRules:
-  - regex: ".*/online$"
-    storePayload: true
-    ruleTTL: 30s
-    eventType: "State"
-  - regex: ".*/offline$"
-    storePayload: true
-    ruleTTL: 30s
-    eventType: "State"
 
 
 ########################################

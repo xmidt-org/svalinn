@@ -30,12 +30,15 @@ import (
 	"github.com/go-kit/kit/log"
 )
 
+type parser interface {
+	Parse(wrp.Message) error
+}
+
 type App struct {
-	requestQueue chan wrp.Message
+	parser       parser
 	logger       log.Logger
 	token        string
 	secretGetter secretGetter
-	measures     *Measures
 }
 
 func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
@@ -80,17 +83,11 @@ func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
 	}
 
 	logging.Debug(app.logger).Log(logging.MessageKey(), "message info", "messageType", message.Type, "fullMsg", message)
-	select {
-	case app.requestQueue <- message:
-		if app.measures != nil {
-			app.measures.ParsingQueue.Add(1.0)
-		}
-		writer.WriteHeader(http.StatusAccepted)
-	default:
-		if app.measures != nil {
-			app.measures.DroppedEventsCount.With(reasonLabel, queueFullReason).Add(1.0)
-		}
-		logging.Warn(app.logger).Log(logging.MessageKey(), "Queue Full")
+	err = app.parser.Parse(message)
+	if err != nil {
+		logging.Warn(app.logger).Log(logging.ErrorKey(), err.Error())
 		writer.WriteHeader(http.StatusTooManyRequests)
+		return
 	}
+	writer.WriteHeader(http.StatusAccepted)
 }

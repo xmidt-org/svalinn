@@ -1,14 +1,20 @@
-package main
+package requestParser
 
 import (
 	"bytes"
 	"errors"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/Comcast/codex/cipher"
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/metrics/provider"
 
+	"github.com/Comcast/codex/blacklist"
+
+	"github.com/Comcast/codex-svalinn/rules"
+	"github.com/Comcast/codex/cipher"
 	"github.com/Comcast/codex/db"
 	"github.com/Comcast/webpa-common/logging"
 	"github.com/Comcast/webpa-common/semaphore"
@@ -30,10 +36,105 @@ var (
 	}
 )
 
+func TestNewRequestParser(t *testing.T) {
+	goodEncrypter := new(mockEncrypter)
+	goodInserter := new(mockInserter)
+	goodBlacklist := new(mockBlacklist)
+	goodRegistry := xmetricstest.NewProvider(nil, Metrics)
+	goodMeasures := NewMeasures(goodRegistry)
+	goodConfig := Config{
+		QueueSize:       1000,
+		MetadataMaxSize: 100000,
+		PayloadMaxSize:  1000000,
+		MaxWorkers:      5000,
+		DefaultTTL:      5 * time.Hour,
+	}
+	tests := []struct {
+		description           string
+		encrypter             cipher.Encrypt
+		blacklist             blacklist.List
+		inserter              inserter
+		config                Config
+		logger                log.Logger
+		registry              provider.Provider
+		expectedRequestParser *RequestParser
+		expectedErr           error
+	}{
+		{
+			description: "Success",
+			encrypter:   goodEncrypter,
+			blacklist:   goodBlacklist,
+			inserter:    goodInserter,
+			registry:    goodRegistry,
+			config:      goodConfig,
+			logger:      log.NewJSONLogger(os.Stdout),
+			expectedRequestParser: &RequestParser{
+				encrypter: goodEncrypter,
+				blacklist: goodBlacklist,
+				inserter:  goodInserter,
+				measures:  goodMeasures,
+				config:    goodConfig,
+				logger:    log.NewJSONLogger(os.Stdout),
+			},
+		},
+		{
+			description: "Success With Defaults",
+			encrypter:   goodEncrypter,
+			blacklist:   goodBlacklist,
+			inserter:    goodInserter,
+			registry:    goodRegistry,
+			config: Config{
+				MetadataMaxSize: -5,
+				PayloadMaxSize:  -5,
+			},
+			expectedRequestParser: &RequestParser{
+				encrypter: goodEncrypter,
+				blacklist: goodBlacklist,
+				inserter:  goodInserter,
+				measures:  goodMeasures,
+				config: Config{
+					QueueSize:  defaultMinQueueSize,
+					DefaultTTL: defaultTTL,
+					MaxWorkers: minMaxWorkers,
+				},
+				logger: defaultLogger,
+			},
+		},
+		{
+			description: "No Encrypter Error",
+			expectedErr: errors.New("no encrypter"),
+		},
+		{
+			description: "No Blacklist Error",
+			encrypter:   goodEncrypter,
+			expectedErr: errors.New("no blacklist"),
+		},
+		{
+			description: "No Inserter Error",
+			encrypter:   goodEncrypter,
+			blacklist:   goodBlacklist,
+			expectedErr: errors.New("no inserter"),
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			assert := assert.New(t)
+			rp, err := NewRequestParser(tc.config, tc.logger, tc.registry, tc.inserter, tc.blacklist, tc.encrypter)
+			if rp != nil {
+				tc.expectedRequestParser.requestQueue = rp.requestQueue
+				tc.expectedRequestParser.parseWorkers = rp.parseWorkers
+			}
+			assert.Equal(tc.expectedRequestParser, rp)
+			if tc.expectedErr == nil || err == nil {
+				assert.Equal(tc.expectedErr, err)
+			} else {
+				assert.Contains(err.Error(), tc.expectedErr.Error())
+			}
+		})
+	}
+}
+
 func TestParseRequest(t *testing.T) {
-	//require := require.New(t)
-	//goodTime, err := time.Parse(time.RFC3339Nano, "2019-02-13T21:19:02.614191735Z")
-	//require.NoError(err)
 	tests := []struct {
 		description        string
 		req                wrp.Message
@@ -68,28 +169,34 @@ func TestParseRequest(t *testing.T) {
 			mblacklist := new(mockBlacklist)
 			mblacklist.On("InList", mock.Anything).Return("", false).Once()
 
+			mockInserter := new(mockInserter)
+			mockInserter.On("Insert", mock.Anything).Return().Once()
+
 			p := xmetricstest.NewProvider(nil, Metrics)
 			m := NewMeasures(p)
 
-			handler := requestParser{
-				//rules: []rule{},
-				encrypter:       encrypter,
-				payloadMaxSize:  9999,
-				metadataMaxSize: 9999,
-				defaultTTL:      time.Second,
-				insertQueue:     make(chan db.Record, 10),
-				maxParseWorkers: 5,
-				parseWorkers:    semaphore.New(2),
-				measures:        m,
-				logger:          logging.NewTestLogger(nil, t),
-				blacklist:       mblacklist,
+			handler := RequestParser{
+				encrypter: encrypter,
+				config: Config{
+					PayloadMaxSize:  9999,
+					MetadataMaxSize: 9999,
+					DefaultTTL:      time.Second,
+					MaxWorkers:      5,
+				},
+				inserter:     mockInserter,
+				parseWorkers: semaphore.New(2),
+				measures:     m,
+				logger:       logging.NewTestLogger(nil, t),
+				blacklist:    mblacklist,
 			}
 
 			handler.parseWorkers.Acquire()
 			handler.parseRequest(tc.req)
+			mockInserter.AssertExpectations(t)
+			mblacklist.AssertExpectations(t)
+			encrypter.AssertExpectations(t)
 			p.Assert(t, DroppedEventsCounter, reasonLabel, encryptFailReason)(xmetricstest.Value(tc.expectEncryptCount))
 			p.Assert(t, DroppedEventsCounter, reasonLabel, parseFailReason)(xmetricstest.Value(tc.expectParseCount))
-			p.Assert(t, DroppedEventsCounter, reasonLabel, dbFailReason)(xmetricstest.Value(0.0))
 
 		})
 	}
@@ -233,21 +340,31 @@ func TestCreateRecord(t *testing.T) {
 					KID:       "none",
 				}
 			}
-			rule := rule{
-				storePayload: tc.storePayload,
-				ttl:          time.Second,
-			}
+			r, err := rules.NewRules([]rules.RuleConfig{
+				{
+					Regex:        ".*",
+					StorePayload: tc.storePayload,
+					RuleTTL:      time.Second,
+				},
+			})
+			assert.Nil(err)
+			rule, err := r.FindRule(" ")
+			assert.Nil(err)
 			encrypter := new(mockEncrypter)
 			encrypter.On("EncryptMessage", mock.Anything).Return(tc.encryptErr)
 			mblacklist := new(mockBlacklist)
 			mblacklist.On("InList", mock.Anything).Return("", tc.inBlacklist).Once()
-			handler := requestParser{
-				encrypter:       encrypter,
-				payloadMaxSize:  tc.maxPayloadSize,
-				metadataMaxSize: tc.maxMetadataSize,
-				blacklist:       mblacklist,
+			handler := RequestParser{
+				encrypter: encrypter,
+				config: Config{
+					PayloadMaxSize:  tc.maxPayloadSize,
+					MetadataMaxSize: tc.maxMetadataSize,
+				},
+				blacklist: mblacklist,
 			}
 			record, reason, err := handler.createRecord(tc.req, rule, tc.eventType)
+			encrypter.AssertExpectations(t)
+			mblacklist.AssertExpectations(t)
 			assert.Equal(expectedRecord, record)
 			assert.Equal(tc.expectedReason, reason)
 			if tc.expectedErr == nil || err == nil {

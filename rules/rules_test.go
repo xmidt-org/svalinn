@@ -15,7 +15,7 @@
  *
  */
 
-package main
+package rules
 
 import (
 	"errors"
@@ -26,11 +26,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCreateRules(t *testing.T) {
+func TestNewRules(t *testing.T) {
 	tests := []struct {
 		description    string
 		rules          []RuleConfig
-		expectedOutput []rule
+		expectedOutput Rules
 		expectedErr    error
 	}{
 		{
@@ -46,8 +46,8 @@ func TestCreateRules(t *testing.T) {
 					EventType:    "test event",
 				},
 			},
-			expectedOutput: []rule{
-				{
+			expectedOutput: []*Rule{
+				&Rule{
 					regex:        regexp.MustCompile(".*"),
 					storePayload: true,
 					ttl:          time.Duration(5) * time.Second,
@@ -70,19 +70,19 @@ func TestCreateRules(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
-			rules, err := createRules(tc.rules)
+			rules, err := NewRules(tc.rules)
 			if tc.expectedErr == nil || err == nil {
 				assert.Equal(tc.expectedErr, err)
 			} else {
 				assert.Contains(err.Error(), tc.expectedErr.Error())
 			}
-			assert.Equal(rules, tc.expectedOutput)
+			assert.Equal(tc.expectedOutput, rules)
 		})
 	}
 }
 
 func TestFindRule(t *testing.T) {
-	goodRule := rule{
+	goodRule := &Rule{
 		regex:        regexp.MustCompile(".*ccc$"),
 		storePayload: false,
 		ttl:          time.Duration(3) * time.Minute,
@@ -90,14 +90,14 @@ func TestFindRule(t *testing.T) {
 	}
 	tests := []struct {
 		description  string
-		rules        []rule
+		rules        Rules
 		dest         string
-		expectedRule rule
+		expectedRule *Rule
 		expectedErr  error
 	}{
 		{
 			description:  "Success",
-			rules:        []rule{goodRule},
+			rules:        []*Rule{goodRule},
 			dest:         "aaa/bbb/ccc",
 			expectedRule: goodRule,
 			expectedErr:  nil,
@@ -112,13 +112,18 @@ func TestFindRule(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
-			rule, err := findRule(tc.rules, tc.dest)
+			rule, err := tc.rules.FindRule(tc.dest)
 			if tc.expectedErr == nil || err == nil {
 				assert.Equal(tc.expectedErr, err)
 			} else {
 				assert.Contains(err.Error(), tc.expectedErr.Error())
 			}
-			assert.Equal(rule, tc.expectedRule)
+			assert.Equal(tc.expectedRule, rule)
+			if rule != nil && tc.expectedRule != nil {
+				assert.Equal(tc.expectedRule.eventType, rule.EventType())
+				assert.Equal(tc.expectedRule.storePayload, rule.StorePayload())
+				assert.Equal(tc.expectedRule.ttl, rule.TTL())
+			}
 		})
 	}
 }

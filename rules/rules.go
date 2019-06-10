@@ -15,7 +15,7 @@
  *
  */
 
-package main
+package rules
 
 import (
 	"errors"
@@ -36,30 +36,44 @@ type RuleConfig struct {
 	EventType    string
 }
 
-type rule struct {
+type Rule struct {
 	regex        *regexp.Regexp
 	storePayload bool
 	ttl          time.Duration
 	eventType    string
 }
 
-func createRules(rules []RuleConfig) ([]rule, error) {
-	var parsedRules []rule
+type Rules []*Rule
+
+func NewRules(rules []RuleConfig) (Rules, error) {
+	var parsedRules Rules
 	for _, r := range rules {
 		regex, err := regexp.Compile(r.Regex)
 		if err != nil {
 			return parsedRules, emperror.WrapWith(err, "Failed to compile regexp rule", "regexp attempted", r.Regex)
 		}
-		parsedRules = append(parsedRules, rule{regex, r.StorePayload, r.RuleTTL, r.EventType})
+		parsedRules = append(parsedRules, &Rule{regex, r.StorePayload, r.RuleTTL, r.EventType})
 	}
 	return parsedRules, nil
 }
 
-func findRule(rules []rule, dest string) (rule, error) {
-	for _, r := range rules {
-		if r.regex.MatchString(dest) {
-			return r, nil
+func (r Rules) FindRule(dest string) (*Rule, error) {
+	for _, rule := range r {
+		if rule.regex.MatchString(dest) {
+			return rule, nil
 		}
 	}
-	return rule{}, errNoMatch
+	return nil, errNoMatch
+}
+
+func (r *Rule) EventType() string {
+	return r.eventType
+}
+
+func (r *Rule) StorePayload() bool {
+	return r.storePayload
+}
+
+func (r *Rule) TTL() time.Duration {
+	return r.ttl
 }
