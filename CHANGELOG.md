@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [v0.9.0]
+- Modified event parsing: if the eventType is state, parse the event 
+  destination to find the device id.  Otherwise, take the event Source as the 
+  device id.
+- Added documentation in the form of updating the README and putting comments 
+  in the yaml file.
+- Refactored code to separate rules and requestParser into their own packages. 
+  Also moved batchInserter to codex and refactored that.
+
+
 ## [v0.8.0]
 - Added ability to turn off max batch size
 - Bumped codex to v0.5.0
@@ -123,7 +133,8 @@ Bug Fix Caduceus config loading
 - Initial creation
 - Bumped codex version, modified code to match changes
 
-[Unreleased]: https://github.com/Comcast/codex-svalinn/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/Comcast/codex-svalinn/compare/v0.9.0...HEAD
+[v0.9.0]: https://github.com/Comcast/codex-svalinn/compare/v0.8.0...v0.9.0
 [v0.8.0]: https://github.com/Comcast/codex-svalinn/compare/v0.7.1...v0.8.0
 [v0.7.1]: https://github.com/Comcast/codex-svalinn/compare/v0.7.0...v0.7.1
 [v0.7.0]: https://github.com/Comcast/codex-svalinn/compare/v0.6.1...v0.7.0
