@@ -24,9 +24,9 @@ import (
 	_ "net/http/pprof"
 	"sync"
 
-	"github.com/Comcast/codex/db/retry"
+	"github.com/Comcast/codex/db/mongodb"
 
-	"github.com/Comcast/codex/db/postgresql"
+	"github.com/Comcast/codex/db/retry"
 
 	"github.com/Comcast/codex-svalinn/requestParser"
 	"github.com/Comcast/codex/db/batchInserter"
@@ -72,7 +72,7 @@ type SvalinnConfig struct {
 	Webhook           WebhookConfig
 	RequestParser     requestParser.Config
 	BatchInserter     batchInserter.Config
-	Db                postgresql.Config
+	Db                mongodb.Config
 	InsertRetries     RetryConfig
 	BlacklistInterval time.Duration
 }
@@ -109,7 +109,7 @@ func svalinn(arguments []string) {
 
 	var (
 		f, v                                = pflag.NewFlagSet(applicationName, pflag.ContinueOnError), viper.New()
-		logger, metricsRegistry, codex, err = server.Initialize(applicationName, arguments, f, v, secure.Metrics, postgresql.Metrics, dbretry.Metrics, requestParser.Metrics, batchInserter.Metrics)
+		logger, metricsRegistry, codex, err = server.Initialize(applicationName, arguments, f, v, secure.Metrics, mongodb.Metrics, dbretry.Metrics, requestParser.Metrics, batchInserter.Metrics)
 	)
 
 	if parseErr, done := printVersion(f, arguments); done {
@@ -211,7 +211,7 @@ func setupDb(config *SvalinnConfig, logger log.Logger, metricsRegistry xmetrics.
 	d.health = health.New()
 	d.health.Logger = healthlogger.NewHealthLogger(logger)
 
-	dbConn, err := postgresql.CreateDbConnection(config.Db, metricsRegistry, d.health)
+	dbConn, err := mongodb.CreateDbConnection(config.Db, metricsRegistry, d.health)
 	if err != nil {
 		return database{}, err
 	}

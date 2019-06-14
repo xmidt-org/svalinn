@@ -226,7 +226,7 @@ func (r *RequestParser) createRecord(req wrp.Message, rule *rules.Rule, eventTyp
 	if !ok {
 		birthDate = time.Now()
 	}
-	record.BirthDate = birthDate.Unix()
+	record.BirthDate = int64(time.Nanosecond) * birthDate.UnixNano() / int64(time.Millisecond)
 
 	if birthDate.After(time.Now().Add(time.Hour)) {
 		return emptyRecord, invalidBirthdateReason, emperror.WrapWith(errFutureBirthdate, "invalid birthdate", "birthdate", birthDate.String())
@@ -237,7 +237,7 @@ func (r *RequestParser) createRecord(req wrp.Message, rule *rules.Rule, eventTyp
 	if rule != nil && rule.TTL() != 0 {
 		ttl = rule.TTL()
 	}
-	record.DeathDate = birthDate.Add(ttl).Unix()
+	record.DeathDate = int64(time.Nanosecond) * birthDate.Add(ttl).UnixNano() / int64(time.Millisecond)
 
 	// store the payload if we are supposed to and it's not too big
 	storePayload := false
