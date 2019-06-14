@@ -35,6 +35,7 @@ const (
 	marshalFailReason      = "marshaling failed"
 	encryptFailReason      = "encryption failed"
 	invalidBirthdateReason = "birthdate too far in the future"
+	expiredReason          = "deathdate has already passed"
 	queueFullReason        = "queue full"
 )
 

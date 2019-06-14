@@ -28,6 +28,7 @@ var (
 	errUnexpectedWRPType = errors.New("unexpected wrp message type")
 	errTimestampString   = errors.New("timestamp couldn't be found and converted to string")
 	errFutureBirthdate   = errors.New("birthdate is too far in the future")
+	errExpired           = errors.New("deathdate has passed")
 	errBlacklist         = errors.New("device is in blacklist")
 	errQueueFull         = errors.New("Queue Full")
 
@@ -237,7 +238,12 @@ func (r *RequestParser) createRecord(req wrp.Message, rule *rules.Rule, eventTyp
 	if rule != nil && rule.TTL() != 0 {
 		ttl = rule.TTL()
 	}
-	record.DeathDate = birthDate.Add(ttl).Unix()
+
+	deathDate := birthDate.Add(ttl)
+	if time.Now().After(deathDate) {
+		return emptyRecord, expiredReason, emperror.WrapWith(errExpired, "event is already expired", "deathdate", deathDate.String())
+	}
+	record.DeathDate = deathDate.Unix()
 
 	// store the payload if we are supposed to and it's not too big
 	storePayload := false
