@@ -24,6 +24,10 @@ import (
 	_ "net/http/pprof"
 	"sync"
 
+	"github.com/Comcast/codex/db/retry"
+
+	"github.com/Comcast/codex/db/postgresql"
+
 	"github.com/Comcast/codex-svalinn/requestParser"
 	"github.com/Comcast/codex/db/batchInserter"
 
@@ -68,7 +72,7 @@ type SvalinnConfig struct {
 	Webhook           WebhookConfig
 	RequestParser     requestParser.Config
 	BatchInserter     batchInserter.Config
-	Db                db.Config
+	Db                postgresql.Config
 	InsertRetries     RetryConfig
 	BlacklistInterval time.Duration
 }
@@ -88,7 +92,7 @@ type Svalinn struct {
 }
 
 type database struct {
-	dbConn             *db.Connection
+	dbClose            func() error
 	blacklistStop      chan struct{}
 	blacklistRefresher blacklist.List
 	inserter           db.Inserter
@@ -105,7 +109,7 @@ func svalinn(arguments []string) {
 
 	var (
 		f, v                                = pflag.NewFlagSet(applicationName, pflag.ContinueOnError), viper.New()
-		logger, metricsRegistry, codex, err = server.Initialize(applicationName, arguments, f, v, secure.Metrics, db.Metrics, requestParser.Metrics, batchInserter.Metrics)
+		logger, metricsRegistry, codex, err = server.Initialize(applicationName, arguments, f, v, secure.Metrics, postgresql.Metrics, dbretry.Metrics, requestParser.Metrics, batchInserter.Metrics)
 	)
 
 	if parseErr, done := printVersion(f, arguments); done {
@@ -201,23 +205,24 @@ func exitIfError(logger log.Logger, err error) {
 
 func setupDb(config *SvalinnConfig, logger log.Logger, metricsRegistry xmetrics.Registry) (database, error) {
 	var (
-		d   database
-		err error
+		d database
 	)
 	d.health = health.New()
 	d.health.Logger = healthlogger.NewHealthLogger(logger)
 
-	d.dbConn, err = db.CreateDbConnection(config.Db, metricsRegistry, d.health)
+	dbConn, err := postgresql.CreateDbConnection(config.Db, metricsRegistry, d.health)
 	if err != nil {
 		return database{}, err
 	}
 
-	d.inserter = db.CreateRetryInsertService(
-		d.dbConn,
-		db.WithRetries(config.InsertRetries.NumRetries),
-		db.WithInterval(config.InsertRetries.Interval),
-		db.WithIntervalMultiplier(config.InsertRetries.IntervalMult),
-		db.WithMeasures(metricsRegistry),
+	d.dbClose = dbConn.Close
+
+	d.inserter = dbretry.CreateRetryInsertService(
+		dbConn,
+		dbretry.WithRetries(config.InsertRetries.NumRetries),
+		dbretry.WithInterval(config.InsertRetries.Interval),
+		dbretry.WithIntervalMultiplier(config.InsertRetries.IntervalMult),
+		dbretry.WithMeasures(metricsRegistry),
 	)
 
 	d.blacklistStop = make(chan struct{}, 1)
@@ -225,7 +230,7 @@ func setupDb(config *SvalinnConfig, logger log.Logger, metricsRegistry xmetrics.
 		Logger:         logger,
 		UpdateInterval: config.BlacklistInterval,
 	}
-	d.blacklistRefresher = blacklist.NewListRefresher(blacklistConfig, d.dbConn, d.blacklistStop)
+	d.blacklistRefresher = blacklist.NewListRefresher(blacklistConfig, dbConn, d.blacklistStop)
 	return d, nil
 
 }
@@ -272,7 +277,7 @@ func waitUntilShutdown(logger log.Logger, s *Svalinn, database database) {
 	s.waitGroup.Wait()
 	s.requestParser.Stop()
 	s.batchInserter.Stop()
-	err = database.dbConn.Close()
+	err = database.dbClose()
 	if err != nil {
 		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "closing database threads failed",
 			logging.ErrorKey(), err.Error())
