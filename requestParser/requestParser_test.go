@@ -332,8 +332,8 @@ func TestCreateRecord(t *testing.T) {
 				expectedRecord = db.Record{
 					Type:      tc.eventType,
 					DeviceID:  tc.expectedDeviceID,
-					BirthDate: goodTime.Unix(),
-					DeathDate: goodTime.Add(time.Second).Unix(),
+					BirthDate: goodTime.UnixNano(),
+					DeathDate: goodTime.Add(time.Second).UnixNano(),
 					Data:      buffer.Bytes(),
 					Nonce:     []byte{},
 					Alg:       string(cipher.None),

@@ -227,7 +227,7 @@ func (r *RequestParser) createRecord(req wrp.Message, rule *rules.Rule, eventTyp
 	if !ok {
 		birthDate = time.Now()
 	}
-	record.BirthDate = birthDate.Unix()
+	record.BirthDate = birthDate.UnixNano()
 
 	if birthDate.After(time.Now().Add(time.Hour)) {
 		return emptyRecord, invalidBirthdateReason, emperror.WrapWith(errFutureBirthdate, "invalid birthdate", "birthdate", birthDate.String())
@@ -243,7 +243,7 @@ func (r *RequestParser) createRecord(req wrp.Message, rule *rules.Rule, eventTyp
 	if time.Now().After(deathDate) {
 		return emptyRecord, expiredReason, emperror.WrapWith(errExpired, "event is already expired", "deathdate", deathDate.String())
 	}
-	record.DeathDate = deathDate.Unix()
+	record.DeathDate = deathDate.UnixNano()
 
 	// store the payload if we are supposed to and it's not too big
 	storePayload := false
