@@ -20,6 +20,9 @@ rpm:
 	tar -czvf ./OPATH/SOURCES/svalinn-$(PROGVER).tar.gz . --exclude ./.git --exclude ./OPATH --exclude ./conf --exclude ./deploy --exclude ./vendor
 	cp conf/svalinn.service ./OPATH/SOURCES/
 	cp conf/svalinn.yaml  ./OPATH/SOURCES/
+	cp LICENSE ./OPATH/SOURCES/
+	cp NOTICE ./OPATH/SOURCES/
+	cp CHANGELOG.md ./OPATH/SOURCES/
 	rpmbuild --define "_topdir $(CURDIR)/OPATH" \
     		--define "_version $(PROGVER)" \
     		--define "_release 1" \
