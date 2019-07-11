@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Comcast/codex-svalinn/webhook"
+	"github.com/xmidt-org/svalinn/webhook"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )

@@ -21,7 +21,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Comcast/codex-svalinn/webhook"
+	"github.com/xmidt-org/svalinn/webhook"
 	"github.com/Comcast/webpa-common/logging"
 	"github.com/goph/emperror"
 

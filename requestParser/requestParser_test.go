@@ -13,7 +13,7 @@ import (
 
 	"github.com/Comcast/codex/blacklist"
 
-	"github.com/Comcast/codex-svalinn/rules"
+	"github.com/xmidt-org/svalinn/rules"
 	"github.com/Comcast/codex/cipher"
 	"github.com/Comcast/codex/db"
 	"github.com/Comcast/webpa-common/logging"

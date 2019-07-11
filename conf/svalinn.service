@@ -2,7 +2,7 @@
 
 [Unit]
 Description=The receiver of data from XMiDT Caduceus.
-Documentation=https://github.com/Comcast/codex-svalinn
+Documentation=https://github.com/xmidt-org/svalinn
 After=network.target
 
 [Service]

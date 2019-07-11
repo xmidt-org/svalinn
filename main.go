@@ -28,8 +28,8 @@ import (
 
 	"github.com/Comcast/codex/db/postgresql"
 
-	"github.com/Comcast/codex-svalinn/requestParser"
 	"github.com/Comcast/codex/db/batchInserter"
+	"github.com/xmidt-org/svalinn/requestParser"
 
 	"github.com/Comcast/codex/blacklist"
 
@@ -41,7 +41,6 @@ import (
 	"github.com/Comcast/codex/healthlogger"
 	"github.com/Comcast/webpa-common/concurrent"
 	"github.com/Comcast/webpa-common/logging"
-	"github.com/Comcast/webpa-common/secure"
 	"github.com/Comcast/webpa-common/xmetrics"
 	"github.com/goph/emperror"
 	"github.com/gorilla/mux"
@@ -109,7 +108,7 @@ func svalinn(arguments []string) {
 
 	var (
 		f, v                                = pflag.NewFlagSet(applicationName, pflag.ContinueOnError), viper.New()
-		logger, metricsRegistry, codex, err = server.Initialize(applicationName, arguments, f, v, secure.Metrics, postgresql.Metrics, dbretry.Metrics, requestParser.Metrics, batchInserter.Metrics)
+		logger, metricsRegistry, codex, err = server.Initialize(applicationName, arguments, f, v, postgresql.Metrics, dbretry.Metrics, requestParser.Metrics, batchInserter.Metrics)
 	)
 
 	if parseErr, done := printVersion(f, arguments); done {
