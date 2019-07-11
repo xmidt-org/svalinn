@@ -5,8 +5,8 @@
 [![codecov.io](http://codecov.io/github/Comcast/codex-svalinn/coverage.svg?branch=master)](http://codecov.io/github/Comcast/codex-svalinn?branch=master)
 [![Code Climate](https://codeclimate.com/github/Comcast/codex-svalinn/badges/gpa.svg)](https://codeclimate.com/github/Comcast/codex-svalinn)
 [![Issue Count](https://codeclimate.com/github/Comcast/codex-svalinn/badges/issue_count.svg)](https://codeclimate.com/github/Comcast/codex-svalinn)
-[![Go Report Card](https://goreportcard.com/badge/github.com/Comcast/codex-svalinn)](https://goreportcard.com/report/github.com/Comcast/codex-svalinn)
-[![Apache V2 License](http://img.shields.io/badge/license-Apache%20V2-blue.svg)](https://github.com/Comcast/codex-svalinn/blob/master/LICENSE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/xmidt-org/svalinn)](https://goreportcard.com/report/github.com/xmidt-org/svalinn)
+[![Apache V2 License](http://img.shields.io/badge/license-Apache%20V2-blue.svg)](https://github.com/xmidt-org/svalinn/blob/master/LICENSE)
 [![GitHub release](https://img.shields.io/github/release/Comcast/codex-svalinn.svg)](CHANGELOG.md)
 
 
@@ -151,7 +151,7 @@ version 1.11 or greater. Find more information on the [Go website](https://golan
 
 You can directly use `go get` to put the Svalinn binary into your `GOPATH`:
 ```bash
-GO111MODULE=on go get github.com/Comcast/codex-svalinn
+GO111MODULE=on go get github.com/xmidt-org/svalinn
 ```
 
 You can also clone the repository yourself and build using make:

@@ -10,7 +10,7 @@ Vendor:     Comcast
 Packager:   Comcast
 Group:      System Environment/Daemons
 License:    ASL 2.0
-URL:        https://github.com/Comcast/codex-svalinn
+URL:        https://github.com/xmidt-org/svalinn
 Source0:    %{name}-%{_version}.tar.gz
 
 Prefix:     /opt

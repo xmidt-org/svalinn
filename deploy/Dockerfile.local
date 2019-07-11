@@ -1,7 +1,7 @@
 FROM golang:alpine as builder
 MAINTAINER Jack Murdock <jack_murdock@comcast.com>
 
-WORKDIR /go/src/github.com/Comcast/codex-svalinn
+WORKDIR /go/src/github.com/xmidt-org/svalinn
 
 RUN apk add --update git curl
 
@@ -17,6 +17,6 @@ VOLUME /etc/svalinn
 
 EXPOSE 8080
 
-COPY --from=builder /go/src/github.com/Comcast/codex-svalinn/svalinn_linux_amd64 /
+COPY --from=builder /go/src/github.com/xmidt-org/svalinn/svalinn_linux_amd64 /
 COPY svalinn.yaml /
 ENTRYPOINT ["/svalinn_linux_amd64"]

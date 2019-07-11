@@ -11,7 +11,7 @@ import (
 
 	"github.com/go-kit/kit/metrics/provider"
 
-	"github.com/Comcast/codex-svalinn/rules"
+	"github.com/xmidt-org/svalinn/rules"
 
 	"github.com/Comcast/codex/blacklist"
 	"github.com/Comcast/codex/cipher"
