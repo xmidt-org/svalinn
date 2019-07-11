@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [v0.10.2]
+
+
+
+
 ## [v0.10.0]
 - Store the birthdate and deathdate as Unix with Nanosecond precision.
 
@@ -144,7 +149,8 @@ Bug Fix Caduceus config loading
 - Initial creation
 - Bumped codex version, modified code to match changes
 
-[Unreleased]: https://github.com/xmidt-org/svalinn/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/xmidt-org/svalinn/compare/v0.10.2...HEAD
+[v0.10.2]: https://github.com/xmidt-org/svalinn/compare/v0.10.0...v0.10.2
 [v0.10.0]: https://github.com/xmidt-org/svalinn/compare/v0.9.1...v0.10.0
 [v0.9.1]: https://github.com/xmidt-org/svalinn/compare/v0.9.0...v0.9.1
 [v0.9.0]: https://github.com/xmidt-org/svalinn/compare/v0.8.0...v0.9.0
