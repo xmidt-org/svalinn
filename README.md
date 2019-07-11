@@ -1,13 +1,13 @@
 # Svalinn
 (pronounced “svæ-lin”)
 
-[![Build Status](https://travis-ci.com/Comcast/codex-svalinn.svg?branch=master)](https://travis-ci.com/Comcast/codex-svalinn)
-[![codecov.io](http://codecov.io/github/Comcast/codex-svalinn/coverage.svg?branch=master)](http://codecov.io/github/Comcast/codex-svalinn?branch=master)
-[![Code Climate](https://codeclimate.com/github/Comcast/codex-svalinn/badges/gpa.svg)](https://codeclimate.com/github/Comcast/codex-svalinn)
-[![Issue Count](https://codeclimate.com/github/Comcast/codex-svalinn/badges/issue_count.svg)](https://codeclimate.com/github/Comcast/codex-svalinn)
+[![Build Status](https://travis-ci.com/xmidt-org/svalinn.svg?branch=master)](https://travis-ci.com/xmidt-org/svalinn)
+[![codecov.io](http://codecov.io/github/xmidt-org/svalinn/coverage.svg?branch=master)](http://codecov.io/github/xmidt-org/svalinn?branch=master)
+[![Code Climate](https://codeclimate.com/github/xmidt-org/svalinn/badges/gpa.svg)](https://codeclimate.com/github/xmidt-org/svalinn)
+[![Issue Count](https://codeclimate.com/github/xmidt-org/svalinn/badges/issue_count.svg)](https://codeclimate.com/github/xmidt-org/svalinn)
 [![Go Report Card](https://goreportcard.com/badge/github.com/xmidt-org/svalinn)](https://goreportcard.com/report/github.com/xmidt-org/svalinn)
 [![Apache V2 License](http://img.shields.io/badge/license-Apache%20V2-blue.svg)](https://github.com/xmidt-org/svalinn/blob/master/LICENSE)
-[![GitHub release](https://img.shields.io/github/release/Comcast/codex-svalinn.svg)](CHANGELOG.md)
+[![GitHub release](https://img.shields.io/github/release/xmidt-org/svalinn.svg)](CHANGELOG.md)
 
 
 ## Summary
