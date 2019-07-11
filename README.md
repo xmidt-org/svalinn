@@ -160,7 +160,7 @@ You can also clone the repository yourself and build using make:
 mkdir -p $GOPATH/src/github.com/xmidt-org
 cd $GOPATH/src/github.com/xmidt-org
 git clone git@github.com:xmidt-org/codex-svalinn.git
-cd codex-svalinn
+cd svalinn
 make build
 ```
 
