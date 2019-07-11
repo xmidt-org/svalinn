@@ -12,13 +12,13 @@
 
 ## Summary
 
-Svalinn has an endpoint that receives events as [WRP Messages](https://github.com/Comcast/wrp-c/wiki/Web-Routing-Protocol).
+Svalinn has an endpoint that receives events as [WRP Messages](https://github.com/xmidt-org/wrp-c/wiki/Web-Routing-Protocol).
 The service parses these events and inserts them into the database. It also 
 optionally registers to an endpoint to receive events.  For more information on
-how Svalinn fits into codex, check out [the codex README](https://github.com/Comcast/codex).
+how Svalinn fits into codex, check out [the codex README](https://github.com/xmidt-org/codex-deploy).
 
-For registering to an endpoint, Svalinn is capable of registering to [Caduceus](https://github.com/Comcast/caduceus),
-a part of [XMiDT]((https://github.com/Comcast/xmidt)).
+For registering to an endpoint, Svalinn is capable of registering to [Caduceus](https://github.com/xmidt-org/caduceus),
+a part of [XMiDT]((https://github.com/xmidt-org/xmidt)).
 
 ## Details
 
@@ -157,9 +157,9 @@ GO111MODULE=on go get github.com/xmidt-org/svalinn
 You can also clone the repository yourself and build using make:
 
 ```bash
-mkdir -p $GOPATH/src/github.com/Comcast
-cd $GOPATH/src/github.com/Comcast
-git clone git@github.com:Comcast/codex-svalinn.git
+mkdir -p $GOPATH/src/github.com/xmidt-org
+cd $GOPATH/src/github.com/xmidt-org
+git clone git@github.com:xmidt-org/codex-svalinn.git
 cd codex-svalinn
 make build
 ```
@@ -206,7 +206,7 @@ WIP. TODO: add info
 
 ## Deploy
 
-For deploying on Docker or in Kubernetes, refer to the [deploy README](https://github.com/Comcast/codex/tree/master/deploy/README.md).
+For deploying on Docker or in Kubernetes, refer to the [deploy README](https://github.com/xmidt-org/codex-deploy/tree/master/deploy/README.md).
 
 For running locally, ensure you have the binary [built](#Source).  If it's in 
 your `GOPATH`, run:
