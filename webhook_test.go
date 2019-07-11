@@ -22,9 +22,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/xmidt-org/svalinn/webhook"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/xmidt-org/svalinn/webhook"
 )
 
 func TestGetSecretAndRegister(t *testing.T) {

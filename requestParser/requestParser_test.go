@@ -13,7 +13,6 @@ import (
 
 	"github.com/Comcast/codex/blacklist"
 
-	"github.com/xmidt-org/svalinn/rules"
 	"github.com/Comcast/codex/cipher"
 	"github.com/Comcast/codex/db"
 	"github.com/Comcast/webpa-common/logging"
@@ -22,6 +21,7 @@ import (
 	"github.com/Comcast/wrp-go/wrp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/xmidt-org/svalinn/rules"
 )
 
 var (
