@@ -32,7 +32,6 @@ rpm:
 version:
 	@echo $(PROGVER)
 
-
 # If the first argument is "update-version"...
 ifeq (update-version,$(firstword $(MAKECMDGOALS)))
   # use the rest as arguments for "update-version"
