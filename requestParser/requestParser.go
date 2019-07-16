@@ -13,14 +13,14 @@ import (
 
 	"github.com/xmidt-org/svalinn/rules"
 
+	"github.com/go-kit/kit/log"
+	"github.com/goph/emperror"
+	db "github.com/xmidt-org/codex-db"
 	"github.com/xmidt-org/codex-db/blacklist"
 	"github.com/xmidt-org/voynicrypto"
-	db "github.com/xmidt-org/codex-db"
 	"github.com/xmidt-org/webpa-common/logging"
 	"github.com/xmidt-org/webpa-common/semaphore"
 	"github.com/xmidt-org/wrp-go/wrp"
-	"github.com/go-kit/kit/log"
-	"github.com/goph/emperror"
 )
 
 var (

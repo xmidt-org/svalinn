@@ -20,8 +20,8 @@ package main
 import (
 	"net/http"
 
-	"github.com/xmidt-org/wrp-go/wrp"
 	"github.com/stretchr/testify/mock"
+	"github.com/xmidt-org/wrp-go/wrp"
 )
 
 type mockRegisterer struct {
