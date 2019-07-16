@@ -1,9 +1,9 @@
 package requestParser
 
 import (
-	"github.com/Comcast/codex/cipher"
-	"github.com/Comcast/codex/db"
 	"github.com/stretchr/testify/mock"
+	db "github.com/xmidt-org/codex-db"
+	"github.com/xmidt-org/voynicrypto"
 )
 
 type mockEncrypter struct {
@@ -15,8 +15,8 @@ func (md *mockEncrypter) EncryptMessage(message []byte) ([]byte, []byte, error) 
 	return message, []byte{}, args.Error(0)
 }
 
-func (*mockEncrypter) GetAlgorithm() cipher.AlgorithmType {
-	return cipher.None
+func (*mockEncrypter) GetAlgorithm() voynicrypto.AlgorithmType {
+	return voynicrypto.None
 }
 
 func (*mockEncrypter) GetKID() string {

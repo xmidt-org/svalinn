@@ -13,14 +13,14 @@ import (
 
 	"github.com/xmidt-org/svalinn/rules"
 
-	"github.com/Comcast/codex/blacklist"
-	"github.com/Comcast/codex/cipher"
-	"github.com/Comcast/codex/db"
-	"github.com/Comcast/webpa-common/logging"
-	"github.com/Comcast/webpa-common/semaphore"
-	"github.com/Comcast/wrp-go/wrp"
 	"github.com/go-kit/kit/log"
 	"github.com/goph/emperror"
+	db "github.com/xmidt-org/codex-db"
+	"github.com/xmidt-org/codex-db/blacklist"
+	"github.com/xmidt-org/voynicrypto"
+	"github.com/xmidt-org/webpa-common/logging"
+	"github.com/xmidt-org/webpa-common/semaphore"
+	"github.com/xmidt-org/wrp-go/wrp"
 )
 
 var (
@@ -55,7 +55,7 @@ type Config struct {
 }
 
 type RequestParser struct {
-	encrypter    cipher.Encrypt
+	encrypter    voynicrypto.Encrypt
 	blacklist    blacklist.List
 	inserter     inserter
 	rules        rules.Rules
@@ -67,7 +67,7 @@ type RequestParser struct {
 	config       Config
 }
 
-func NewRequestParser(config Config, logger log.Logger, metricsRegistry provider.Provider, inserter inserter, blacklist blacklist.List, encrypter cipher.Encrypt) (*RequestParser, error) {
+func NewRequestParser(config Config, logger log.Logger, metricsRegistry provider.Provider, inserter inserter, blacklist blacklist.List, encrypter voynicrypto.Encrypt) (*RequestParser, error) {
 	if encrypter == nil {
 		return nil, errors.New("no encrypter")
 	}
