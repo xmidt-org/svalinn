@@ -11,17 +11,17 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/metrics/provider"
 
-	"github.com/Comcast/codex/blacklist"
+	"github.com/xmidt-org/codex-db/blacklist"
 
-	"github.com/Comcast/codex/cipher"
-	"github.com/Comcast/codex/db"
-	"github.com/Comcast/webpa-common/logging"
-	"github.com/Comcast/webpa-common/semaphore"
-	"github.com/Comcast/webpa-common/xmetrics/xmetricstest"
-	"github.com/Comcast/wrp-go/wrp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	db "github.com/xmidt-org/codex-db"
 	"github.com/xmidt-org/svalinn/rules"
+	"github.com/xmidt-org/voynicrypto"
+	"github.com/xmidt-org/webpa-common/logging"
+	"github.com/xmidt-org/webpa-common/semaphore"
+	"github.com/xmidt-org/webpa-common/xmetrics/xmetricstest"
+	"github.com/xmidt-org/wrp-go/wrp"
 )
 
 var (
@@ -51,7 +51,7 @@ func TestNewRequestParser(t *testing.T) {
 	}
 	tests := []struct {
 		description           string
-		encrypter             cipher.Encrypt
+		encrypter             voynicrypto.Encrypt
 		blacklist             blacklist.List
 		inserter              inserter
 		config                Config
@@ -336,7 +336,7 @@ func TestCreateRecord(t *testing.T) {
 					DeathDate: goodTime.Add(time.Second).UnixNano(),
 					Data:      buffer.Bytes(),
 					Nonce:     []byte{},
-					Alg:       string(cipher.None),
+					Alg:       string(voynicrypto.None),
 					KID:       "none",
 				}
 			}

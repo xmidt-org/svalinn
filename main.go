@@ -24,36 +24,36 @@ import (
 	_ "net/http/pprof"
 	"sync"
 
-	"github.com/Comcast/codex/db/retry"
+	"github.com/xmidt-org/codex-db/retry"
 
-	"github.com/Comcast/codex/db/postgresql"
+	"github.com/xmidt-org/codex-db/postgresql"
 
-	"github.com/Comcast/codex/db/batchInserter"
+	"github.com/xmidt-org/codex-db/batchInserter"
 	"github.com/xmidt-org/svalinn/requestParser"
 
-	"github.com/Comcast/codex/blacklist"
+	"github.com/xmidt-org/codex-db/blacklist"
 
-	"github.com/Comcast/codex/cipher"
+	"github.com/xmidt-org/voynicrypto"
 
 	"github.com/go-kit/kit/log"
 
-	"github.com/Comcast/codex/db"
-	"github.com/Comcast/codex/healthlogger"
-	"github.com/Comcast/webpa-common/concurrent"
-	"github.com/Comcast/webpa-common/logging"
-	"github.com/Comcast/webpa-common/xmetrics"
 	"github.com/goph/emperror"
 	"github.com/gorilla/mux"
 	"github.com/justinas/alice"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	db "github.com/xmidt-org/codex-db"
+	"github.com/xmidt-org/codex-db/healthlogger"
+	"github.com/xmidt-org/webpa-common/concurrent"
+	"github.com/xmidt-org/webpa-common/logging"
+	"github.com/xmidt-org/webpa-common/xmetrics"
 
-	//	"github.com/Comcast/webpa-common/secure/handler"
+	//	"github.com/xmidt-org/webpa-common/secure/handler"
 	"os"
 	"os/signal"
 	"time"
 
-	"github.com/Comcast/webpa-common/server"
+	"github.com/xmidt-org/webpa-common/server"
 
 	"github.com/InVisionApp/go-health"
 	"github.com/InVisionApp/go-health/handlers"
@@ -128,7 +128,7 @@ func svalinn(arguments []string) {
 		config.Webhook.URL = codex.Server + apiBase + config.Endpoint
 	}
 
-	cipherOptions, err := cipher.FromViper(v)
+	cipherOptions, err := voynicrypto.FromViper(v)
 	exitIfError(logger, emperror.Wrap(err, "failed to initialize cipher options"))
 	encrypter, err := cipherOptions.GetEncrypter(logger)
 	exitIfError(logger, emperror.Wrap(err, "failed to load cipher encrypter"))

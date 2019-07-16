@@ -20,7 +20,7 @@ package main
 import (
 	"net/http"
 
-	"github.com/Comcast/wrp-go/wrp"
+	"github.com/xmidt-org/wrp-go/wrp"
 	"github.com/stretchr/testify/mock"
 )
 
