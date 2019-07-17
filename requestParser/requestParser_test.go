@@ -123,6 +123,7 @@ func TestNewRequestParser(t *testing.T) {
 			if rp != nil {
 				tc.expectedRequestParser.requestQueue = rp.requestQueue
 				tc.expectedRequestParser.parseWorkers = rp.parseWorkers
+				rp.currTime = nil
 			}
 			assert.Equal(tc.expectedRequestParser, rp)
 			if tc.expectedErr == nil || err == nil {
@@ -135,22 +136,30 @@ func TestNewRequestParser(t *testing.T) {
 }
 
 func TestParseRequest(t *testing.T) {
+	testassert := assert.New(t)
+	goodTime, err := time.Parse(time.RFC3339Nano, "2019-02-13T21:19:02.614191735Z")
+	testassert.Nil(err)
 	tests := []struct {
 		description        string
 		req                wrp.Message
 		encryptErr         error
 		expectEncryptCount float64
 		expectParseCount   float64
+		encryptCalled      bool
+		blacklistCalled    bool
+		insertCalled       bool
+		timeExpected       bool
 	}{
 		{
-			description: "Success",
-			req:         goodEvent,
+			description:     "Success",
+			req:             goodEvent,
+			encryptCalled:   true,
+			blacklistCalled: true,
+			insertCalled:    true,
+			timeExpected:    true,
 		},
 		{
-			description: "Empty ID Error",
-			req: wrp.Message{
-				Destination: "//",
-			},
+			description:      "Empty ID Error",
 			expectParseCount: 1.0,
 		},
 		{
@@ -158,22 +167,37 @@ func TestParseRequest(t *testing.T) {
 			req:                goodEvent,
 			encryptErr:         errors.New("encrypt failed"),
 			expectEncryptCount: 1.0,
+			encryptCalled:      true,
+			blacklistCalled:    true,
+			timeExpected:       true,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			encrypter := new(mockEncrypter)
-			encrypter.On("EncryptMessage", mock.Anything).Return(tc.encryptErr)
+			if tc.encryptCalled {
+				encrypter.On("EncryptMessage", mock.Anything).Return(tc.encryptErr)
+			}
 
 			mblacklist := new(mockBlacklist)
-			mblacklist.On("InList", mock.Anything).Return("", false).Once()
+			if tc.blacklistCalled {
+				mblacklist.On("InList", mock.Anything).Return("", false).Once()
+			}
 
 			mockInserter := new(mockInserter)
-			mockInserter.On("Insert", mock.Anything).Return().Once()
+			if tc.insertCalled {
+				mockInserter.On("Insert", mock.Anything).Return().Once()
+			}
 
 			p := xmetricstest.NewProvider(nil, Metrics)
 			m := NewMeasures(p)
+
+			timeCalled := false
+			timeFunc := func() time.Time {
+				timeCalled = true
+				return goodTime
+			}
 
 			handler := RequestParser{
 				encrypter: encrypter,
@@ -188,6 +212,7 @@ func TestParseRequest(t *testing.T) {
 				measures:     m,
 				logger:       logging.NewTestLogger(nil, t),
 				blacklist:    mblacklist,
+				currTime:     timeFunc,
 			}
 
 			handler.parseWorkers.Acquire()
@@ -197,6 +222,7 @@ func TestParseRequest(t *testing.T) {
 			encrypter.AssertExpectations(t)
 			p.Assert(t, DroppedEventsCounter, reasonLabel, encryptFailReason)(xmetricstest.Value(tc.expectEncryptCount))
 			p.Assert(t, DroppedEventsCounter, reasonLabel, parseFailReason)(xmetricstest.Value(tc.expectParseCount))
+			testassert.Equal(tc.timeExpected, timeCalled)
 
 		})
 	}
@@ -211,9 +237,13 @@ func TestCreateRecord(t *testing.T) {
 		req              wrp.Message
 		storePayload     bool
 		eventType        db.EventType
+		blacklistCalled  bool
 		inBlacklist      bool
+		timeExpected     bool
+		timeToReturn     time.Time
 		maxPayloadSize   int
 		maxMetadataSize  int
+		encryptCalled    bool
 		encryptErr       error
 		expectedDeviceID string
 		expectedEvent    wrp.Message
@@ -228,6 +258,10 @@ func TestCreateRecord(t *testing.T) {
 			expectedEvent:    goodEvent,
 			storePayload:     true,
 			eventType:        db.State,
+			blacklistCalled:  true,
+			timeExpected:     true,
+			timeToReturn:     goodTime,
+			encryptCalled:    true,
 			maxMetadataSize:  500,
 			maxPayloadSize:   500,
 		},
@@ -254,6 +288,35 @@ func TestCreateRecord(t *testing.T) {
 			},
 			eventType:       db.State,
 			storePayload:    true,
+			blacklistCalled: true,
+			timeExpected:    true,
+			timeToReturn:    goodTime,
+			encryptCalled:   true,
+			maxMetadataSize: 500,
+			maxPayloadSize:  500,
+		},
+		{
+			description: "Success Source Device and No Birthdate",
+			req: wrp.Message{
+				Source:          goodEvent.Source,
+				PartnerIDs:      goodEvent.PartnerIDs,
+				TransactionUUID: goodEvent.TransactionUUID,
+				Type:            goodEvent.Type,
+				Metadata:        goodEvent.Metadata,
+			},
+			expectedDeviceID: goodEvent.Source,
+			expectedEvent: wrp.Message{
+				Source:          goodEvent.Source,
+				PartnerIDs:      goodEvent.PartnerIDs,
+				TransactionUUID: goodEvent.TransactionUUID,
+				Type:            goodEvent.Type,
+				Metadata:        goodEvent.Metadata,
+			},
+			storePayload:    true,
+			blacklistCalled: true,
+			timeExpected:    true,
+			timeToReturn:    goodTime,
+			encryptCalled:   true,
 			maxMetadataSize: 500,
 			maxPayloadSize:  500,
 		},
@@ -270,7 +333,11 @@ func TestCreateRecord(t *testing.T) {
 				Payload:         nil,
 				Metadata:        map[string]string{"error": "metadata provided exceeds size limit - too big to store"},
 			},
-			eventType: db.State,
+			blacklistCalled: true,
+			timeExpected:    true,
+			timeToReturn:    goodTime,
+			encryptCalled:   true,
+			eventType:       db.State,
 		},
 		{
 			description: "Empty Dest ID Error",
@@ -294,10 +361,11 @@ func TestCreateRecord(t *testing.T) {
 			req: wrp.Message{
 				Source: " ",
 			},
-			emptyRecord:    true,
-			inBlacklist:    true,
-			expectedReason: blackListReason,
-			expectedErr:    errBlacklist,
+			emptyRecord:     true,
+			inBlacklist:     true,
+			blacklistCalled: true,
+			expectedReason:  blackListReason,
+			expectedErr:     errBlacklist,
 		},
 		{
 			description: "Unexpected WRP Type Error",
@@ -305,18 +373,45 @@ func TestCreateRecord(t *testing.T) {
 				Destination: "/device/",
 				Type:        5,
 			},
-			eventType:      db.State,
-			emptyRecord:    true,
-			expectedReason: parseFailReason,
-			expectedErr:    errUnexpectedWRPType,
+			eventType:       db.State,
+			emptyRecord:     true,
+			blacklistCalled: true,
+			expectedReason:  parseFailReason,
+			expectedErr:     errUnexpectedWRPType,
 		},
 		{
-			description:    "Encrypt Error",
-			req:            goodEvent,
-			encryptErr:     errors.New("encrypt failed"),
-			emptyRecord:    true,
-			expectedReason: encryptFailReason,
-			expectedErr:    errors.New("failed to encrypt message"),
+			description:     "Future Birthdate Error",
+			req:             goodEvent,
+			eventType:       db.State,
+			emptyRecord:     true,
+			blacklistCalled: true,
+			timeExpected:    true,
+			timeToReturn:    goodTime.Add(-5 * time.Hour),
+			expectedReason:  invalidBirthdateReason,
+			expectedErr:     errFutureBirthdate,
+		},
+		{
+			description:     "Past Deathdate Error",
+			req:             goodEvent,
+			eventType:       db.State,
+			emptyRecord:     true,
+			blacklistCalled: true,
+			timeExpected:    true,
+			timeToReturn:    goodTime.Add(5 * time.Hour),
+			expectedReason:  expiredReason,
+			expectedErr:     errExpired,
+		},
+		{
+			description:     "Encrypt Error",
+			req:             goodEvent,
+			encryptErr:      errors.New("encrypt failed"),
+			emptyRecord:     true,
+			blacklistCalled: true,
+			encryptCalled:   true,
+			timeExpected:    true,
+			timeToReturn:    goodTime,
+			expectedReason:  encryptFailReason,
+			expectedErr:     errors.New("failed to encrypt message"),
 		},
 	}
 
@@ -351,9 +446,20 @@ func TestCreateRecord(t *testing.T) {
 			rule, err := r.FindRule(" ")
 			assert.Nil(err)
 			encrypter := new(mockEncrypter)
-			encrypter.On("EncryptMessage", mock.Anything).Return(tc.encryptErr)
+			if tc.encryptCalled {
+				encrypter.On("EncryptMessage", mock.Anything).Return(tc.encryptErr).Once()
+			}
 			mblacklist := new(mockBlacklist)
-			mblacklist.On("InList", mock.Anything).Return("", tc.inBlacklist).Once()
+			if tc.blacklistCalled {
+				mblacklist.On("InList", mock.Anything).Return("", tc.inBlacklist).Once()
+			}
+
+			timeCalled := false
+			timeFunc := func() time.Time {
+				timeCalled = true
+				return tc.timeToReturn
+			}
+
 			handler := RequestParser{
 				encrypter: encrypter,
 				config: Config{
@@ -361,12 +467,14 @@ func TestCreateRecord(t *testing.T) {
 					MetadataMaxSize: tc.maxMetadataSize,
 				},
 				blacklist: mblacklist,
+				currTime:  timeFunc,
 			}
 			record, reason, err := handler.createRecord(tc.req, rule, tc.eventType)
 			encrypter.AssertExpectations(t)
 			mblacklist.AssertExpectations(t)
 			assert.Equal(expectedRecord, record)
 			assert.Equal(tc.expectedReason, reason)
+			assert.Equal(tc.timeExpected, timeCalled)
 			if tc.expectedErr == nil || err == nil {
 				assert.Equal(tc.expectedErr, err)
 			} else {

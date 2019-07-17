@@ -65,6 +65,7 @@ type RequestParser struct {
 	measures     *Measures
 	logger       log.Logger
 	config       Config
+	currTime     func() time.Time
 }
 
 func NewRequestParser(config Config, logger log.Logger, metricsRegistry provider.Provider, inserter inserter, blacklist blacklist.List, encrypter voynicrypto.Encrypt) (*RequestParser, error) {
@@ -118,6 +119,7 @@ func NewRequestParser(config Config, logger log.Logger, metricsRegistry provider
 		rules:        rules,
 		blacklist:    blacklist,
 		encrypter:    encrypter,
+		currTime:     time.Now,
 	}
 
 	return &r, nil
@@ -222,14 +224,16 @@ func (r *RequestParser) createRecord(req wrp.Message, rule *rules.Rule, eventTyp
 		return emptyRecord, parseFailReason, emperror.WrapWith(errUnexpectedWRPType, "message type check failed", "type", msg.Type, "full message", req)
 	}
 
+	now := r.currTime()
+
 	// get timestamp from wrp payload
 	birthDate, ok := getBirthDate(msg.Payload)
 	if !ok {
-		birthDate = time.Now()
+		birthDate = now
 	}
 	record.BirthDate = birthDate.UnixNano()
 
-	if birthDate.After(time.Now().Add(time.Hour)) {
+	if birthDate.After(now.Add(time.Hour)) {
 		return emptyRecord, invalidBirthdateReason, emperror.WrapWith(errFutureBirthdate, "invalid birthdate", "birthdate", birthDate.String())
 	}
 
@@ -240,7 +244,7 @@ func (r *RequestParser) createRecord(req wrp.Message, rule *rules.Rule, eventTyp
 	}
 
 	deathDate := birthDate.Add(ttl)
-	if time.Now().After(deathDate) {
+	if now.After(deathDate) {
 		return emptyRecord, expiredReason, emperror.WrapWith(errExpired, "event is already expired", "deathdate", deathDate.String())
 	}
 	record.DeathDate = deathDate.UnixNano()
