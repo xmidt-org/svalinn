@@ -18,12 +18,8 @@
 package main
 
 import (
-	"crypto/hmac"
-	"crypto/sha1"
-	"encoding/hex"
 	"io/ioutil"
 	"net/http"
-	"strings"
 
 	"github.com/go-kit/kit/log"
 	"github.com/xmidt-org/webpa-common/logging"
@@ -35,10 +31,8 @@ type parser interface {
 }
 
 type App struct {
-	parser       parser
-	logger       log.Logger
-	token        string
-	secretGetter secretGetter
+	parser parser
+	logger log.Logger
 }
 
 func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
@@ -48,30 +42,6 @@ func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		logging.Error(app.logger).Log(logging.MessageKey(), "Could not read request body", logging.ErrorKey(), err.Error())
 		writer.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	// verify this is valid from caduceus
-	encodedSecret := req.Header.Get("X-Webpa-Signature")
-	trimedSecret := strings.TrimPrefix(encodedSecret, "sha1=")
-	secretGiven, err := hex.DecodeString(trimedSecret)
-	if err != nil {
-		logging.Error(app.logger).Log(logging.MessageKey(), "Could not decode signature", logging.ErrorKey(), err.Error())
-		writer.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	secret, err := app.secretGetter.GetSecret()
-	if err != nil {
-		logging.Error(app.logger).Log(logging.MessageKey(), "Could not get secret", logging.ErrorKey(), err.Error())
-		writer.WriteHeader(http.StatusInternalServerError)
-	}
-	h := hmac.New(sha1.New, []byte(secret))
-	h.Write(msgBytes)
-	sig := h.Sum(nil)
-	if !hmac.Equal(sig, secretGiven) {
-		logging.Error(app.logger).Log(logging.MessageKey(), "Invalid secret")
-		writer.WriteHeader(http.StatusForbidden)
 		return
 	}
 
