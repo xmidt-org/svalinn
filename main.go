@@ -24,19 +24,22 @@ import (
 	olog "log"
 	"net/http"
 	_ "net/http/pprof"
+	"os"
+	"os/signal"
 	"sync"
+	"time"
 
-	"github.com/xmidt-org/bascule/acquire"
-
-	"github.com/xmidt-org/wrp-listener/secret"
-
+	"github.com/InVisionApp/go-health"
+	"github.com/InVisionApp/go-health/handlers"
 	"github.com/go-kit/kit/log"
 	"github.com/goph/emperror"
 	"github.com/gorilla/mux"
 	"github.com/justinas/alice"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+
 	"github.com/xmidt-org/bascule"
+	"github.com/xmidt-org/bascule/acquire"
 	"github.com/xmidt-org/bascule/basculehttp"
 	db "github.com/xmidt-org/codex-db"
 	"github.com/xmidt-org/codex-db/batchInserter"
@@ -49,20 +52,12 @@ import (
 	"github.com/xmidt-org/webpa-common/basculechecks"
 	"github.com/xmidt-org/webpa-common/concurrent"
 	"github.com/xmidt-org/webpa-common/logging"
+	"github.com/xmidt-org/webpa-common/server"
 	"github.com/xmidt-org/webpa-common/xmetrics"
 	"github.com/xmidt-org/wrp-listener"
 	"github.com/xmidt-org/wrp-listener/hashTokenFactory"
+	"github.com/xmidt-org/wrp-listener/secret"
 	"github.com/xmidt-org/wrp-listener/webhookClient"
-
-	//	"github.com/xmidt-org/webpa-common/secure/handler"
-	"os"
-	"os/signal"
-	"time"
-
-	"github.com/xmidt-org/webpa-common/server"
-
-	"github.com/InVisionApp/go-health"
-	"github.com/InVisionApp/go-health/handlers"
 )
 
 const (
@@ -75,6 +70,7 @@ type SvalinnConfig struct {
 	Endpoint          string
 	Health            HealthConfig
 	Webhook           WebhookConfig
+	Secret            SecretConfig
 	RequestParser     requestParser.Config
 	BatchInserter     batchInserter.Config
 	Db                postgresql.Config
@@ -91,12 +87,9 @@ type WebhookConfig struct {
 	Basic                string
 }
 
-type JWTConfig struct {
-	Client  string
-	URL     string
-	Secret  string
-	Timeout time.Duration
-	Buffer  time.Duration
+type SecretConfig struct {
+	Header    string
+	Delimiter string
 }
 
 type RetryConfig struct {
@@ -181,18 +174,22 @@ func svalinn(arguments []string) {
 	}
 	listener := basculechecks.NewMetricListener(m)
 
-	htf, err := hashTokenFactory.New("sha1", sha1.New, secretGetter)
-	exitIfError(logger, emperror.Wrap(err, "failed to create hashTokenFactory"))
+	svalinnHandler := alice.New()
 
-	authConstructor := basculehttp.NewConstructor(
-		basculehttp.WithCLogger(GetLogger),
-		basculehttp.WithTokenFactory("sha1", htf),
-		basculehttp.WithHeaderName("X-Webpa-Signature"),
-		basculehttp.WithHeaderDelimiter("="),
-		basculehttp.WithCErrorResponseFunc(listener.OnErrorResponse),
-	)
+	if config.Secret.Header != "" {
+		htf, err := hashTokenFactory.New("Sha1", sha1.New, secretGetter)
+		exitIfError(logger, emperror.Wrap(err, "failed to create hashTokenFactory"))
 
-	svalinnHandler := alice.New(SetLogger(logger), authConstructor, basculehttp.NewListenerDecorator(listener))
+		authConstructor := basculehttp.NewConstructor(
+			basculehttp.WithCLogger(GetLogger),
+			basculehttp.WithTokenFactory("Sha1", htf),
+			basculehttp.WithHeaderName(config.Secret.Header),
+			basculehttp.WithHeaderDelimiter(config.Secret.Delimiter),
+			basculehttp.WithCErrorResponseFunc(listener.OnErrorResponse),
+		)
+
+		svalinnHandler = alice.New(SetLogger(logger), authConstructor, basculehttp.NewListenerDecorator(listener))
+	}
 	router := mux.NewRouter()
 
 	database, err := setupDb(config, logger, metricsRegistry)
