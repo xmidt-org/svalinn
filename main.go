@@ -26,6 +26,8 @@ import (
 	_ "net/http/pprof"
 	"sync"
 
+	"github.com/xmidt-org/bascule/acquire"
+
 	"github.com/xmidt-org/wrp-listener/secret"
 
 	"github.com/go-kit/kit/log"
@@ -85,7 +87,7 @@ type WebhookConfig struct {
 	Timeout              time.Duration
 	RegistrationURL      string
 	Request              webhook.W
-	JWT                  JWTConfig
+	JWT                  acquire.JWTAcquirerOptions
 	Basic                string
 }
 

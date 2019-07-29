@@ -21,16 +21,11 @@ import (
 	"github.com/xmidt-org/bascule/acquire"
 )
 
-// determineTokenAcquirer always returns a valid TokenAcquirer, but may also return an error
+// determineTokenAcquirer always returns a valid TokenAcquirer
 func determineTokenAcquirer(config WebhookConfig) acquire.Acquirer {
 	defaultAcquirer := &acquire.DefaultAcquirer{}
-	if config.JWT.Client != "" && config.JWT.URL != "" && config.JWT.Secret != "" && config.JWT.Timeout != 0 {
-		acquirer := acquire.NewJWTAcquirer(acquire.JWTAcquirerOptions{
-			AuthURL:        config.JWT.URL,
-			Timeout:        config.JWT.Timeout,
-			Buffer:         config.JWT.Buffer,
-			RequestHeaders: map[string]string{"X-Client-Id": config.JWT.Client, "X-Client-Secret": config.JWT.Secret},
-		})
+	if config.JWT.AuthURL != "" && config.JWT.Buffer != 0 && config.JWT.Timeout != 0 {
+		acquirer := acquire.NewJWTAcquirer(config.JWT)
 		return &acquirer
 	}
 

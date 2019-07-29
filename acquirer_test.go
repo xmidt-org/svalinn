@@ -19,6 +19,7 @@ package main
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/xmidt-org/bascule/acquire"
@@ -27,31 +28,23 @@ import (
 func TestDetermineTokenAcquirer(t *testing.T) {
 	defaultAcquirer := &acquire.DefaultAcquirer{}
 	goodBasicAcquirer := acquire.NewBasicAcquirer("test basic")
-	// config := JWTConfig{
-	// 	Client:  "test client",
-	// 	Secret:  "test secret",
-	// 	URL:     "/test",
-	// 	Buffer:  5 * time.Second,
-	// 	Timeout: time.Duration(5) * time.Second,
-	// }
-	// goodJWTAcquirer := acquire.NewJWTAcquirer(acquire.JWTAcquirerOptions{
-	// 	AuthURL:        config.URL,
-	// 	Timeout:        config.Timeout,
-	// 	Buffer:         config.Buffer,
-	// 	RequestHeaders: map[string]string{"X-Client-Id": config.Client, "X-Client-Secret": config.Secret},
-	// })
+	options := acquire.JWTAcquirerOptions{
+		AuthURL: "/test",
+		Timeout: 10 * time.Minute,
+		Buffer:  5 * time.Second,
+	}
 	tests := []struct {
 		description           string
-		jwtConfig             JWTConfig
+		jwtConfig             acquire.JWTAcquirerOptions
 		basicVal              string
+		expectJWT             bool
 		expectedTokenAcquirer acquire.Acquirer
 	}{
-		// TODO: fix test
-		// {
-		// 	description:           "Sat Success",
-		// 	jwtConfig:             config,
-		// 	expectedTokenAcquirer: &goodJWTAcquirer,
-		// },
+		{
+			description: "Sat Success",
+			jwtConfig:   options,
+			expectJWT:   true,
+		},
 		{
 			description:           "Basic Success",
 			basicVal:              "test basic",
@@ -71,7 +64,12 @@ func TestDetermineTokenAcquirer(t *testing.T) {
 				Basic: tc.basicVal,
 			}
 			tokenAcquirer := determineTokenAcquirer(config)
-			assert.EqualValues(tc.expectedTokenAcquirer, tokenAcquirer)
+			if tc.expectJWT {
+				assert.NotEqual(goodBasicAcquirer, tokenAcquirer)
+				assert.NotEqual(defaultAcquirer, tokenAcquirer)
+			} else {
+				assert.Equal(tc.expectedTokenAcquirer, tokenAcquirer)
+			}
 		})
 	}
 }
