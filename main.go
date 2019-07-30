@@ -176,7 +176,7 @@ func svalinn(arguments []string) {
 
 	svalinnHandler := alice.New()
 
-	if config.Secret.Header != "" {
+	if config.Secret.Header != "" && config.Webhook.Request.Config.Secret != "" {
 		htf, err := hashTokenFactory.New("Sha1", sha1.New, secretGetter)
 		exitIfError(logger, emperror.Wrap(err, "failed to create hashTokenFactory"))
 

@@ -29,6 +29,10 @@ when it can't connect to or ping the database.
 [MsgPack](https://msgpack.org/index.html) is used multiple time in Svalinn, 
 specifically [ugorji's implementation](https://github.com/ugorji/go).
 
+Svalinn utilizes the [bascule](https://github.com/xmidt-org/bascule) and 
+[wrp-listener](https://github.com/xmidt-org/wrp-listener) packages for webhook 
+registration and request authentication.
+
 ### Registering for events
 
 Whether or not Svalinn registers to a webhook for events is determined by the 
@@ -38,17 +42,23 @@ than 0, the registerer will register at the interval given.
 When the registerer contacts the webhook, it includes the following information:
 * **URL:** where to send the events
 * **Content type:** what to set as the message's content type and how to send 
-  events to Svalinn.  Svalinn requests for a `wrp`, which will come as a 
-  `MsgPack`.
+  events to Svalinn.  Svalinn by default requests for a `wrp`, which will come 
+  as a `MsgPack`.
 * **Secret:** the secret the webhook should use when sending events to Svalinn.
-  Svalinn uses it to validate the message.
+  Svalinn uses it to validate the message. If this is an empty string, Svalinn 
+  doesn't authenticate the messages it receives against a hash of the message.
+* **Retries:** the number of times to retry if sending an event fails.
+* **Alternative URLs:** other URLs to try if sending an event fails.
 * **Device IDs:** list of regular expressions to match device id type against.
-  Currently, Svalinn sets this as `[".*"]`
+  Currently, this defaults to `[".*"]`.
 * **Events:** list of regular expressions for the webhook to use to determine 
   which events to send to Svalinn.
 
-The registerer sends an Authorization header with its request, and determines 
-what that should be based on configuration.
+The registerer sends an authorization header with its request, and determines 
+what that should be based on configuration values.  It's possible to not send 
+any authorization header.
+
+Registering is done using the wrp-listener package.
 
 ### Inserting events into the database
 
@@ -59,10 +69,14 @@ then inserted as part of a [batch insert](#Batch-Insertion) into the database.
 #### Validation
 
 In order to ensure that the event was sent from a trusted source, Svalinn 
-gets a SHA1 hash from the `X-Webpa-Signature` Header, then creates its own hash 
-using the secret that it sends when registering and the body of the request.  
-If the two hashes match, the event is considered valid and is decoded from 
-`MsgPack` into the `wrp.Message` struct: our event!
+gets a SHA1 hash from a request header (the header name is configurable) then 
+creates its own hash using the secret that it sends when registering and the 
+body of the request.  If the two hashes match, the event is considered valid.  
+This validation is done using bascule middleware, and is bypassed if the 
+configurable header and secret are empty strings.
+
+If the request passes through the middleware successfully, the body is decoded 
+from `MsgPack` into the `wrp.Message` struct: our event!
 
 Now that the event has been verified and decoded, Svalinn attempts to add it to 
 the parsing queue.  If the queue is full, Svalinn returns the `Too Many Requests`
