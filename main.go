@@ -157,8 +157,9 @@ func svalinn(arguments []string) {
 	v.Unmarshal(config)
 
 	if config.Webhook.Request.Config.URL == "" {
-		config.Webhook.Request.Config.URL = codex.Server + apiBase + config.Endpoint
+		config.Webhook.Request.Config.URL = codex.Server
 	}
+	config.Webhook.Request.Config.URL = config.Webhook.Request.Config.URL + apiBase + config.Endpoint
 
 	cipherOptions, err := voynicrypto.FromViper(v)
 	exitIfError(logger, emperror.Wrap(err, "failed to initialize cipher options"))

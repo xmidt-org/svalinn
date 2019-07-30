@@ -409,17 +409,19 @@ webhook:
     # config provides configuration values for the requests to the webhook 
     # receiver.
     config:
-      # url provides the URL the webhook should send the events to.  If this 
-      # value isn't set, it defaults to:
+      # url provides the server the webhook should send the events to.  If this 
+      # value isn't set, it defaults to the server config value.  Svalinn adds 
+      # to the url with endpoint information, making what is sent in the 
+      # webhook request look like the following:
       #  
-      # {server}{apiBase constant}{endpoint}
+      # {url}{apiBase constant}{endpoint}
       # 
       # Example with configuration defaults:
       # svalinn-instance-123.example.com/api/v1/device-status
       # <-----------server-------------><-api-><--endpoint-->
       #
-      # (Optional)
-      url: "http://host.docker.internal:8181/api/v1/device-status"
+      # (Optional) defaults to server value
+      url: "http://host.docker.internal:8181"
 
       # contentType provides the content type Svalinn expects from the requests 
       # it receives.
@@ -460,7 +462,7 @@ webhook:
   # webhook.  If this value is provided and sat isn't, the following header is 
   # added to the registration request:
   #
-  # Authorization Basic {basic value}
+  # Authorization Basic {basic}
   #
   # (Optional)
   basic: ""
