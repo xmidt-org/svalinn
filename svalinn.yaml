@@ -295,7 +295,7 @@ cipher:
 ########################################
 
 # endpoint provides the endpoint to listen for events at, which is added to the 
-# api base.
+# api base (a constant in the code).
 endpoint: "/device-status"
 
 # requestParser provides the information needed for starting the parser, which 
@@ -389,7 +389,9 @@ secret:
 #   Webhook Registration Related Configuration
 ########################################
 
-# webhook provides the information needed to register to a webhook.
+# webhook provides the information needed to register to a webhook.  If the 
+# urls and event regex aren't empty and the interval is greater than 0, 
+# registration occurs.
 # (Optional)
 webhook:
   # registrationInterval provides the time to wait between each registration to 
@@ -410,18 +412,8 @@ webhook:
     # receiver.
     config:
       # url provides the server the webhook should send the events to.  If this 
-      # value isn't set, it defaults to the server config value.  Svalinn adds 
-      # to the url with endpoint information, making what is sent in the 
-      # webhook request look like the following:
-      #  
-      # {url}{apiBase constant}{endpoint}
-      # 
-      # Example with configuration defaults:
-      # svalinn-instance-123.example.com/api/v1/device-status
-      # <-----------server-------------><-api-><--endpoint-->
-      #
-      # (Optional) defaults to server value
-      url: "http://host.docker.internal:8181"
+      # value isn't set, no registration happens.
+      url: "http://host.docker.internal:8181/api/v1/device-status"
 
       # contentType provides the content type Svalinn expects from the requests 
       # it receives.

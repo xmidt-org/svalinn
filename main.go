@@ -82,6 +82,7 @@ type WebhookConfig struct {
 	RegistrationInterval time.Duration
 	Timeout              time.Duration
 	RegistrationURL      string
+	HostToRegister       string
 	Request              webhook.W
 	JWT                  acquire.JWTAcquirerOptions
 	Basic                string
@@ -213,8 +214,8 @@ func svalinn(arguments []string) {
 	s.requestParser.Start()
 	s.batchInserter.Start()
 	startHealth(logger, database.health, config)
-	// if the register interval is 0, don't register
-	if config.Webhook.RegistrationInterval > 0 {
+	// if the register interval is 0 and these values aren't set, don't register
+	if config.Webhook.RegistrationInterval > 0 && config.Webhook.RegistrationURL != "" && config.Webhook.Request.Config.URL != "" && len(config.Webhook.Request.Events) > 0 {
 		acquirer := determineTokenAcquirer(config.Webhook)
 		basicConfig := webhookClient.BasicConfig{
 			Timeout:         config.Webhook.Timeout,
