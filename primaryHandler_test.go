@@ -19,11 +19,7 @@ package main
 
 import (
 	"bytes"
-	"crypto/hmac"
-	"crypto/sha1"
-	"encoding/hex"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -36,7 +32,6 @@ import (
 )
 
 func TestHandleWebhook(t *testing.T) {
-	secret := "abcdefgh"
 	goodMsg := wrp.Message{
 		Type:        wrp.SimpleEventMessageType,
 		Source:      "test",
@@ -44,71 +39,43 @@ func TestHandleWebhook(t *testing.T) {
 	}
 
 	tests := []struct {
-		description      string
-		requestBody      interface{}
-		includeSignature bool
-		getSecretCalled  bool
-		secret           string
-		getSecretErr     error
-		expectedHeader   int
-		parseCalled      bool
-		parseErr         error
+		description    string
+		requestBody    interface{}
+		expectedHeader int
+		parseCalled    bool
+		parseErr       error
 	}{
 		{
-			description:      "Success",
-			requestBody:      goodMsg,
-			includeSignature: true,
-			getSecretCalled:  true,
-			expectedHeader:   http.StatusAccepted,
-			parseCalled:      true,
+			description:    "Success",
+			requestBody:    goodMsg,
+			expectedHeader: http.StatusAccepted,
+			parseCalled:    true,
 		},
 		{
-			description:      "Decode Body Error",
-			requestBody:      "{{{{{{{{{",
-			includeSignature: true,
-			getSecretCalled:  true,
-			expectedHeader:   http.StatusBadRequest,
+			description:    "Decode Body Error",
+			requestBody:    "{{{{{{{{{",
+			expectedHeader: http.StatusBadRequest,
 		},
 		{
-			description:     "Get Secret Failure",
-			requestBody:     goodMsg,
-			getSecretCalled: true,
-			getSecretErr:    errors.New("get secret test error"),
-			expectedHeader:  http.StatusInternalServerError,
-		},
-		{
-			description:     "Mismatched Secret Error",
-			requestBody:     goodMsg,
-			getSecretCalled: true,
-			expectedHeader:  http.StatusForbidden,
-		},
-		{
-			description:      "Parse Error",
-			requestBody:      goodMsg,
-			includeSignature: true,
-			getSecretCalled:  true,
-			expectedHeader:   http.StatusTooManyRequests,
-			parseCalled:      true,
-			parseErr:         errors.New("test parse error"),
+			description:    "Parse Error",
+			requestBody:    goodMsg,
+			expectedHeader: http.StatusTooManyRequests,
+			parseCalled:    true,
+			parseErr:       errors.New("test parse error"),
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
-			mockSecretGetter := new(mockSecretGetter)
-			if tc.getSecretCalled {
-				mockSecretGetter.On("GetSecret").Return(secret, tc.getSecretErr).Once()
-			}
 			mockParser := new(mockParser)
 			if tc.parseCalled {
 				mockParser.On("Parse", mock.Anything).Return(tc.parseErr).Once()
 			}
 
 			app := &App{
-				parser:       mockParser,
-				secretGetter: mockSecretGetter,
-				logger:       logging.DefaultLogger(),
+				parser: mockParser,
+				logger: logging.DefaultLogger(),
 			}
 			rr := httptest.NewRecorder()
 			var marshaledMsg []byte
@@ -120,18 +87,8 @@ func TestHandleWebhook(t *testing.T) {
 			assert.NotNil(marshaledMsg)
 			request, err := http.NewRequest(http.MethodGet, "/", bytes.NewReader(marshaledMsg))
 			assert.Nil(err)
-			if tc.includeSignature {
-				h := hmac.New(sha1.New, []byte(secret))
-				if tc.secret != "" {
-					h = hmac.New(sha1.New, []byte(tc.secret))
-				}
-				h.Write(marshaledMsg)
-				sig := fmt.Sprintf("sha1=%s", hex.EncodeToString(h.Sum(nil)))
-				request.Header.Set("X-Webpa-Signature", sig)
-			}
 
 			app.handleWebhook(rr, request)
-			mockSecretGetter.AssertExpectations(t)
 			mockParser.AssertExpectations(t)
 			assert.Equal(tc.expectedHeader, rr.Code)
 		})

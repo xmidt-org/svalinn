@@ -15,25 +15,23 @@
  *
  */
 
-package webhook
+package main
 
-import "errors"
-
-var (
-	errMissingCredentials = errors.New("no credentials found")
+import (
+	"github.com/xmidt-org/bascule/acquire"
 )
 
-type BasicAcquirer struct {
-	encodedCredentials string
-}
-
-func (b *BasicAcquirer) Acquire() (string, error) {
-	if b.encodedCredentials == "" {
-		return "", errMissingCredentials
+// determineTokenAcquirer always returns a valid TokenAcquirer
+func determineTokenAcquirer(config WebhookConfig) acquire.Acquirer {
+	defaultAcquirer := &acquire.DefaultAcquirer{}
+	if config.JWT.AuthURL != "" && config.JWT.Buffer != 0 && config.JWT.Timeout != 0 {
+		acquirer := acquire.NewJWTAcquirer(config.JWT)
+		return &acquirer
 	}
-	return "Basic " + b.encodedCredentials, nil
-}
 
-func NewBasicAcquirer(credentials string) *BasicAcquirer {
-	return &BasicAcquirer{credentials}
+	if config.Basic != "" {
+		return acquire.NewBasicAcquirer(config.Basic)
+	}
+
+	return defaultAcquirer
 }

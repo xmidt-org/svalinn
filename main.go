@@ -18,45 +18,46 @@
 package main
 
 import (
+	"context"
+	"crypto/sha1"
 	"fmt"
 	olog "log"
 	"net/http"
 	_ "net/http/pprof"
+	"os"
+	"os/signal"
 	"sync"
+	"time"
 
-	"github.com/xmidt-org/codex-db/retry"
-
-	"github.com/xmidt-org/codex-db/postgresql"
-
-	"github.com/xmidt-org/codex-db/batchInserter"
-	"github.com/xmidt-org/svalinn/requestParser"
-
-	"github.com/xmidt-org/codex-db/blacklist"
-
-	"github.com/xmidt-org/voynicrypto"
-
+	"github.com/InVisionApp/go-health"
+	"github.com/InVisionApp/go-health/handlers"
 	"github.com/go-kit/kit/log"
-
 	"github.com/goph/emperror"
 	"github.com/gorilla/mux"
 	"github.com/justinas/alice"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+
+	"github.com/xmidt-org/bascule"
+	"github.com/xmidt-org/bascule/acquire"
+	"github.com/xmidt-org/bascule/basculehttp"
 	db "github.com/xmidt-org/codex-db"
+	"github.com/xmidt-org/codex-db/batchInserter"
+	"github.com/xmidt-org/codex-db/blacklist"
 	"github.com/xmidt-org/codex-db/healthlogger"
+	"github.com/xmidt-org/codex-db/postgresql"
+	"github.com/xmidt-org/codex-db/retry"
+	"github.com/xmidt-org/svalinn/requestParser"
+	"github.com/xmidt-org/voynicrypto"
+	"github.com/xmidt-org/webpa-common/basculechecks"
 	"github.com/xmidt-org/webpa-common/concurrent"
 	"github.com/xmidt-org/webpa-common/logging"
-	"github.com/xmidt-org/webpa-common/xmetrics"
-
-	//	"github.com/xmidt-org/webpa-common/secure/handler"
-	"os"
-	"os/signal"
-	"time"
-
 	"github.com/xmidt-org/webpa-common/server"
-
-	"github.com/InVisionApp/go-health"
-	"github.com/InVisionApp/go-health/handlers"
+	"github.com/xmidt-org/webpa-common/xmetrics"
+	"github.com/xmidt-org/wrp-listener"
+	"github.com/xmidt-org/wrp-listener/hashTokenFactory"
+	"github.com/xmidt-org/wrp-listener/secret"
+	"github.com/xmidt-org/wrp-listener/webhookClient"
 )
 
 const (
@@ -69,11 +70,27 @@ type SvalinnConfig struct {
 	Endpoint          string
 	Health            HealthConfig
 	Webhook           WebhookConfig
+	Secret            SecretConfig
 	RequestParser     requestParser.Config
 	BatchInserter     batchInserter.Config
 	Db                postgresql.Config
 	InsertRetries     RetryConfig
 	BlacklistInterval time.Duration
+}
+
+type WebhookConfig struct {
+	RegistrationInterval time.Duration
+	Timeout              time.Duration
+	RegistrationURL      string
+	HostToRegister       string
+	Request              webhook.W
+	JWT                  acquire.JWTAcquirerOptions
+	Basic                string
+}
+
+type SecretConfig struct {
+	Header    string
+	Delimiter string
 }
 
 type RetryConfig struct {
@@ -88,6 +105,7 @@ type Svalinn struct {
 	waitGroup     *sync.WaitGroup
 	requestParser *requestParser.RequestParser
 	batchInserter *batchInserter.BatchInserter
+	registerer    *webhookClient.PeriodicRegisterer
 }
 
 type database struct {
@@ -103,12 +121,27 @@ type HealthConfig struct {
 	Endpoint string
 }
 
+func SetLogger(logger log.Logger) func(delegate http.Handler) http.Handler {
+	return func(delegate http.Handler) http.Handler {
+		return http.HandlerFunc(
+			func(w http.ResponseWriter, r *http.Request) {
+				ctx := r.WithContext(logging.WithLogger(r.Context(),
+					log.With(logger, "requestHeaders", r.Header, "requestURL", r.URL.EscapedPath(), "method", r.Method)))
+				delegate.ServeHTTP(w, ctx)
+			})
+	}
+}
+
+func GetLogger(ctx context.Context) bascule.Logger {
+	return log.With(logging.GetLogger(ctx), "ts", log.DefaultTimestampUTC, "caller", log.DefaultCaller)
+}
+
 func svalinn(arguments []string) {
 	start := time.Now()
 
 	var (
 		f, v                                = pflag.NewFlagSet(applicationName, pflag.ContinueOnError), viper.New()
-		logger, metricsRegistry, codex, err = server.Initialize(applicationName, arguments, f, v, postgresql.Metrics, dbretry.Metrics, requestParser.Metrics, batchInserter.Metrics)
+		logger, metricsRegistry, codex, err = server.Initialize(applicationName, arguments, f, v, postgresql.Metrics, dbretry.Metrics, requestParser.Metrics, batchInserter.Metrics, basculechecks.Metrics)
 	)
 
 	if parseErr, done := printVersion(f, arguments); done {
@@ -124,18 +157,41 @@ func svalinn(arguments []string) {
 	config := new(SvalinnConfig)
 	v.Unmarshal(config)
 
-	if config.Webhook.URL == "" {
-		config.Webhook.URL = codex.Server + apiBase + config.Endpoint
+	if config.Webhook.Request.Config.URL == "" {
+		config.Webhook.Request.Config.URL = codex.Server
 	}
+	config.Webhook.Request.Config.URL = config.Webhook.Request.Config.URL + apiBase + config.Endpoint
 
 	cipherOptions, err := voynicrypto.FromViper(v)
 	exitIfError(logger, emperror.Wrap(err, "failed to initialize cipher options"))
 	encrypter, err := cipherOptions.GetEncrypter(logger)
 	exitIfError(logger, emperror.Wrap(err, "failed to load cipher encrypter"))
 
-	secretGetter := NewConstantSecret(config.Webhook.Secret)
+	secretGetter := secretGetter.NewConstantSecret(config.Webhook.Request.Config.Secret)
+
+	var m *basculechecks.JWTValidationMeasures
+
+	if metricsRegistry != nil {
+		m = basculechecks.NewJWTValidationMeasures(metricsRegistry)
+	}
+	listener := basculechecks.NewMetricListener(m)
 
 	svalinnHandler := alice.New()
+
+	if config.Secret.Header != "" && config.Webhook.Request.Config.Secret != "" {
+		htf, err := hashTokenFactory.New("Sha1", sha1.New, secretGetter)
+		exitIfError(logger, emperror.Wrap(err, "failed to create hashTokenFactory"))
+
+		authConstructor := basculehttp.NewConstructor(
+			basculehttp.WithCLogger(GetLogger),
+			basculehttp.WithTokenFactory("Sha1", htf),
+			basculehttp.WithHeaderName(config.Secret.Header),
+			basculehttp.WithHeaderDelimiter(config.Secret.Delimiter),
+			basculehttp.WithCErrorResponseFunc(listener.OnErrorResponse),
+		)
+
+		svalinnHandler = alice.New(SetLogger(logger), authConstructor, basculehttp.NewListenerDecorator(listener))
+	}
 	router := mux.NewRouter()
 
 	database, err := setupDb(config, logger, metricsRegistry)
@@ -149,9 +205,8 @@ func svalinn(arguments []string) {
 	exitIfError(logger, emperror.Wrap(err, "failed to create request parser"))
 
 	app := &App{
-		logger:       logger,
-		parser:       s.requestParser,
-		secretGetter: secretGetter,
+		logger: logger,
+		parser: s.requestParser,
 	}
 
 	// MARK: Actual server logic
@@ -159,12 +214,22 @@ func svalinn(arguments []string) {
 	s.requestParser.Start()
 	s.batchInserter.Start()
 	startHealth(logger, database.health, config)
-	// if the register interval is 0, don't register
-	if config.Webhook.RegistrationInterval > 0 {
-		registerer := newPeriodicRegisterer(config.Webhook, secretGetter, logger)
+	// if the register interval is 0 and these values aren't set, don't register
+	if config.Webhook.RegistrationInterval > 0 && config.Webhook.RegistrationURL != "" && config.Webhook.Request.Config.URL != "" && len(config.Webhook.Request.Events) > 0 {
+		acquirer := determineTokenAcquirer(config.Webhook)
+		basicConfig := webhookClient.BasicConfig{
+			Timeout:         config.Webhook.Timeout,
+			RegistrationURL: config.Webhook.RegistrationURL,
+			Request:         config.Webhook.Request,
+		}
+		registerer, err := webhookClient.NewBasicRegisterer(acquirer, secretGetter, basicConfig)
+		if err != nil {
+			logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to create basic registerer", logging.ErrorKey(), err.Error())
+		}
+		periodicRegisterer := webhookClient.NewPeriodicRegisterer(registerer, config.Webhook.RegistrationInterval, logger)
 
-		// then continue to register
-		go registerer.registerAtInterval()
+		s.registerer = periodicRegisterer
+		periodicRegisterer.Start()
 	}
 
 	// MARK: Starting the server
@@ -271,6 +336,7 @@ func waitUntilShutdown(logger log.Logger, s *Svalinn, database database) {
 		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "stopping health endpoint failed",
 			logging.ErrorKey(), err.Error())
 	}
+	s.registerer.Stop()
 	close(database.blacklistStop)
 	close(s.shutdown)
 	s.waitGroup.Wait()
