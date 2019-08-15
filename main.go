@@ -21,6 +21,7 @@ import (
 	"context"
 	"crypto/sha1"
 	"fmt"
+	"github.com/xmidt-org/codex-db/cassandra"
 	olog "log"
 	"net/http"
 	_ "net/http/pprof"
@@ -73,7 +74,7 @@ type SvalinnConfig struct {
 	Secret            SecretConfig
 	RequestParser     requestParser.Config
 	BatchInserter     batchInserter.Config
-	Db                postgresql.Config
+	Db                cassandra.Config
 	InsertRetries     RetryConfig
 	BlacklistInterval time.Duration
 }
@@ -274,7 +275,7 @@ func setupDb(config *SvalinnConfig, logger log.Logger, metricsRegistry xmetrics.
 	d.health = health.New()
 	d.health.Logger = healthlogger.NewHealthLogger(logger)
 
-	dbConn, err := postgresql.CreateDbConnection(config.Db, metricsRegistry, d.health)
+	dbConn, err := cassandra.CreateDbConnection(config.Db, metricsRegistry, d.health)
 	if err != nil {
 		return database{}, err
 	}
