@@ -152,7 +152,7 @@ db:
   opTimeout: 100ms
 
 ########################################
-#   Database Related Configuration
+#   postgres config
 ########################################
 #  # server is the address and port used to connect to the server.
 #  server: "db:26257"
