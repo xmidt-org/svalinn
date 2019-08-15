@@ -46,7 +46,6 @@ import (
 	"github.com/xmidt-org/codex-db/batchInserter"
 	"github.com/xmidt-org/codex-db/blacklist"
 	"github.com/xmidt-org/codex-db/healthlogger"
-	"github.com/xmidt-org/codex-db/postgresql"
 	"github.com/xmidt-org/codex-db/retry"
 	"github.com/xmidt-org/svalinn/requestParser"
 	"github.com/xmidt-org/voynicrypto"
@@ -142,7 +141,7 @@ func svalinn(arguments []string) {
 
 	var (
 		f, v                                = pflag.NewFlagSet(applicationName, pflag.ContinueOnError), viper.New()
-		logger, metricsRegistry, codex, err = server.Initialize(applicationName, arguments, f, v, postgresql.Metrics, dbretry.Metrics, requestParser.Metrics, batchInserter.Metrics, basculechecks.Metrics)
+		logger, metricsRegistry, codex, err = server.Initialize(applicationName, arguments, f, v, cassandra.Metrics, dbretry.Metrics, requestParser.Metrics, batchInserter.Metrics, basculechecks.Metrics)
 	)
 
 	if parseErr, done := printVersion(f, arguments); done {
