@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [v0.11.0]
+- updated urls and imports
+- Removed acquirer code and use the bascule acquirer instead
+- Removed webhook registerer code and use the wrp-listener registerer instead
+- Use bascule to authenticate the hash with middleware instead of in the primaryHandler
+- Updated yaml and documentation
+- Added docs folder for more in depth documentation
+
+
+
 ## [v0.10.2]
 
 
@@ -149,7 +159,8 @@ Bug Fix Caduceus config loading
 - Initial creation
 - Bumped codex version, modified code to match changes
 
-[Unreleased]: https://github.com/xmidt-org/svalinn/compare/v0.10.2...HEAD
+[Unreleased]: https://github.com/xmidt-org/svalinn/compare/v0.11.0...HEAD
+[v0.11.0]: https://github.com/xmidt-org/svalinn/compare/v0.10.2...v0.11.0
 [v0.10.2]: https://github.com/xmidt-org/svalinn/compare/v0.10.0...v0.10.2
 [v0.10.0]: https://github.com/xmidt-org/svalinn/compare/v0.9.1...v0.10.0
 [v0.9.1]: https://github.com/xmidt-org/svalinn/compare/v0.9.0...v0.9.1
