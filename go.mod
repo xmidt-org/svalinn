@@ -13,11 +13,9 @@ require (
 	github.com/spf13/viper v1.4.0
 	github.com/stretchr/testify v1.3.0
 	github.com/xmidt-org/bascule v0.3.1
-	github.com/xmidt-org/codex-db v0.1.2
+	github.com/xmidt-org/codex-db v0.2.0
 	github.com/xmidt-org/voynicrypto v0.1.1
 	github.com/xmidt-org/webpa-common v1.3.0
 	github.com/xmidt-org/wrp-go v1.2.0
 	github.com/xmidt-org/wrp-listener v0.1.1
 )
-
-replace github.com/xmidt-org/codex-db => github.com/xmidt-org/codex-db v0.1.3-0.20190808222843-c56f57b13b7a
