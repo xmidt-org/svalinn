@@ -1,8 +1,2 @@
-- updated urls and imports
-- Removed acquirer code and use the bascule acquirer instead
-- Removed webhook registerer code and use the wrp-listener registerer instead
-- Use bascule to authenticate the hash with middleware instead of in the primaryHandler
-- Updated yaml and documentation
-- Changed webhook request config url to just be the server portion of the url
 - switched database configuration from postgres to cassandra
 - bumped codex-db to v0.2.0
