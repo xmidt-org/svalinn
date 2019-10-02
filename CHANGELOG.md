@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [v0.12.0]
+- switched database configuration from postgres to cassandra
+- bumped codex-db to v0.2.0
+
+
+
 ## [v0.11.2]
 
 
@@ -164,7 +170,8 @@ Bug Fix Caduceus config loading
 - Initial creation
 - Bumped codex version, modified code to match changes
 
-[Unreleased]: https://github.com/xmidt-org/svalinn/compare/v0.11.2...HEAD
+[Unreleased]: https://github.com/xmidt-org/svalinn/compare/v0.12.0...HEAD
+[v0.12.0]: https://github.com/xmidt-org/svalinn/compare/v0.11.2...v0.12.0
 [v0.11.2]: https://github.com/xmidt-org/svalinn/compare/v0.11.0...v0.11.2
 [v0.11.0]: https://github.com/xmidt-org/svalinn/compare/v0.10.2...v0.11.0
 [v0.10.2]: https://github.com/xmidt-org/svalinn/compare/v0.10.0...v0.10.2
