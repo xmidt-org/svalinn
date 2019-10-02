@@ -4,6 +4,7 @@ go 1.12
 
 require (
 	github.com/InVisionApp/go-health v2.1.0+incompatible
+	github.com/bitly/go-hostpool v0.0.0-20171023180738-a3a6125de932 // indirect
 	github.com/c9s/goprocinfo v0.0.0-20190309065803-0b2ad9ac246b // indirect
 	github.com/go-kit/kit v0.8.0
 	github.com/goph/emperror v0.17.2
