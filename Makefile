@@ -5,7 +5,7 @@ GOFMT        ?= $(GO)fmt
 FIRST_GOPATH := $(firstword $(subst :, ,$(shell $(GO) env GOPATH)))
 SVALINN    := $(FIRST_GOPATH)/bin/svalinn
 
-PROGVER = $(shell grep 'applicationVersion.*= ' main.go | awk '{print $$3}' | sed -e 's/\"//g')
+PROGVER = $(shell git describe --tags `git rev-list --tags --max-count=1` | tail -1 | sed 's/v\(.*\)/\1/')
 
 .PHONY: go-mod-vendor
 go-mod-vendor:
@@ -16,13 +16,13 @@ build: go-mod-vendor
 	$(GO) build -o svalinn
 
 rpm:
-	mkdir -p ./OPATH/SOURCES
-	tar -czvf ./OPATH/SOURCES/svalinn-$(PROGVER).tar.gz . --exclude ./.git --exclude ./OPATH --exclude ./conf --exclude ./deploy --exclude ./vendor
-	cp conf/svalinn.service ./OPATH/SOURCES/
-	cp conf/svalinn.yaml  ./OPATH/SOURCES/
-	cp LICENSE ./OPATH/SOURCES/
-	cp NOTICE ./OPATH/SOURCES/
-	cp CHANGELOG.md ./OPATH/SOURCES/
+	mkdir -p ./.ignore/sources
+	tar -czvf ./.ignore/sources/svalinn-$(PROGVER).tar.gz . --exclude ./.git --exclude ./OPATH --exclude ./conf --exclude ./deploy --exclude ./vendor
+	cp conf/svalinn.service ./.ignore/sources/
+	cp conf/svalinn.yaml  ./.ignore/sources/
+	cp LICENSE ./.ignore/sources/
+	cp NOTICE ./.ignore/sources/
+	cp CHANGELOG.md ./.ignore/sources/
 	rpmbuild --define "_topdir $(CURDIR)/OPATH" \
     		--define "_version $(PROGVER)" \
     		--define "_release 1" \
@@ -43,27 +43,26 @@ endif
 .PHONY: update-version
 update-version:
 	@echo "Update Version $(PROGVER) to $(RUN_ARGS)"
-	sed -i "s/$(PROGVER)/$(RUN_ARGS)/g" main.go
-
+	git tag v$(RUN_ARGS)
 
 .PHONY: install
 install: go-mod-vendor
-	echo go build -o $(SVALINN) $(PROGVER)
+	go install -ldflags "-X 'main.BuildTime=`date -u '+%Y-%m-%d %H:%M:%S'`' -X main.GitCommit=`git rev-parse --short HEAD` -X main.Version=$(PROGVER)"
 
 .PHONY: release-artifacts
 release-artifacts: go-mod-vendor
-	GOOS=darwin GOARCH=amd64 go build -o ./OPATH/svalinn-$(PROGVER).darwin-amd64
-	GOOS=linux  GOARCH=amd64 go build -o ./OPATH/svalinn-$(PROGVER).linux-amd64
+	GOOS=darwin GOARCH=amd64 go build  -ldflags "-X 'main.BuildTime=`date -u '+%Y-%m-%d %H:%M:%S'`' -X main.GitCommit=`git rev-parse --short HEAD` -X main.Version=$(PROGVER)" -o ./.ignore/svalinn-$(PROGVER).darwin-amd64
+	GOOS=linux  GOARCH=amd64 go build  -ldflags "-X 'main.BuildTime=`date -u '+%Y-%m-%d %H:%M:%S'`' -X main.GitCommit=`git rev-parse --short HEAD` -X main.Version=$(PROGVER)" -o ./.ignore/svalinn-$(PROGVER).linux-amd64
 
 .PHONY: docker
 docker:
-	docker build -f ./deploy/Dockerfile -t svalinn:$(PROGVER) .
+	docker build --build-arg VERSION=$(PROGVER) -f ./deploy/Dockerfile -t xmidt/svalinn:$(PROGVER) .
 
 # build docker without running modules
 .PHONY: local-docker
 local-docker:
 	GOOS=linux  GOARCH=amd64 go build -o svalinn_linux_amd64
-	docker build -f ./deploy/Dockerfile.local -t svalinn:local .
+	docker build --build-arg VERSION=$(PROGVER)+local -f ./deploy/Dockerfile.local -t xmidt/svalinn:local .
 
 .PHONY: style
 style:

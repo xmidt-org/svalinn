@@ -22,11 +22,13 @@ import (
 	"crypto/sha1"
 	"fmt"
 	"github.com/xmidt-org/codex-db/cassandra"
+	"io"
 	olog "log"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"runtime"
 	"sync"
 	"time"
 
@@ -63,7 +65,12 @@ import (
 const (
 	applicationName, apiBase = "svalinn", "/api/v1"
 	DEFAULT_KEY_ID           = "current"
-	applicationVersion       = "0.12.0"
+)
+
+var (
+	GitCommit = "undefined"
+	Version   = "undefined"
+	BuildTime = "undefined"
 )
 
 type SvalinnConfig struct {
@@ -251,10 +258,19 @@ func printVersion(f *pflag.FlagSet, arguments []string) (error, bool) {
 	}
 
 	if *printVer {
-		fmt.Println(applicationVersion)
+		printVersionInfo(os.Stdout)
 		return nil, true
 	}
 	return nil, false
+}
+
+func printVersionInfo(writer io.Writer) {
+	fmt.Fprintf(writer, "%s:\n", applicationName)
+	fmt.Fprintf(writer, "  version: \t%s\n", Version)
+	fmt.Fprintf(writer, "  go version: \t%s\n", runtime.Version())
+	fmt.Fprintf(writer, "  built time: \t%s\n", BuildTime)
+	fmt.Fprintf(writer, "  git commit: \t%s\n", GitCommit)
+	fmt.Fprintf(writer, "  os/arch: \t%s/%s\n", runtime.GOOS, runtime.GOARCH)
 }
 
 func exitIfError(logger log.Logger, err error) {
