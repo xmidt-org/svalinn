@@ -20,6 +20,10 @@ how Svalinn fits into codex, check out [the codex README](https://github.com/xmi
 For registering to an endpoint, Svalinn is capable of registering to [Caduceus](https://github.com/xmidt-org/caduceus),
 a part of [XMiDT]((https://github.com/xmidt-org/xmidt)).
 
+## Code of Conduct
+This project and everyone participating in it are governed by the [XMiDT Code Of Conduct](https://xmidt.io/code_of_conduct/). 
+By participating, you agree to this Code.
+
 ## Details
 
 Svalinn has two main functions: registering for events and inserting events 
