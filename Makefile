@@ -56,13 +56,13 @@ release-artifacts: go-mod-vendor
 
 .PHONY: docker
 docker:
-	docker build --build-arg VERSION=$(PROGVER) -f ./deploy/Dockerfile -t xmidt/svalinn:$(PROGVER) .
+	docker build --build-arg VERSION=$(PROGVER) -f ./deploy/Dockerfile -t svalinn:$(PROGVER) .
 
 # build docker without running modules
 .PHONY: local-docker
 local-docker:
 	GOOS=linux  GOARCH=amd64 go build -o svalinn_linux_amd64
-	docker build --build-arg VERSION=$(PROGVER)+local -f ./deploy/Dockerfile.local -t xmidt/svalinn:local .
+	docker build --build-arg VERSION=$(PROGVER)+local -f ./deploy/Dockerfile.local -t svalinn:local .
 
 .PHONY: style
 style:
