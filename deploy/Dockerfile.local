@@ -3,12 +3,15 @@ MAINTAINER Jack Murdock <jack_murdock@comcast.com>
 
 WORKDIR /go/src/github.com/xmidt-org/svalinn
 ARG VERSION=undefined
+ARG GITCOMMIT=undefined
+ARG BUILDTIME=undefined
 
 RUN apk add --update git curl
 
 COPY . .
-
-RUN go build -ldflags "-X 'main.BuildTime=`date -u '+%Y-%m-%d %H:%M:%S'`' -X main.GitCommit=`git rev-parse --short HEAD` -X main.Version=$VERSION" -o svalinn_linux_amd64
+RUN go build \
+  -o svalinn_linux_amd64 \
+  -ldflags "-X 'main.BuildTime=${BUILDTIME}' -X main.GitCommit=${GITCOMMIT} -X main.Version=${VERSION}"
 
 FROM alpine
 
