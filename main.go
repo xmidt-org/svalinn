@@ -21,7 +21,6 @@ import (
 	"context"
 	"crypto/sha1"
 	"fmt"
-	"github.com/xmidt-org/codex-db/cassandra"
 	"io"
 	olog "log"
 	"net/http"
@@ -32,8 +31,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/InVisionApp/go-health"
-	"github.com/InVisionApp/go-health/handlers"
+	"github.com/xmidt-org/codex-db/cassandra"
+
+	"github.com/InVisionApp/go-health/v2"
+	"github.com/InVisionApp/go-health/v2/handlers"
 	"github.com/go-kit/kit/log"
 	"github.com/goph/emperror"
 	"github.com/gorilla/mux"
@@ -48,7 +49,7 @@ import (
 	"github.com/xmidt-org/codex-db/batchInserter"
 	"github.com/xmidt-org/codex-db/blacklist"
 	"github.com/xmidt-org/codex-db/healthlogger"
-	"github.com/xmidt-org/codex-db/retry"
+	dbretry "github.com/xmidt-org/codex-db/retry"
 	"github.com/xmidt-org/svalinn/requestParser"
 	"github.com/xmidt-org/voynicrypto"
 	"github.com/xmidt-org/webpa-common/basculechecks"
@@ -56,9 +57,9 @@ import (
 	"github.com/xmidt-org/webpa-common/logging"
 	"github.com/xmidt-org/webpa-common/server"
 	"github.com/xmidt-org/webpa-common/xmetrics"
-	"github.com/xmidt-org/wrp-listener"
+	webhook "github.com/xmidt-org/wrp-listener"
 	"github.com/xmidt-org/wrp-listener/hashTokenFactory"
-	"github.com/xmidt-org/wrp-listener/secret"
+	secretGetter "github.com/xmidt-org/wrp-listener/secret"
 	"github.com/xmidt-org/wrp-listener/webhookClient"
 )
 
@@ -91,7 +92,7 @@ type WebhookConfig struct {
 	RegistrationURL      string
 	HostToRegister       string
 	Request              webhook.W
-	JWT                  acquire.JWTAcquirerOptions
+	JWT                  acquire.RemoteBearerTokenAcquirerOptions
 	Basic                string
 }
 
@@ -223,7 +224,11 @@ func svalinn(arguments []string) {
 	startHealth(logger, database.health, config)
 	// if the register interval is 0 and these values aren't set, don't register
 	if config.Webhook.RegistrationInterval > 0 && config.Webhook.RegistrationURL != "" && config.Webhook.Request.Config.URL != "" && len(config.Webhook.Request.Events) > 0 {
-		acquirer := determineTokenAcquirer(config.Webhook)
+		acquirer, err := determineTokenAcquirer(config.Webhook)
+		if err != nil {
+			logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to determine token acquirer", logging.ErrorKey(), err.Error())
+			//TODO: we shouldn't continue trying to set the webhook registerer up if we fail
+		}
 		basicConfig := webhookClient.BasicConfig{
 			Timeout:         config.Webhook.Timeout,
 			RegistrationURL: config.Webhook.RegistrationURL,
@@ -232,6 +237,7 @@ func svalinn(arguments []string) {
 		registerer, err := webhookClient.NewBasicRegisterer(acquirer, secretGetter, basicConfig)
 		if err != nil {
 			logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to create basic registerer", logging.ErrorKey(), err.Error())
+			//TODO: we shouldn't continue trying to set the webhook registerer up if we fail
 		}
 		periodicRegisterer := webhookClient.NewPeriodicRegisterer(registerer, config.Webhook.RegistrationInterval, logger)
 
