@@ -27,15 +27,16 @@ import (
 
 func TestDetermineTokenAcquirer(t *testing.T) {
 	defaultAcquirer := &acquire.DefaultAcquirer{}
-	goodBasicAcquirer := acquire.NewBasicAcquirer("test basic")
-	options := acquire.JWTAcquirerOptions{
+	goodBasicAcquirer, err := acquire.NewFixedAuthAcquirer("test basic")
+	assert.Nil(t, err)
+	options := acquire.RemoteBearerTokenAcquirerOptions{
 		AuthURL: "/test",
 		Timeout: 10 * time.Minute,
 		Buffer:  5 * time.Second,
 	}
 	tests := []struct {
 		description           string
-		jwtConfig             acquire.JWTAcquirerOptions
+		jwtConfig             acquire.RemoteBearerTokenAcquirerOptions
 		basicVal              string
 		expectJWT             bool
 		expectedTokenAcquirer acquire.Acquirer
@@ -63,7 +64,8 @@ func TestDetermineTokenAcquirer(t *testing.T) {
 				JWT:   tc.jwtConfig,
 				Basic: tc.basicVal,
 			}
-			tokenAcquirer := determineTokenAcquirer(config)
+			tokenAcquirer, err := determineTokenAcquirer(config)
+			assert.Nil(err)
 			if tc.expectJWT {
 				assert.NotEqual(goodBasicAcquirer, tokenAcquirer)
 				assert.NotEqual(defaultAcquirer, tokenAcquirer)
