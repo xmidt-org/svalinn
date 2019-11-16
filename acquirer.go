@@ -22,16 +22,15 @@ import (
 )
 
 // determineTokenAcquirer always returns a valid TokenAcquirer
-func determineTokenAcquirer(config WebhookConfig) acquire.Acquirer {
+func determineTokenAcquirer(config WebhookConfig) (acquire.Acquirer, error) {
 	defaultAcquirer := &acquire.DefaultAcquirer{}
 	if config.JWT.AuthURL != "" && config.JWT.Buffer != 0 && config.JWT.Timeout != 0 {
-		acquirer := acquire.NewJWTAcquirer(config.JWT)
-		return &acquirer
+		return acquire.NewRemoteBearerTokenAcquirer(config.JWT)
 	}
 
 	if config.Basic != "" {
-		return acquire.NewBasicAcquirer(config.Basic)
+		return acquire.NewFixedAuthAcquirer(config.Basic)
 	}
 
-	return defaultAcquirer
+	return defaultAcquirer, nil
 }
