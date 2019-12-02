@@ -27,14 +27,14 @@ aka. The receiver of data from XMiDT Caduceus
 %setup -q
 
 %build
-GO111MODULE=on go build -ldflags "-X 'main.BuildTime=`date -u '+%Y-%m-%d %H:%M:%S'`' -X main.GitCommit=`git rev-parse --short HEAD` -X main.Version=%{_version}" -o $RPM_SOURCE_DIR/%{name} %{_topdir}/..
+GO111MODULE=on GOPROXY=https://proxy.golang.org go build -ldflags "-linkmode=external -X 'main.BuildTime=`date -u '+%Y-%m-%d %H:%M:%S'`' -X main.GitCommit={{{ git_short_hash }}} -X main.Version=%{version}" -o %{name} .
 
 %install
 echo rm -rf %{buildroot}
 %{__install} -d %{buildroot}%{_bindir}
 %{__install} -d %{buildroot}%{_initddir}
 %{__install} -d %{buildroot}%{_sysconfdir}/%{name}
-%{__install} -d %{buildroot}%{_localstatedir}/log/%{name}
+%{__install} -d %{buildroot}%{_localstatedir}/log/%{name}˜
 %{__install} -d %{buildroot}%{_localstatedir}/run/%{name}
 %{__install} -d %{buildroot}%{_unitdir}
 
