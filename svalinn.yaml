@@ -187,23 +187,39 @@ db:
 #  #enableHostVerification: false
 
 # insertRetries provides the information needed for making multiple attempts to 
-# insert the same batch of records.
+# insert the same batch of records.  This gets populated into the backoff 
+# package's ExponentialBackoff struct.  Read more about that here:
+# https://godoc.org/gopkg.in/cenkalti/backoff.v3#ExponentialBackOff
 insertRetries:
-  # numRetries provides the number of times to retry if a database request 
-  # fails.  If numRetries is set to a value below 0, it is set to 1.
-  # (Optional)
-  numRetries: 3
+  # initialInterval provides the initial amount of time to wait in between 
+  # attempts to query the database.  Has no effect if maxElapsedTime is less 
+  # than 0.
+  # (Optional) defaults to 500ms
+  initialInterval: 500ms
 
-  # interval provides the amount of time to wait in between attempts to query 
-  # the database.  Has no effect if the number of retries is 0.
-  # (Optional) defaults to 1s
-  interval: 10s
+  # randomizationFactor provides the "jitter" amount to be used when 
+  # calculating the amount of time to wait before the next retry.  Has no 
+  # effect if maxElapsedTime is less than 0.
+  # (Optional) defaults to 0.5
+  randomizationFactor: 0.05
 
-  # intervalMult provides the number to multiple the interval by between each 
-  # attempt.  Has no effect if the number of retries is 0.  If it is set below 
-  # 1, it defaults to 1.
-  # (Optional) defaults to 1
-  intervalMult: 5
+  # multiplier provides the number to multiply the initialInterval by between 
+  # each attempt.  Has no effect if maxElapsedTime is less than 0.
+  # (Optional) defaults to 1.5
+  multiplier: 5
+
+  # maxInterval is the maximum amount of time that can be waited for between 
+  # each attempt.  Has no effect if maxElapsedTime is less than 0.
+  # (Optional) defaults to 60s
+  maxInterval: 11s
+
+  # maxElapsedTime is the maximum amount of time to continue attempting to 
+  # insert into the database.  If an attempt is currently ongoing, it may 
+  # continue, but no new attempts will be started past the time given.  If 
+  # this value is set below 0, svalinn will attempt to insert only once, with 
+  # no retries.
+  # defaults to 15m
+  maxElapsedTime: 30s
 
 # batchInserter provides the information needed for inserting multiple records 
 # in one query.
