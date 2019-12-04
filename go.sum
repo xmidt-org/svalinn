@@ -45,6 +45,8 @@ github.com/c9s/goprocinfo v0.0.0-20151025191153-19cb9f127a9c/go.mod h1:uEyr4WpAH
 github.com/c9s/goprocinfo v0.0.0-20190309065803-0b2ad9ac246b h1:4yfM1Zm+7U+m0inJ0g6JvdqGePXD8eG4nXUTbcLT6gk=
 github.com/c9s/goprocinfo v0.0.0-20190309065803-0b2ad9ac246b/go.mod h1:uEyr4WpAH4hio6LFriaPkL938XnrvLpNPmQHBdrmbIE=
 github.com/cenk/backoff v2.0.0+incompatible/go.mod h1:7FtoeaSnHoZnmZzz47cM35Y9nSW7tNyaidugnHTaFDE=
+github.com/cenkalti/backoff/v3 v3.1.1 h1:UBHElAnr3ODEbpqPzX8g5sBcASjoLFtt3L/xwJ01L6E=
+github.com/cenkalti/backoff/v3 v3.1.1/go.mod h1:cIeZDE3IrqwwJl6VUwCN6trj1oXrTS4rc0ij+ULvLYs=
 github.com/certifi/gocertifi v0.0.0-20190105021004-abcd57078448/go.mod h1:GJKEexRPVJrBSOjoqN5VNOIKJ5Q3RViH6eu3puDRwx4=
 github.com/cespare/xxhash v1.1.0/go.mod h1:XrSqR1VqqWfGrhpAt58auRo0WTKS1nRRg3ghfAqPWnc=
 github.com/chzyer/logex v1.1.10/go.mod h1:+Ywpsq7O8HXn0nuIou7OrIPyXbp3wmkHB+jjWRnGsAI=
@@ -296,10 +298,8 @@ github.com/xmidt-org/bascule v0.3.1/go.mod h1:fx2JeJAwEoepVcE3Fgd6JQSBvUAccyuFDz
 github.com/xmidt-org/bascule v0.5.0 h1:cpg0iX992y6VM+EQuI0qV4y3xzSrGL+eAh7dq2n0FTo=
 github.com/xmidt-org/bascule v0.5.0/go.mod h1:D2DuXSMa5+OpveCtaSWp0+/tmnxZqfYhkCC1oCzLZdI=
 github.com/xmidt-org/capacityset v0.1.1/go.mod h1:rJ00PZmbkdroZMiL0DOMzgkrwJddVfR1I5LmRX6YG2Y=
-github.com/xmidt-org/codex-db v0.3.1 h1:I0trc586fFyYM5Xoq2M86uz9BQut0lNbwpiB78+w7Fk=
-github.com/xmidt-org/codex-db v0.3.1/go.mod h1:xZ+GSUd2+TKShOCfkBBx7ffxiRjzTdqXWzt37uVX4gw=
-github.com/xmidt-org/codex-db v0.3.2 h1:wTHMuHzStCCxEudgD/ykhd4eVHo4SUfUxCw7BxNbQyY=
-github.com/xmidt-org/codex-db v0.3.2/go.mod h1:xZ+GSUd2+TKShOCfkBBx7ffxiRjzTdqXWzt37uVX4gw=
+github.com/xmidt-org/codex-db v0.4.0 h1:nrxavZNTY5GCeMN42bwMurapkStSwPEetIObk2Ruqy0=
+github.com/xmidt-org/codex-db v0.4.0/go.mod h1:vQpkbRzvaOCpiObVv8e5vRHgW08w1o8J1GtgRheulwk=
 github.com/xmidt-org/voynicrypto v0.1.1 h1:hMqSOgYzpkbUUpgKxJcPTVRGdmDY0jem8PufsUikh+c=
 github.com/xmidt-org/voynicrypto v0.1.1/go.mod h1:YSw/rwukAL2tpkB6wSeuoCRBOIK2mhpV4OzJLX292fs=
 github.com/xmidt-org/webpa-common v1.1.0/go.mod h1:oCpKzOC+9h2vYHVzAU/06tDTQuBN4RZz+rhgIXptpOI=
@@ -308,8 +308,8 @@ github.com/xmidt-org/webpa-common v1.3.0 h1:AembEPW16kQpUWqZ8Kn1uxjdWDuCzccqFGNW
 github.com/xmidt-org/webpa-common v1.3.0/go.mod h1:oCpKzOC+9h2vYHVzAU/06tDTQuBN4RZz+rhgIXptpOI=
 github.com/xmidt-org/webpa-common v1.3.1/go.mod h1:oCpKzOC+9h2vYHVzAU/06tDTQuBN4RZz+rhgIXptpOI=
 github.com/xmidt-org/webpa-common v1.3.2/go.mod h1:oCpKzOC+9h2vYHVzAU/06tDTQuBN4RZz+rhgIXptpOI=
-github.com/xmidt-org/webpa-common v1.4.0 h1:/QXVz20OzElMWbzV/NtF1CtRmWWJ2nBtGjQjns9Q0tI=
-github.com/xmidt-org/webpa-common v1.4.0/go.mod h1:QfoOzMY8joK0KMbcCO4KhtUcEps2Tu4j4CYV2k84ggA=
+github.com/xmidt-org/webpa-common v1.5.0 h1:HbLwhkSITrwBn2I/FsHRsimXXzUoOOUvoeCvAx0mq4s=
+github.com/xmidt-org/webpa-common v1.5.0/go.mod h1:wR27EP2MfUvQNy22rYm9p65VSErlwTi34mDCWhZivgI=
 github.com/xmidt-org/wrp-go v1.3.3/go.mod h1:VOKYeeVWc2cyYmGWJksqUCV/lGzReRl0EP74y3mcWp0=
 github.com/xmidt-org/wrp-go v1.3.4 h1:7kj+1VXRNNEI7G0Z3z7C58QpIXrWzTw/eI79FdAhyPA=
 github.com/xmidt-org/wrp-go v1.3.4/go.mod h1:EWC9BgcYYO1hKgLzz6VFPpg3LU6ZWSDV/uNiWC7zP+o=

@@ -5,7 +5,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-- Updated release pipeline to use travis
+
+## [v0.13.0]
+- Updated release pipeline to use travis [#117](https://github.com/xmidt-org/svalinn/pull/117)
+- Updated db package to v0.4.0 to get new exponential backoff implementation and configuration [#118](https://github.com/xmidt-org/svalinn/pull/118)
 
 ## [v0.12.1]
 - Bumped db package to v0.3.2
@@ -126,7 +129,8 @@ Bug Fix Caduceus config loading
 - Initial creation
 - Bumped codex version, modified code to match changes
 
-[Unreleased]: https://github.com/xmidt-org/svalinn/compare/v0.12.1...HEAD
+[Unreleased]: https://github.com/xmidt-org/svalinn/compare/v0.13.0...HEAD
+[v0.13.0]: https://github.com/xmidt-org/svalinn/compare/v0.12.1...v0.13.0
 [v0.12.1]: https://github.com/xmidt-org/svalinn/compare/v0.12.0...v0.12.1
 [v0.12.0]: https://github.com/xmidt-org/svalinn/compare/v0.11.2...v0.12.0
 [v0.11.2]: https://github.com/xmidt-org/svalinn/compare/v0.11.0...v0.11.2

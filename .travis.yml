@@ -27,7 +27,7 @@ jobs:
         - make it
     - stage: tag
       name: "Tag For Release"
-      if: branch = master
+      if: branch = master && type = push
       before_script:
         - echo -e "machine github.com\n  login $GH_TOKEN" > ~/.netrc
       script:

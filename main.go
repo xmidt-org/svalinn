@@ -31,10 +31,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/xmidt-org/codex-db/cassandra"
-
 	"github.com/InVisionApp/go-health/v2"
 	"github.com/InVisionApp/go-health/v2/handlers"
+	"github.com/cenkalti/backoff/v3"
 	"github.com/go-kit/kit/log"
 	"github.com/goph/emperror"
 	"github.com/gorilla/mux"
@@ -48,6 +47,7 @@ import (
 	db "github.com/xmidt-org/codex-db"
 	"github.com/xmidt-org/codex-db/batchInserter"
 	"github.com/xmidt-org/codex-db/blacklist"
+	"github.com/xmidt-org/codex-db/cassandra"
 	"github.com/xmidt-org/codex-db/healthlogger"
 	dbretry "github.com/xmidt-org/codex-db/retry"
 	"github.com/xmidt-org/svalinn/requestParser"
@@ -82,7 +82,7 @@ type SvalinnConfig struct {
 	RequestParser     requestParser.Config
 	BatchInserter     batchInserter.Config
 	Db                cassandra.Config
-	InsertRetries     RetryConfig
+	InsertRetries     backoff.ExponentialBackOff
 	BlacklistInterval time.Duration
 }
 
@@ -303,13 +303,15 @@ func setupDb(config *SvalinnConfig, logger log.Logger, metricsRegistry xmetrics.
 
 	d.dbClose = dbConn.Close
 
-	d.inserter = dbretry.CreateRetryInsertService(
-		dbConn,
-		dbretry.WithRetries(config.InsertRetries.NumRetries),
-		dbretry.WithInterval(config.InsertRetries.Interval),
-		dbretry.WithIntervalMultiplier(config.InsertRetries.IntervalMult),
-		dbretry.WithMeasures(metricsRegistry),
-	)
+	if config.InsertRetries.MaxElapsedTime >= 0 {
+		d.inserter = dbretry.CreateRetryInsertService(
+			dbConn,
+			dbretry.WithBackoff(config.InsertRetries),
+			dbretry.WithMeasures(metricsRegistry),
+		)
+	} else {
+		d.inserter = dbConn
+	}
 
 	d.blacklistStop = make(chan struct{}, 1)
 	blacklistConfig := blacklist.RefresherConfig{
