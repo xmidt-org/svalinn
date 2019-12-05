@@ -50,6 +50,7 @@ jobs:
           tags: true
         provider: releases
         api_key: "$GH_TOKEN"
+        file_glob: true
         file: ./.ignore/*
         skip_cleanup: true
         
