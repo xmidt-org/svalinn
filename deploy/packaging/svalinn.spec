@@ -34,7 +34,7 @@ echo rm -rf %{buildroot}
 %{__install} -d %{buildroot}%{_bindir}
 %{__install} -d %{buildroot}%{_initddir}
 %{__install} -d %{buildroot}%{_sysconfdir}/%{name}
-%{__install} -d %{buildroot}%{_localstatedir}/log/%{name}˜
+%{__install} -d %{buildroot}%{_localstatedir}/log/%{name}
 %{__install} -d %{buildroot}%{_localstatedir}/run/%{name}
 %{__install} -d %{buildroot}%{_unitdir}
 
