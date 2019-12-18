@@ -181,7 +181,12 @@ func (r *RequestParser) parseRequest(request wrp.Message) {
 	record, reason, err := r.createRecord(request, rule, eventType)
 	if err != nil {
 		r.measures.DroppedEventsCount.With(reasonLabel, reason).Add(1.0)
-		logging.Error(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
+		if reason == blackListReason {
+			logging.Info(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
+				"Failed to create record", logging.ErrorKey(), err.Error())
+			return
+		}
+		logging.Warn(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 			"Failed to create record", logging.ErrorKey(), err.Error())
 		return
 	}
