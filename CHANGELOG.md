@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- Changed logging for requestParser to log INFO or WARNING instead of ERROR 
+  on failures to create the record [#122](https://github.com/xmidt-org/svalinn/pull/122)
 
 ## [v0.13.0]
 - Updated release pipeline to use travis [#117](https://github.com/xmidt-org/svalinn/pull/117)
