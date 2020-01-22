@@ -134,7 +134,8 @@ Bug Fix Caduceus config loading
 - Initial creation
 - Bumped codex version, modified code to match changes
 
-[Unreleased]: https://github.com/xmidt-org/svalinn/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/xmidt-org/svalinn/compare/v0.14.0...HEAD
+[v0.14.0]: https://github.com/xmidt-org/svalinn/compare/v0.13.0...v0.14.0
 [v0.13.0]: https://github.com/xmidt-org/svalinn/compare/v0.12.1...v0.13.0
 [v0.12.1]: https://github.com/xmidt-org/svalinn/compare/v0.12.0...v0.12.1
 [v0.12.0]: https://github.com/xmidt-org/svalinn/compare/v0.11.2...v0.12.0
