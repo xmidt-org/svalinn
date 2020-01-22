@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v0.14.0]
+- Bumped codex-db to v0.5.0 to enable long-poll [#123](https://github.com/xmidt-org/svalinn/pull/123)
 - Changed logging for requestParser to log INFO or WARNING instead of ERROR 
   on failures to create the record [#122](https://github.com/xmidt-org/svalinn/pull/122)
 
@@ -131,7 +134,8 @@ Bug Fix Caduceus config loading
 - Initial creation
 - Bumped codex version, modified code to match changes
 
-[Unreleased]: https://github.com/xmidt-org/svalinn/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/xmidt-org/svalinn/compare/v0.14.0...HEAD
+[v0.14.0]: https://github.com/xmidt-org/svalinn/compare/v0.13.0...v0.14.0
 [v0.13.0]: https://github.com/xmidt-org/svalinn/compare/v0.12.1...v0.13.0
 [v0.12.1]: https://github.com/xmidt-org/svalinn/compare/v0.12.0...v0.12.1
 [v0.12.0]: https://github.com/xmidt-org/svalinn/compare/v0.11.2...v0.12.0
