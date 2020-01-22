@@ -298,8 +298,6 @@ github.com/xmidt-org/bascule v0.3.1/go.mod h1:fx2JeJAwEoepVcE3Fgd6JQSBvUAccyuFDz
 github.com/xmidt-org/bascule v0.5.0 h1:cpg0iX992y6VM+EQuI0qV4y3xzSrGL+eAh7dq2n0FTo=
 github.com/xmidt-org/bascule v0.5.0/go.mod h1:D2DuXSMa5+OpveCtaSWp0+/tmnxZqfYhkCC1oCzLZdI=
 github.com/xmidt-org/capacityset v0.1.1/go.mod h1:rJ00PZmbkdroZMiL0DOMzgkrwJddVfR1I5LmRX6YG2Y=
-github.com/xmidt-org/codex-db v0.4.0 h1:nrxavZNTY5GCeMN42bwMurapkStSwPEetIObk2Ruqy0=
-github.com/xmidt-org/codex-db v0.4.0/go.mod h1:vQpkbRzvaOCpiObVv8e5vRHgW08w1o8J1GtgRheulwk=
 github.com/xmidt-org/codex-db v0.5.0 h1:TFFzuSwtV0pubtKeqjAsk/qXG4d36Dqwf4Hdr42qt8c=
 github.com/xmidt-org/codex-db v0.5.0/go.mod h1:vQpkbRzvaOCpiObVv8e5vRHgW08w1o8J1GtgRheulwk=
 github.com/xmidt-org/voynicrypto v0.1.1 h1:hMqSOgYzpkbUUpgKxJcPTVRGdmDY0jem8PufsUikh+c=
