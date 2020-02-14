@@ -149,7 +149,7 @@ func svalinn(arguments []string) {
 
 	var (
 		f, v                                = pflag.NewFlagSet(applicationName, pflag.ContinueOnError), viper.New()
-		logger, metricsRegistry, codex, err = server.Initialize(applicationName, arguments, f, v, cassandra.Metrics, dbretry.Metrics, requestParser.Metrics, batchInserter.Metrics, basculechecks.Metrics)
+		logger, metricsRegistry, codex, err = server.Initialize(applicationName, arguments, f, v, cassandra.Metrics, dbretry.Metrics, requestParser.Metrics, batchInserter.Metrics, basculechecks.Metrics, Metrics)
 	)
 
 	if parseErr, done := printVersion(f, arguments); done {
@@ -206,10 +206,11 @@ func svalinn(arguments []string) {
 	exitIfError(logger, emperror.Wrap(err, "failed to initialize database connection"))
 
 	s := &Svalinn{}
-	s.batchInserter, err = batchInserter.NewBatchInserter(config.BatchInserter, logger, metricsRegistry, database.inserter)
+	svalinnMeasures := NewMeasures(metricsRegistry)
+	s.batchInserter, err = batchInserter.NewBatchInserter(config.BatchInserter, logger, metricsRegistry, database.inserter, svalinnMeasures)
 	exitIfError(logger, emperror.Wrap(err, "failed to create batch inserter"))
 
-	s.requestParser, err = requestParser.NewRequestParser(config.RequestParser, logger, metricsRegistry, s.batchInserter, database.blacklistRefresher, encrypter)
+	s.requestParser, err = requestParser.NewRequestParser(config.RequestParser, logger, metricsRegistry, s.batchInserter, database.blacklistRefresher, encrypter, svalinnMeasures)
 	exitIfError(logger, emperror.Wrap(err, "failed to create request parser"))
 
 	app := &App{

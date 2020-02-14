@@ -20,28 +20,37 @@ package main
 import (
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"github.com/go-kit/kit/log"
+	"github.com/xmidt-org/svalinn/requestParser"
 	"github.com/xmidt-org/webpa-common/logging"
 	"github.com/xmidt-org/wrp-go/wrp"
 )
 
 type parser interface {
-	Parse(wrp.Message) error
+	Parse(requestParser.WrpWithTime) error
+}
+
+type timeTracker interface {
+	TrackTime(time.Duration)
 }
 
 type App struct {
-	parser parser
-	logger log.Logger
+	parser      parser
+	logger      log.Logger
+	timeTracker timeTracker
 }
 
 func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
+	begin := time.Now()
 	var message wrp.Message
 	msgBytes, err := ioutil.ReadAll(req.Body)
 	req.Body.Close()
 	if err != nil {
 		logging.Error(app.logger).Log(logging.MessageKey(), "Could not read request body", logging.ErrorKey(), err.Error())
 		writer.WriteHeader(http.StatusBadRequest)
+		app.timeTracker.TrackTime(time.Now().Sub(begin))
 		return
 	}
 
@@ -49,14 +58,18 @@ func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		logging.Error(app.logger).Log(logging.MessageKey(), "Could not decode request body", logging.ErrorKey(), err.Error())
 		writer.WriteHeader(http.StatusBadRequest)
+		app.timeTracker.TrackTime(time.Now().Sub(begin))
 		return
 	}
 
 	logging.Debug(app.logger).Log(logging.MessageKey(), "message info", "messageType", message.Type, "fullMsg", message)
-	err = app.parser.Parse(message)
+	err = app.parser.Parse(requestParser.WrpWithTime{Message: message, Beginning: begin})
 	if err != nil {
 		logging.Warn(app.logger).Log(logging.ErrorKey(), err.Error())
+		// end := time.Now()
+		// todo: send beginning and end times to metric handler
 		writer.WriteHeader(http.StatusTooManyRequests)
+		app.timeTracker.TrackTime(time.Now().Sub(begin))
 		return
 	}
 	writer.WriteHeader(http.StatusAccepted)

@@ -16,6 +16,7 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/goph/emperror"
 	db "github.com/xmidt-org/codex-db"
+	"github.com/xmidt-org/codex-db/batchInserter"
 	"github.com/xmidt-org/codex-db/blacklist"
 	"github.com/xmidt-org/voynicrypto"
 	"github.com/xmidt-org/webpa-common/logging"
@@ -41,8 +42,12 @@ const (
 	defaultMinQueueSize = 5
 )
 
+type TimeTracker interface {
+	TrackTime(time.Duration)
+}
+
 type inserter interface {
-	Insert(record db.Record)
+	Insert(record batchInserter.RecordWithTime)
 }
 
 type Config struct {
@@ -58,8 +63,9 @@ type RequestParser struct {
 	encrypter    voynicrypto.Encrypt
 	blacklist    blacklist.List
 	inserter     inserter
+	timeTracker  TimeTracker
 	rules        rules.Rules
-	requestQueue chan wrp.Message
+	requestQueue chan WrpWithTime
 	parseWorkers semaphore.Interface
 	wg           sync.WaitGroup
 	measures     *Measures
@@ -68,7 +74,12 @@ type RequestParser struct {
 	currTime     func() time.Time
 }
 
-func NewRequestParser(config Config, logger log.Logger, metricsRegistry provider.Provider, inserter inserter, blacklist blacklist.List, encrypter voynicrypto.Encrypt) (*RequestParser, error) {
+type WrpWithTime struct {
+	Message   wrp.Message
+	Beginning time.Time
+}
+
+func NewRequestParser(config Config, logger log.Logger, metricsRegistry provider.Provider, inserter inserter, blacklist blacklist.List, encrypter voynicrypto.Encrypt, timeTracker TimeTracker) (*RequestParser, error) {
 	if encrypter == nil {
 		return nil, errors.New("no encrypter")
 	}
@@ -107,7 +118,7 @@ func NewRequestParser(config Config, logger log.Logger, metricsRegistry provider
 	if metricsRegistry != nil {
 		measures = NewMeasures(metricsRegistry)
 	}
-	queue := make(chan wrp.Message, config.QueueSize)
+	queue := make(chan WrpWithTime, config.QueueSize)
 	workers := semaphore.New(config.MaxWorkers)
 	r := RequestParser{
 		config:       config,
@@ -120,6 +131,7 @@ func NewRequestParser(config Config, logger log.Logger, metricsRegistry provider
 		blacklist:    blacklist,
 		encrypter:    encrypter,
 		currTime:     time.Now,
+		timeTracker:  timeTracker,
 	}
 
 	return &r, nil
@@ -130,9 +142,9 @@ func (r *RequestParser) Start() {
 	go r.parseRequests()
 }
 
-func (r *RequestParser) Parse(message wrp.Message) (err error) {
+func (r *RequestParser) Parse(wrpWithTime WrpWithTime) (err error) {
 	select {
-	case r.requestQueue <- message:
+	case r.requestQueue <- wrpWithTime:
 		if r.measures != nil {
 			r.measures.ParsingQueue.Add(1.0)
 		}
@@ -166,32 +178,34 @@ func (r *RequestParser) parseRequests() {
 	}
 }
 
-func (r *RequestParser) parseRequest(request wrp.Message) {
+func (r *RequestParser) parseRequest(request WrpWithTime) {
 	defer r.parseWorkers.Release()
 
-	rule, err := r.rules.FindRule(request.Destination)
+	rule, err := r.rules.FindRule(request.Message.Destination)
 	if err != nil {
-		logging.Info(r.logger).Log(logging.MessageKey(), "Could not get rule", logging.ErrorKey(), err, "destination", request.Destination)
+		logging.Info(r.logger).Log(logging.MessageKey(), "Could not get rule", logging.ErrorKey(), err, "destination", request.Message.Destination)
 	}
 
 	eventType := db.Default
 	if rule != nil {
 		eventType = db.ParseEventType(rule.EventType())
 	}
-	record, reason, err := r.createRecord(request, rule, eventType)
+	record, reason, err := r.createRecord(request.Message, rule, eventType)
 	if err != nil {
 		r.measures.DroppedEventsCount.With(reasonLabel, reason).Add(1.0)
 		if reason == blackListReason {
 			logging.Info(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 				"Failed to create record", logging.ErrorKey(), err.Error())
+			r.timeTracker.TrackTime(time.Now().Sub(request.Beginning))
 			return
 		}
 		logging.Warn(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 			"Failed to create record", logging.ErrorKey(), err.Error())
+		r.timeTracker.TrackTime(time.Now().Sub(request.Beginning))
 		return
 	}
 
-	r.inserter.Insert(record)
+	r.inserter.Insert(batchInserter.RecordWithTime{Record: record, Beginning: request.Beginning})
 }
 
 func (r *RequestParser) createRecord(req wrp.Message, rule *rules.Rule, eventType db.EventType) (db.Record, string, error) {
