@@ -33,7 +33,7 @@ func Metrics() []xmetrics.Metric {
 	return []xmetrics.Metric{
 		{
 			Name: TimeInMemory,
-			Help: "The depth of the parsing queue",
+			Help: "The depth of the parsing queue, in seconds",
 			Type: "histogram",
 		},
 	}
