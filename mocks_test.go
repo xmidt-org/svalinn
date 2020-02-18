@@ -19,9 +19,10 @@ package main
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/stretchr/testify/mock"
-	"github.com/xmidt-org/wrp-go/wrp"
+	"github.com/xmidt-org/svalinn/requestParser"
 )
 
 type mockRegisterer struct {
@@ -46,7 +47,15 @@ type mockParser struct {
 	mock.Mock
 }
 
-func (p *mockParser) Parse(message wrp.Message) error {
+func (p *mockParser) Parse(message requestParser.WrpWithTime) error {
 	args := p.Called(message)
 	return args.Error(0)
+}
+
+type mockTimeTracker struct {
+	mock.Mock
+}
+
+func (m *mockTimeTracker) TrackTime(t time.Duration) {
+	m.Called(t)
 }

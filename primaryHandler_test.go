@@ -73,9 +73,15 @@ func TestHandleWebhook(t *testing.T) {
 				mockParser.On("Parse", mock.Anything).Return(tc.parseErr).Once()
 			}
 
+			mockTimeTracker := new(mockTimeTracker)
+			if tc.expectedHeader != http.StatusAccepted {
+				mockTimeTracker.On("TrackTime", mock.Anything).Once()
+			}
+
 			app := &App{
-				parser: mockParser,
-				logger: logging.DefaultLogger(),
+				parser:      mockParser,
+				logger:      logging.DefaultLogger(),
+				timeTracker: mockTimeTracker,
 			}
 			rr := httptest.NewRecorder()
 			var marshaledMsg []byte
