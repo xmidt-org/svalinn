@@ -1,8 +1,10 @@
 package requestParser
 
 import (
+	"time"
+
 	"github.com/stretchr/testify/mock"
-	db "github.com/xmidt-org/codex-db"
+	"github.com/xmidt-org/codex-db/batchInserter"
 	"github.com/xmidt-org/voynicrypto"
 )
 
@@ -38,7 +40,15 @@ type mockInserter struct {
 	mock.Mock
 }
 
-func (i *mockInserter) Insert(record db.Record) {
+func (i *mockInserter) Insert(record batchInserter.RecordWithTime) {
 	i.Called(record)
 	return
+}
+
+type mockTimeTracker struct {
+	mock.Mock
+}
+
+func (m *mockTimeTracker) TrackTime(t time.Duration) {
+	m.Called(t)
 }

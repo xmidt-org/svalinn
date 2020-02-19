@@ -96,6 +96,7 @@ func TestHandleWebhook(t *testing.T) {
 
 			app.handleWebhook(rr, request)
 			mockParser.AssertExpectations(t)
+			mockTimeTracker.AssertExpectations(t)
 			assert.Equal(tc.expectedHeader, rr.Code)
 		})
 	}
