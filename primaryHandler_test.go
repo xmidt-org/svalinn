@@ -28,7 +28,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/xmidt-org/webpa-common/logging"
-	"github.com/xmidt-org/wrp-go/wrp"
+	"github.com/xmidt-org/wrp-go/v2"
 )
 
 func TestHandleWebhook(t *testing.T) {
@@ -73,9 +73,15 @@ func TestHandleWebhook(t *testing.T) {
 				mockParser.On("Parse", mock.Anything).Return(tc.parseErr).Once()
 			}
 
+			mockTimeTracker := new(mockTimeTracker)
+			if tc.expectedHeader != http.StatusAccepted {
+				mockTimeTracker.On("TrackTime", mock.Anything).Once()
+			}
+
 			app := &App{
-				parser: mockParser,
-				logger: logging.DefaultLogger(),
+				parser:      mockParser,
+				logger:      logging.DefaultLogger(),
+				timeTracker: mockTimeTracker,
 			}
 			rr := httptest.NewRecorder()
 			var marshaledMsg []byte
@@ -90,6 +96,7 @@ func TestHandleWebhook(t *testing.T) {
 
 			app.handleWebhook(rr, request)
 			mockParser.AssertExpectations(t)
+			mockTimeTracker.AssertExpectations(t)
 			assert.Equal(tc.expectedHeader, rr.Code)
 		})
 	}

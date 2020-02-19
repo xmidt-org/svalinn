@@ -21,7 +21,7 @@ import (
 	"github.com/xmidt-org/webpa-common/logging"
 	"github.com/xmidt-org/webpa-common/semaphore"
 	"github.com/xmidt-org/webpa-common/xmetrics/xmetricstest"
-	"github.com/xmidt-org/wrp-go/wrp"
+	"github.com/xmidt-org/wrp-go/v2"
 )
 
 var (
@@ -119,7 +119,7 @@ func TestNewRequestParser(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
-			rp, err := NewRequestParser(tc.config, tc.logger, tc.registry, tc.inserter, tc.blacklist, tc.encrypter)
+			rp, err := NewRequestParser(tc.config, tc.logger, tc.registry, tc.inserter, tc.blacklist, tc.encrypter, nil)
 			if rp != nil {
 				tc.expectedRequestParser.requestQueue = rp.requestQueue
 				tc.expectedRequestParser.parseWorkers = rp.parseWorkers
@@ -139,6 +139,7 @@ func TestParseRequest(t *testing.T) {
 	testassert := assert.New(t)
 	goodTime, err := time.Parse(time.RFC3339Nano, "2019-02-13T21:19:02.614191735Z")
 	testassert.Nil(err)
+	beginTime := time.Now()
 	tests := []struct {
 		description        string
 		req                wrp.Message
@@ -190,6 +191,11 @@ func TestParseRequest(t *testing.T) {
 				mockInserter.On("Insert", mock.Anything).Return().Once()
 			}
 
+			mockTimeTracker := new(mockTimeTracker)
+			if !tc.insertCalled {
+				mockTimeTracker.On("TrackTime", mock.Anything).Once()
+			}
+
 			p := xmetricstest.NewProvider(nil, Metrics)
 			m := NewMeasures(p)
 
@@ -208,6 +214,7 @@ func TestParseRequest(t *testing.T) {
 					MaxWorkers:      5,
 				},
 				inserter:     mockInserter,
+				timeTracker:  mockTimeTracker,
 				parseWorkers: semaphore.New(2),
 				measures:     m,
 				logger:       logging.NewTestLogger(nil, t),
@@ -216,10 +223,11 @@ func TestParseRequest(t *testing.T) {
 			}
 
 			handler.parseWorkers.Acquire()
-			handler.parseRequest(tc.req)
+			handler.parseRequest(WrpWithTime{Message: tc.req, Beginning: beginTime})
 			mockInserter.AssertExpectations(t)
 			mblacklist.AssertExpectations(t)
 			encrypter.AssertExpectations(t)
+			mockTimeTracker.AssertExpectations(t)
 			p.Assert(t, DroppedEventsCounter, reasonLabel, encryptFailReason)(xmetricstest.Value(tc.expectEncryptCount))
 			p.Assert(t, DroppedEventsCounter, reasonLabel, parseFailReason)(xmetricstest.Value(tc.expectParseCount))
 			testassert.Equal(tc.timeExpected, timeCalled)
