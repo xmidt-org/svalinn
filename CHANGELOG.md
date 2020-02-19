@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ## [v0.14.1]
-- Added metric for how long an event is in Svalinn's memory [#124](https://github.com/xmidt-org/svalinn/pull/123)
+- Added metric for how long an event is in Svalinn's memory [#124](https://github.com/xmidt-org/svalinn/pull/124)
+- Bumped wrp-go to v2.0.1 [#124](https://github.com/xmidt-org/svalinn/pull/124)
 
 ## [v0.14.0]
 - Bumped codex-db to v0.5.0 to enable long-poll [#123](https://github.com/xmidt-org/svalinn/pull/123)

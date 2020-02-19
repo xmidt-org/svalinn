@@ -28,7 +28,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/xmidt-org/webpa-common/logging"
-	"github.com/xmidt-org/wrp-go/wrp"
+	"github.com/xmidt-org/wrp-go/v2"
 )
 
 func TestHandleWebhook(t *testing.T) {
