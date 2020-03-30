@@ -207,7 +207,7 @@ func (r *RequestParser) parseRequest(request WrpWithTime) {
 
 	err = r.inserter.Insert(batchInserter.RecordWithTime{Record: record, Beginning: request.Beginning})
 	if err != nil {
-		r.measures.DroppedEventsCount.With(reasonLabel, reason).Add(1.0)
+		r.measures.DroppedEventsCount.With(reasonLabel, insertFailReason).Add(1.0)
 		logging.Warn(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 			"Failed to insert record", logging.ErrorKey(), err.Error())
 	}

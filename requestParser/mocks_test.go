@@ -40,9 +40,9 @@ type mockInserter struct {
 	mock.Mock
 }
 
-func (i *mockInserter) Insert(record batchInserter.RecordWithTime) {
-	i.Called(record)
-	return
+func (i *mockInserter) Insert(record batchInserter.RecordWithTime) error {
+	args := i.Called(record)
+	return args.Error(0)
 }
 
 type mockTimeTracker struct {
