@@ -14,7 +14,7 @@ require (
 	github.com/spf13/viper v1.6.1
 	github.com/stretchr/testify v1.4.0
 	github.com/xmidt-org/bascule v0.5.0
-	github.com/xmidt-org/codex-db v0.6.0
+	github.com/xmidt-org/codex-db v0.6.1-0.20200326210655-74e9abeaf66b
 	github.com/xmidt-org/voynicrypto v0.1.1
 	github.com/xmidt-org/webpa-common v1.5.0
 	github.com/xmidt-org/wrp-go/v2 v2.0.1

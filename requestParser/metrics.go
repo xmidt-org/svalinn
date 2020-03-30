@@ -31,12 +31,13 @@ const (
 const (
 	reasonLabel            = "reason"
 	blackListReason        = "blacklist"
-	parseFailReason        = "parsing failed"
-	marshalFailReason      = "marshaling failed"
-	encryptFailReason      = "encryption failed"
-	invalidBirthdateReason = "birthdate too far in the future"
-	expiredReason          = "deathdate has already passed"
-	queueFullReason        = "queue full"
+	parseFailReason        = "parsing_failed"
+	marshalFailReason      = "marshaling_failed"
+	encryptFailReason      = "encryption_failed"
+	invalidBirthdateReason = "birthdate_too_far_in_future"
+	expiredReason          = "deathdate_has_already_passed"
+	queueFullReason        = "queue_full"
+	insertFailReason       = "inserting_failed"
 )
 
 func Metrics() []xmetrics.Metric {

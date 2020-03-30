@@ -47,7 +47,7 @@ type TimeTracker interface {
 }
 
 type inserter interface {
-	Insert(record batchInserter.RecordWithTime)
+	Insert(record batchInserter.RecordWithTime) error
 }
 
 type Config struct {
@@ -205,7 +205,12 @@ func (r *RequestParser) parseRequest(request WrpWithTime) {
 		return
 	}
 
-	r.inserter.Insert(batchInserter.RecordWithTime{Record: record, Beginning: request.Beginning})
+	err = r.inserter.Insert(batchInserter.RecordWithTime{Record: record, Beginning: request.Beginning})
+	if err != nil {
+		r.measures.DroppedEventsCount.With(reasonLabel, reason).Add(1.0)
+		logging.Warn(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
+			"Failed to insert record", logging.ErrorKey(), err.Error())
+	}
 }
 
 func (r *RequestParser) createRecord(req wrp.Message, rule *rules.Rule, eventType db.EventType) (db.Record, string, error) {
