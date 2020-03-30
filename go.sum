@@ -311,8 +311,8 @@ github.com/xmidt-org/bascule v0.3.1/go.mod h1:fx2JeJAwEoepVcE3Fgd6JQSBvUAccyuFDz
 github.com/xmidt-org/bascule v0.5.0 h1:cpg0iX992y6VM+EQuI0qV4y3xzSrGL+eAh7dq2n0FTo=
 github.com/xmidt-org/bascule v0.5.0/go.mod h1:D2DuXSMa5+OpveCtaSWp0+/tmnxZqfYhkCC1oCzLZdI=
 github.com/xmidt-org/capacityset v0.1.1/go.mod h1:rJ00PZmbkdroZMiL0DOMzgkrwJddVfR1I5LmRX6YG2Y=
-github.com/xmidt-org/codex-db v0.6.0 h1:4SmFE1M7tDnTrkCyVj93n6IN0qRfQYmpexqxa3XOF84=
-github.com/xmidt-org/codex-db v0.6.0/go.mod h1:6CvN42JLUzKqK9uZQMSWAaKf++BFt/ae6FOHkIlfXqQ=
+github.com/xmidt-org/codex-db v0.7.0 h1:lV5RovmrqtUQsyp3PcG8hdWK3XoYNVMiV07Qw3as1x4=
+github.com/xmidt-org/codex-db v0.7.0/go.mod h1:6CvN42JLUzKqK9uZQMSWAaKf++BFt/ae6FOHkIlfXqQ=
 github.com/xmidt-org/voynicrypto v0.1.1 h1:hMqSOgYzpkbUUpgKxJcPTVRGdmDY0jem8PufsUikh+c=
 github.com/xmidt-org/voynicrypto v0.1.1/go.mod h1:YSw/rwukAL2tpkB6wSeuoCRBOIK2mhpV4OzJLX292fs=
 github.com/xmidt-org/webpa-common v1.1.0/go.mod h1:oCpKzOC+9h2vYHVzAU/06tDTQuBN4RZz+rhgIXptpOI=
@@ -323,7 +323,6 @@ github.com/xmidt-org/webpa-common v1.3.1/go.mod h1:oCpKzOC+9h2vYHVzAU/06tDTQuBN4
 github.com/xmidt-org/webpa-common v1.3.2/go.mod h1:oCpKzOC+9h2vYHVzAU/06tDTQuBN4RZz+rhgIXptpOI=
 github.com/xmidt-org/webpa-common v1.5.0 h1:HbLwhkSITrwBn2I/FsHRsimXXzUoOOUvoeCvAx0mq4s=
 github.com/xmidt-org/webpa-common v1.5.0/go.mod h1:wR27EP2MfUvQNy22rYm9p65VSErlwTi34mDCWhZivgI=
-github.com/xmidt-org/webpa-common v1.6.3 h1:sylHxzKvaJCFGEfEmpC0R+1w6DvkxZEraF/ywF+tElY=
 github.com/xmidt-org/wrp-go v1.3.3 h1:WvODdrtxPwHEUqwfwHpu+kNUfBzLBfAIdrKCQjoCblc=
 github.com/xmidt-org/wrp-go v1.3.3/go.mod h1:VOKYeeVWc2cyYmGWJksqUCV/lGzReRl0EP74y3mcWp0=
 github.com/xmidt-org/wrp-go/v2 v2.0.1 h1:JWMpAvNCkD1pLXdZLmAs/4g3twxTM7K4YU57dapJvB0=

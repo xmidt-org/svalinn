@@ -144,8 +144,10 @@ func TestParseRequest(t *testing.T) {
 		description        string
 		req                wrp.Message
 		encryptErr         error
+		insertErr          error
 		expectEncryptCount float64
 		expectParseCount   float64
+		expectInsertCount  float64
 		encryptCalled      bool
 		blacklistCalled    bool
 		insertCalled       bool
@@ -172,6 +174,16 @@ func TestParseRequest(t *testing.T) {
 			blacklistCalled:    true,
 			timeExpected:       true,
 		},
+		{
+			description:       "Insert Error",
+			req:               goodEvent,
+			insertErr:         errors.New("insert failed"),
+			expectInsertCount: 1.0,
+			encryptCalled:     true,
+			insertCalled:      true,
+			blacklistCalled:   true,
+			timeExpected:      true,
+		},
 	}
 
 	for _, tc := range tests {
@@ -188,7 +200,7 @@ func TestParseRequest(t *testing.T) {
 
 			mockInserter := new(mockInserter)
 			if tc.insertCalled {
-				mockInserter.On("Insert", mock.Anything).Return().Once()
+				mockInserter.On("Insert", mock.Anything).Return(tc.insertErr).Once()
 			}
 
 			mockTimeTracker := new(mockTimeTracker)
@@ -230,6 +242,7 @@ func TestParseRequest(t *testing.T) {
 			mockTimeTracker.AssertExpectations(t)
 			p.Assert(t, DroppedEventsCounter, reasonLabel, encryptFailReason)(xmetricstest.Value(tc.expectEncryptCount))
 			p.Assert(t, DroppedEventsCounter, reasonLabel, parseFailReason)(xmetricstest.Value(tc.expectParseCount))
+			p.Assert(t, DroppedEventsCounter, reasonLabel, insertFailReason)(xmetricstest.Value(tc.expectInsertCount))
 			testassert.Equal(tc.timeExpected, timeCalled)
 
 		})
