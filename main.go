@@ -53,6 +53,7 @@ import (
 	"github.com/xmidt-org/svalinn/requestParser"
 	"github.com/xmidt-org/voynicrypto"
 	"github.com/xmidt-org/webpa-common/basculechecks"
+	"github.com/xmidt-org/webpa-common/basculemetrics"
 	"github.com/xmidt-org/webpa-common/concurrent"
 	"github.com/xmidt-org/webpa-common/logging"
 	"github.com/xmidt-org/webpa-common/server"
@@ -149,7 +150,7 @@ func svalinn(arguments []string) {
 
 	var (
 		f, v                                = pflag.NewFlagSet(applicationName, pflag.ContinueOnError), viper.New()
-		logger, metricsRegistry, codex, err = server.Initialize(applicationName, arguments, f, v, cassandra.Metrics, dbretry.Metrics, requestParser.Metrics, batchInserter.Metrics, basculechecks.Metrics, Metrics)
+		logger, metricsRegistry, codex, err = server.Initialize(applicationName, arguments, f, v, cassandra.Metrics, dbretry.Metrics, requestParser.Metrics, batchInserter.Metrics, basculechecks.Metrics, basculemetrics.Metrics, webhookClient.Metrics, Metrics)
 	)
 
 	if parseErr, done := printVersion(f, arguments); done {
@@ -177,12 +178,12 @@ func svalinn(arguments []string) {
 
 	secretGetter := secretGetter.NewConstantSecret(config.Webhook.Request.Config.Secret)
 
-	var m *basculechecks.JWTValidationMeasures
+	var m *basculemetrics.AuthValidationMeasures
 
 	if metricsRegistry != nil {
-		m = basculechecks.NewJWTValidationMeasures(metricsRegistry)
+		m = basculemetrics.NewAuthValidationMeasures(metricsRegistry)
 	}
-	listener := basculechecks.NewMetricListener(m)
+	listener := basculemetrics.NewMetricListener(m)
 
 	svalinnHandler := alice.New()
 
@@ -240,7 +241,7 @@ func svalinn(arguments []string) {
 			logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to create basic registerer", logging.ErrorKey(), err.Error())
 			//TODO: we shouldn't continue trying to set the webhook registerer up if we fail
 		}
-		periodicRegisterer := webhookClient.NewPeriodicRegisterer(registerer, config.Webhook.RegistrationInterval, logger)
+		periodicRegisterer := webhookClient.NewPeriodicRegisterer(registerer, config.Webhook.RegistrationInterval, logger, metricsRegistry)
 
 		s.registerer = periodicRegisterer
 		periodicRegisterer.Start()
