@@ -327,6 +327,11 @@ requestParser:
     # to find the device ID.
     # (Optional)
     state:
+      # field provides the field to use to determine if an event should be 
+      # labelled a State event.
+      # (Optional) default is Source
+      field: "Destination"
+      
       # regex provides the regular expression to be used to determine if an event 
       # should be labelled a State event.
       regex: "device-status/.*/(on|off)line$"

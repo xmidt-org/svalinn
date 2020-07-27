@@ -57,6 +57,7 @@ type Config struct {
 }
 
 type LabelConfig struct {
+	Field          string
 	Regex          string
 	StorePayload   bool
 	TTL            time.Duration
@@ -123,7 +124,8 @@ func NewRequestParser(config Config, logger log.Logger, metricsRegistry provider
 	for k, v := range config.Labels {
 		eventType := db.ParseEventType(k)
 		if eventType != db.Default {
-			c, err := wrpparser.NewRegexpClassifierFromStr(eventType.String(), v.Regex, wrpparser.Destination)
+			c, err := wrpparser.NewRegexpClassifierFromStr(eventType.String(),
+				v.Regex, wrpparser.GetField(v.Field))
 			if err != nil {
 				// log error
 			} else {
@@ -264,7 +266,8 @@ func (r *RequestParser) createRecord(req wrp.Message, result *eventparser.Result
 	case wrp.SimpleEventMessageType:
 
 	default:
-		return emptyRecord, parseFailReason, emperror.WrapWith(errUnexpectedWRPType, "message type check failed", "type", msg.Type, "full message", req)
+		return emptyRecord, parseFailReason, emperror.WrapWith(errUnexpectedWRPType, "message type check failed",
+			"type", msg.Type, "full message", req)
 	}
 
 	now := r.currTime()
@@ -277,12 +280,14 @@ func (r *RequestParser) createRecord(req wrp.Message, result *eventparser.Result
 	record.BirthDate = birthDate.UnixNano()
 
 	if birthDate.After(now.Add(time.Hour)) {
-		return emptyRecord, invalidBirthdateReason, emperror.WrapWith(errFutureBirthdate, "invalid birthdate", "birthdate", birthDate.String())
+		return emptyRecord, invalidBirthdateReason, emperror.WrapWith(errFutureBirthdate, "invalid birthdate",
+			"birthdate", birthDate.String())
 	}
 
 	deathDate := birthDate.Add(result.TTL)
 	if now.After(deathDate) {
-		return emptyRecord, expiredReason, emperror.WrapWith(errExpired, "event is already expired", "deathdate", deathDate.String())
+		return emptyRecord, expiredReason, emperror.WrapWith(errExpired, "event is already expired",
+			"deathdate", deathDate.String())
 	}
 	record.DeathDate = deathDate.UnixNano()
 
@@ -294,7 +299,8 @@ func (r *RequestParser) createRecord(req wrp.Message, result *eventparser.Result
 	// if metadata is too large, store a message explaining that instead of the metadata
 	marshaledMetadata, err := json.Marshal(msg.Metadata)
 	if err != nil {
-		return emptyRecord, parseFailReason, emperror.WrapWith(err, "failed to marshal metadata to determine size", "metadata", msg.Metadata, "full message", req)
+		return emptyRecord, parseFailReason, emperror.WrapWith(err, "failed to marshal metadata to determine size",
+			"metadata", msg.Metadata, "full message", req)
 	}
 	if len(marshaledMetadata) > r.config.MetadataMaxSize {
 		msg.Metadata = make(map[string]string)
