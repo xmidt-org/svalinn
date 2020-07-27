@@ -318,35 +318,55 @@ requestParser:
   # (Optional)
   payloadMaxSize: 1000
 
-  # defaultTTL provides the amount of time a record is kept in the database 
-  # before it is removed.  This TTL is for any event that doesn't have a rule 
-  # with a TTL specified.  If 0 is chosen, it defaults to 5m.
-  # (Optional) defaults to 5m
-  defaultTTL: 5s
+  # labels provide instructions to Svalinn on how to handle different events.  An 
+  # event can currently only be labeled as a State event.  Otherwise, it is 
+  # handled according to the default configuration.
+  labels:
+    # state provides how to determine a State labelled event, whether or not to 
+    # store the payload, how long the event should live in the database, and how 
+    # to find the device ID.
+    # (Optional)
+    state:
+      # regex provides the regular expression to be used to determine if an event 
+      # should be labelled a State event.
+      regex: "device-status/.*/(on|off)line$"
 
-  # regexRules provides rules for events whose destinations match the regular 
-  # expression.  If the event matches the regex of a rule, Svalinn gets 
-  # instructions on whether or not to store the event's payload (storePayload), 
-  # what the event type should be (eventType), and how long the record should 
-  # live in the database (ruleTTL).  If no rules are provided, the payload isn't 
-  # stored, the event type is the default, and the record's TTL is the defaultTTL. 
-  # Svalinn uses the first rule whose regex matches an event's destination.
-  #
-  # The eventType indicates where to find the device id in the event.  If the 
-  # event type is "State", the device id is parsed out of the event Destination.
-  # Otherwise, the event Source is used as the device id.
-  # eventType options: "State", "Default" 
-  #
-  # (Optional)
-  regexRules:
-    - regex: ".*/online$"
+      # storePayload provides whether or not to store the payload for an event of 
+      # this label
       storePayload: true
-      ruleTTL: 30s
-      eventType: "State"
-    - regex: ".*/offline$"
-      storePayload: true
-      ruleTTL: 30s
-      eventType: "State"
+
+      # ttl is how long the event of this label should be stored in the database.
+      ttl: 30s
+
+      # deviceLocation is where to find the device id for an event of this label.
+      # If a valid regex and regexLabel aren't provided, the whole value in the 
+      # field given is used.
+      deviceLocation:
+        # field can either be Destination or Source.
+        # (Optional) default is Source
+        field: "Destination"
+
+        # regex must include the label provided.  This is where the device id will 
+        # be found.
+        regex: "device-status/(?P<device>.*)/(on|off)line$"
+        regexLabel: "device"
+  
+    # default provides the default way an event should be handled: whether or not 
+    # the payload should be stored, for how long the event should be stored in the 
+    # database, and how to find the device ID.  Default doesn't match against any 
+    # regular expressions, because it is the bucket for anything not matched to a 
+    # label above.
+    # (Optional)
+    default:
+      # (Optional) default is false
+      storePayload: false
+
+      # (Optional) default is 5m
+      ttl: 5s
+
+      # (Optional) default is Source with no regex used
+      deviceLocation:
+        field: "Source"
 
 # blacklistInterval provides how often Svalinn should get the blacklist from 
 # the database.  If a device id matches a regular expression on the blacklist, 

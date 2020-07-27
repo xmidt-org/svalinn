@@ -4,14 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"path"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/go-kit/kit/metrics/provider"
 
-	"github.com/xmidt-org/svalinn/rules"
+	eventparser "github.com/xmidt-org/svalinn/eventParser"
+	wrpparser "github.com/xmidt-org/wrp-listener/wrpParser"
 
 	"github.com/go-kit/kit/log"
 	"github.com/goph/emperror"
@@ -21,7 +20,7 @@ import (
 	"github.com/xmidt-org/voynicrypto"
 	"github.com/xmidt-org/webpa-common/logging"
 	"github.com/xmidt-org/webpa-common/semaphore"
-	"github.com/xmidt-org/wrp-go/v2"
+	"github.com/xmidt-org/wrp-go/v3"
 )
 
 var (
@@ -37,7 +36,6 @@ var (
 )
 
 const (
-	defaultTTL          = time.Duration(5) * time.Minute
 	minMaxWorkers       = 5
 	defaultMinQueueSize = 5
 )
@@ -55,8 +53,20 @@ type Config struct {
 	PayloadMaxSize  int
 	QueueSize       int
 	MaxWorkers      int
-	DefaultTTL      time.Duration
-	RegexRules      []rules.RuleConfig
+	Labels          map[string]LabelConfig
+}
+
+type LabelConfig struct {
+	Regex          string
+	StorePayload   bool
+	TTL            time.Duration
+	DeviceLocation FinderConfig
+}
+
+type FinderConfig struct {
+	Field      string
+	Regex      string
+	RegexLabel string
 }
 
 type RequestParser struct {
@@ -64,7 +74,7 @@ type RequestParser struct {
 	blacklist    blacklist.List
 	inserter     inserter
 	timeTracker  TimeTracker
-	rules        rules.Rules
+	eventParser  *eventparser.EventParser
 	requestQueue chan WrpWithTime
 	parseWorkers semaphore.Interface
 	wg           sync.WaitGroup
@@ -89,14 +99,7 @@ func NewRequestParser(config Config, logger log.Logger, metricsRegistry provider
 	if inserter == nil {
 		return nil, errors.New("no inserter")
 	}
-	rules, err := rules.NewRules(config.RegexRules)
-	if err != nil {
-		return nil, emperror.Wrap(err, "failed to create rules from config")
-	}
 
-	if config.DefaultTTL == 0 {
-		config.DefaultTTL = defaultTTL
-	}
 	if config.MetadataMaxSize < 0 {
 		config.MetadataMaxSize = 0
 	}
@@ -114,6 +117,38 @@ func NewRequestParser(config Config, logger log.Logger, metricsRegistry provider
 		logger = defaultLogger
 	}
 
+	// set up eventParser
+	var os []eventparser.Option
+	var cs []wrpparser.Classifier
+	for k, v := range config.Labels {
+		eventType := db.ParseEventType(k)
+		if eventType != db.Default {
+			c, err := wrpparser.NewRegexpClassifierFromStr(eventType.String(), v.Regex, wrpparser.Destination)
+			if err != nil {
+				// log error
+			} else {
+				cs = append(cs, c)
+			}
+		}
+		f, err := wrpparser.NewRegexpFinderFromStr(
+			wrpparser.GetField(v.DeviceLocation.Field),
+			v.DeviceLocation.Regex,
+			v.DeviceLocation.RegexLabel)
+		if err != nil {
+			// log error
+		} else {
+			os = append(os, eventparser.WithDeviceFinder(eventType.String(), f, v.StorePayload, v.TTL))
+		}
+	}
+	c, err := wrpparser.NewMultClassifier(cs...)
+	if err != nil {
+		return nil, errors.New("some error")
+	}
+	eventParser, err := eventparser.New(c, os...)
+	if err != nil {
+		return nil, errors.New("some error")
+	}
+
 	var measures *Measures
 	if metricsRegistry != nil {
 		measures = NewMeasures(metricsRegistry)
@@ -127,7 +162,7 @@ func NewRequestParser(config Config, logger log.Logger, metricsRegistry provider
 		parseWorkers: workers,
 		requestQueue: queue,
 		inserter:     inserter,
-		rules:        rules,
+		eventParser:  eventParser,
 		blacklist:    blacklist,
 		encrypter:    encrypter,
 		currTime:     time.Now,
@@ -181,16 +216,13 @@ func (r *RequestParser) parseRequests() {
 func (r *RequestParser) parseRequest(request WrpWithTime) {
 	defer r.parseWorkers.Release()
 
-	rule, err := r.rules.FindRule(request.Message.Destination)
-	if err != nil {
-		logging.Info(r.logger).Log(logging.MessageKey(), "Could not get rule", logging.ErrorKey(), err, "destination", request.Message.Destination)
+	result, err := r.eventParser.Parse(&request.Message)
+	if err != nil || result == nil {
+		logging.Info(r.logger).Log(logging.MessageKey(), "Could not parse event",
+			logging.ErrorKey(), err, "destination", request.Message.Destination)
 	}
 
-	eventType := db.Default
-	if rule != nil {
-		eventType = db.ParseEventType(rule.EventType())
-	}
-	record, reason, err := r.createRecord(request.Message, rule, eventType)
+	record, reason, err := r.createRecord(request.Message, result)
 	if err != nil {
 		r.measures.DroppedEventsCount.With(reasonLabel, reason).Add(1.0)
 		if reason == blackListReason {
@@ -213,27 +245,14 @@ func (r *RequestParser) parseRequest(request WrpWithTime) {
 	}
 }
 
-func (r *RequestParser) createRecord(req wrp.Message, rule *rules.Rule, eventType db.EventType) (db.Record, string, error) {
+func (r *RequestParser) createRecord(req wrp.Message, result *eventparser.Result) (db.Record, string, error) {
 	var (
 		err         error
 		emptyRecord db.Record
-		record      = db.Record{Type: eventType}
+		record      = db.Record{
+			Type:     result.Label,
+			DeviceID: result.DeviceID}
 	)
-
-	if eventType == db.State {
-		// get state and id from dest if this is a state event
-		base, _ := path.Split(req.Destination)
-		base, deviceId := path.Split(path.Base(base))
-		if deviceId == "" {
-			return emptyRecord, parseFailReason, emperror.WrapWith(errEmptyID, "id check failed", "request destination", req.Destination, "full message", req)
-		}
-		record.DeviceID = strings.ToLower(deviceId)
-	} else {
-		if req.Source == "" {
-			return emptyRecord, parseFailReason, emperror.WrapWith(errEmptyID, "id check failed", "request Source", req.Source, "full message", req)
-		}
-		record.DeviceID = strings.ToLower(req.Source)
-	}
 
 	if reason, ok := r.blacklist.InList(record.DeviceID); ok {
 		return emptyRecord, blackListReason, emperror.With(errBlacklist, "reason", reason)
@@ -261,24 +280,14 @@ func (r *RequestParser) createRecord(req wrp.Message, rule *rules.Rule, eventTyp
 		return emptyRecord, invalidBirthdateReason, emperror.WrapWith(errFutureBirthdate, "invalid birthdate", "birthdate", birthDate.String())
 	}
 
-	// determine ttl for deathdate
-	ttl := r.config.DefaultTTL
-	if rule != nil && rule.TTL() != 0 {
-		ttl = rule.TTL()
-	}
-
-	deathDate := birthDate.Add(ttl)
+	deathDate := birthDate.Add(result.TTL)
 	if now.After(deathDate) {
 		return emptyRecord, expiredReason, emperror.WrapWith(errExpired, "event is already expired", "deathdate", deathDate.String())
 	}
 	record.DeathDate = deathDate.UnixNano()
 
 	// store the payload if we are supposed to and it's not too big
-	storePayload := false
-	if rule != nil {
-		storePayload = rule.StorePayload()
-	}
-	if !storePayload || len(msg.Payload) > r.config.PayloadMaxSize {
+	if !result.StorePayload || len(msg.Payload) > r.config.PayloadMaxSize {
 		msg.Payload = nil
 	}
 
