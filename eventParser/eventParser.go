@@ -33,8 +33,8 @@ type Result struct {
 
 func (p *EventParser) Parse(msg *wrp.Message) (*Result, error) {
 	eventType := db.Default
-	label, ok := p.classifier.Label(msg)
-	if ok {
+	
+	if label, ok := p.classifier.Label(msg); ok {
 		eventType = db.ParseEventType(label)
 	}
 
