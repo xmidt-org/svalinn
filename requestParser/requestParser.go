@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"path"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -181,6 +182,19 @@ func (r *RequestParser) parseRequests() {
 func (r *RequestParser) parseRequest(request WrpWithTime) {
 	defer r.parseWorkers.Release()
 
+	//use regex matching to see what event type event is, for events metrics
+	eventDestination := getEventDestinationType(request.Message.Destination)
+
+	//If partner ID exists, grab first partner ID for event metrics
+	var partnerID string
+	if request.Message.PartnerIDs != nil && len(request.Message.PartnerIDs) > 0 {
+		partnerID = request.Message.PartnerIDs[0]
+	} else {
+		partnerID = noPartnerID
+	}
+
+	r.measures.PartnerIDCount.With(partnerIDLabel, partnerID, eventDestLabel, eventDestination).Add(1.0)
+
 	rule, err := r.rules.FindRule(request.Message.Destination)
 	if err != nil {
 		logging.Info(r.logger).Log(logging.MessageKey(), "Could not get rule", logging.ErrorKey(), err, "destination", request.Message.Destination)
@@ -190,6 +204,7 @@ func (r *RequestParser) parseRequest(request WrpWithTime) {
 	if rule != nil {
 		eventType = db.ParseEventType(rule.EventType())
 	}
+
 	record, reason, err := r.createRecord(request.Message, rule, eventType)
 	if err != nil {
 		r.measures.DroppedEventsCount.With(reasonLabel, reason).Add(1.0)
@@ -331,4 +346,26 @@ func getBirthDate(payload []byte) (time.Time, bool) {
 		return time.Time{}, false
 	}
 	return birthDate, true
+}
+
+//use regex matching to see what type of event an event destination is, for events metrics
+func getEventDestinationType(eventDestination string) string {
+	if len(eventDestination) == 0 {
+		return noEventDestination
+	}
+
+	switch {
+	case regexp.MustCompile(onlineEventRegex).MatchString(eventDestination):
+		return onlineEventDestination
+	case regexp.MustCompile(offlineEventRegex).MatchString(eventDestination):
+		return offlineEventDestination
+	case regexp.MustCompile(fullyManageableEventRegex).MatchString(eventDestination):
+		return fullyManageableEventDestination
+	case regexp.MustCompile(operationalEventRegex).MatchString(eventDestination):
+		return operationalEventDestination
+	case regexp.MustCompile(rebootPendingEventRegex).MatchString(eventDestination):
+		return rebootPendingEventDestination
+	default:
+		return otherEventDestination
+	}
 }

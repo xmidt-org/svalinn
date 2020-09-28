@@ -26,9 +26,12 @@ import (
 const (
 	ParsingQueueDepth    = "parsing_queue_depth"
 	DroppedEventsCounter = "dropped_events_count"
+	EventCounter         = "event_count"
 )
 
 const (
+	partnerIDLabel         = "partner_id"
+	eventDestLabel         = "event_destination"
 	reasonLabel            = "reason"
 	blackListReason        = "blacklist"
 	parseFailReason        = "parsing_failed"
@@ -38,6 +41,22 @@ const (
 	expiredReason          = "deathdate_has_already_passed"
 	queueFullReason        = "queue_full"
 	insertFailReason       = "inserting_failed"
+)
+
+const (
+	onlineEventRegex                = ".*/online.*"
+	offlineEventRegex               = ".*/offline.*"
+	fullyManageableEventRegex       = ".*/fully-manageable/.*"
+	operationalEventRegex           = ".*/operational/.*"
+	rebootPendingEventRegex         = ".*/reboot-pending/.*"
+	onlineEventDestination          = "online"
+	offlineEventDestination         = "offline"
+	fullyManageableEventDestination = "fully-manageable"
+	operationalEventDestination     = "operational"
+	rebootPendingEventDestination   = "reboot-pending"
+	otherEventDestination           = "other"
+	noEventDestination              = "no-destination"
+	noPartnerID                     = "no-partner-id"
 )
 
 func Metrics() []xmetrics.Metric {
@@ -53,12 +72,19 @@ func Metrics() []xmetrics.Metric {
 			Type:       "counter",
 			LabelNames: []string{reasonLabel},
 		},
+		{
+			Name:       EventCounter,
+			Help:       "Details of incoming events",
+			Type:       "counter",
+			LabelNames: []string{partnerIDLabel, eventDestLabel},
+		},
 	}
 }
 
 type Measures struct {
 	ParsingQueue       metrics.Gauge
 	DroppedEventsCount metrics.Counter
+	PartnerIDCount     metrics.Counter
 }
 
 // NewMeasures constructs a Measures given a go-kit metrics Provider
@@ -66,5 +92,6 @@ func NewMeasures(p provider.Provider) *Measures {
 	return &Measures{
 		ParsingQueue:       p.NewGauge(ParsingQueueDepth),
 		DroppedEventsCount: p.NewCounter(DroppedEventsCounter),
+		PartnerIDCount:     p.NewCounter(EventCounter),
 	}
 }

@@ -24,6 +24,16 @@ import (
 	"github.com/xmidt-org/wrp-go/v2"
 )
 
+const (
+	testOnlineDestination          = "/some_random_mac_address/online"
+	testOfflineDestination         = "/some_random_mac_address/offline"
+	testFullyManageableDestination = "/some_random_mac_address/fully-manageable/some_timestamp"
+	testOperationalDestination     = "/some_random_mac_address/operational/some_timestamp"
+	testRebootDestination          = "/some_random_mac_address/reboot-pending/some_timestamp"
+	testOtherDestination           = "/some_random_mac_address/this-event-is-not-covered/some_timestamp"
+	testNoDestination              = ""
+)
+
 var (
 	goodEvent = wrp.Message{
 		Source:          "test source",
@@ -34,6 +44,14 @@ var (
 		Payload:         []byte(`{"ts":"2019-02-13T21:19:02.614191735Z"}`),
 		Metadata:        map[string]string{"testkey": "testvalue"},
 	}
+	onlineEvent          = goodEvent
+	offlineEvent         = goodEvent
+	fullyManageableEvent = goodEvent
+	operationalEvent     = goodEvent
+	rebootPendingEvent   = goodEvent
+	otherEvent           = goodEvent
+	noDestinationEvent   = goodEvent
+	noPartnerIDs         = goodEvent
 )
 
 func TestNewRequestParser(t *testing.T) {
@@ -139,31 +157,41 @@ func TestParseRequest(t *testing.T) {
 	testassert := assert.New(t)
 	goodTime, err := time.Parse(time.RFC3339Nano, "2019-02-13T21:19:02.614191735Z")
 	testassert.Nil(err)
+	setUpEventTesting()
 	beginTime := time.Now()
 	tests := []struct {
-		description        string
-		req                wrp.Message
-		encryptErr         error
-		insertErr          error
-		expectEncryptCount float64
-		expectParseCount   float64
-		expectInsertCount  float64
-		encryptCalled      bool
-		blacklistCalled    bool
-		insertCalled       bool
-		timeExpected       bool
+		description          string
+		req                  wrp.Message
+		encryptErr           error
+		insertErr            error
+		expectEncryptCount   float64
+		expectParseCount     float64
+		expectInsertCount    float64
+		expectPartnerIDCount float64
+		expectPartnerID      string
+		eventDest            string
+		encryptCalled        bool
+		blacklistCalled      bool
+		insertCalled         bool
+		timeExpected         bool
 	}{
 		{
-			description:     "Success",
-			req:             goodEvent,
-			encryptCalled:   true,
-			blacklistCalled: true,
-			insertCalled:    true,
-			timeExpected:    true,
+			description:          "Success",
+			req:                  goodEvent,
+			encryptCalled:        true,
+			blacklistCalled:      true,
+			insertCalled:         true,
+			timeExpected:         true,
+			expectPartnerIDCount: 1.0,
+			expectPartnerID:      goodEvent.PartnerIDs[0],
+			eventDest:            getEventDestinationType(goodEvent.Destination),
 		},
 		{
-			description:      "Empty ID Error",
-			expectParseCount: 1.0,
+			description:          "Empty ID Error",
+			expectParseCount:     1.0,
+			expectPartnerID:      noPartnerID,
+			expectPartnerIDCount: 1.0,
+			eventDest:            getEventDestinationType(""),
 		},
 		{
 			description:        "Encrypt Error",
@@ -183,6 +211,105 @@ func TestParseRequest(t *testing.T) {
 			insertCalled:      true,
 			blacklistCalled:   true,
 			timeExpected:      true,
+		},
+		{
+			description:          "Online Event",
+			req:                  onlineEvent,
+			encryptCalled:        true,
+			blacklistCalled:      true,
+			insertCalled:         true,
+			timeExpected:         true,
+			expectPartnerID:      onlineEvent.PartnerIDs[0],
+			expectPartnerIDCount: 1.0,
+			eventDest:            onlineEventDestination,
+		},
+		{
+			description:          "Offline Event",
+			req:                  offlineEvent,
+			encryptCalled:        true,
+			blacklistCalled:      true,
+			insertCalled:         true,
+			timeExpected:         true,
+			expectPartnerID:      offlineEvent.PartnerIDs[0],
+			expectPartnerIDCount: 1.0,
+			eventDest:            getEventDestinationType(offlineEvent.Destination),
+		},
+		{
+			description:          "Fully Manageable Event",
+			req:                  fullyManageableEvent,
+			encryptCalled:        true,
+			blacklistCalled:      true,
+			insertCalled:         true,
+			timeExpected:         true,
+			expectPartnerID:      fullyManageableEvent.PartnerIDs[0],
+			expectPartnerIDCount: 1.0,
+			eventDest:            getEventDestinationType(fullyManageableEvent.Destination),
+		},
+		{
+			description:          "Operational Event",
+			req:                  operationalEvent,
+			encryptCalled:        true,
+			blacklistCalled:      true,
+			insertCalled:         true,
+			timeExpected:         true,
+			expectPartnerID:      operationalEvent.PartnerIDs[0],
+			expectPartnerIDCount: 1.0,
+			eventDest:            getEventDestinationType(operationalEvent.Destination),
+		},
+		{
+			description:          "Fully Manageable Event",
+			req:                  fullyManageableEvent,
+			encryptCalled:        true,
+			blacklistCalled:      true,
+			insertCalled:         true,
+			timeExpected:         true,
+			expectPartnerID:      fullyManageableEvent.PartnerIDs[0],
+			expectPartnerIDCount: 1.0,
+			eventDest:            getEventDestinationType(fullyManageableEvent.Destination),
+		},
+		{
+			description:          "Reboot Pending Event",
+			req:                  rebootPendingEvent,
+			encryptCalled:        true,
+			blacklistCalled:      true,
+			insertCalled:         true,
+			timeExpected:         true,
+			expectPartnerID:      rebootPendingEvent.PartnerIDs[0],
+			expectPartnerIDCount: 1.0,
+			eventDest:            getEventDestinationType(rebootPendingEvent.Destination),
+		},
+		{
+			description:          "Other Event",
+			req:                  otherEvent,
+			encryptCalled:        true,
+			blacklistCalled:      true,
+			insertCalled:         true,
+			timeExpected:         true,
+			expectPartnerID:      otherEvent.PartnerIDs[0],
+			expectPartnerIDCount: 1.0,
+			eventDest:            getEventDestinationType(otherEvent.Destination),
+		},
+		{
+			description:          "No Destination Event",
+			req:                  noDestinationEvent,
+			encryptCalled:        true,
+			blacklistCalled:      true,
+			insertCalled:         true,
+			timeExpected:         true,
+			expectPartnerID:      noDestinationEvent.PartnerIDs[0],
+			expectPartnerIDCount: 1.0,
+			eventDest:            getEventDestinationType(noDestinationEvent.Destination),
+		},
+		{
+			description:          "No Partner IDs",
+			req:                  noPartnerIDs,
+			encryptCalled:        true,
+			blacklistCalled:      true,
+			insertCalled:         true,
+			timeExpected:         true,
+			expectPartnerID:      noPartnerID,
+			expectPartnerIDCount: 1.0,
+			eventDest:            getEventDestinationType(noPartnerIDs.Destination),
 		},
 	}
 
@@ -243,6 +370,7 @@ func TestParseRequest(t *testing.T) {
 			p.Assert(t, DroppedEventsCounter, reasonLabel, encryptFailReason)(xmetricstest.Value(tc.expectEncryptCount))
 			p.Assert(t, DroppedEventsCounter, reasonLabel, parseFailReason)(xmetricstest.Value(tc.expectParseCount))
 			p.Assert(t, DroppedEventsCounter, reasonLabel, insertFailReason)(xmetricstest.Value(tc.expectInsertCount))
+			p.Assert(t, EventPartnerIDCounter, partnerIDLabel, tc.expectPartnerID, eventDestLabel, tc.eventDest)(xmetricstest.Value(tc.expectPartnerIDCount))
 			testassert.Equal(tc.timeExpected, timeCalled)
 
 		})
@@ -546,4 +674,26 @@ func TestGetBirthDate(t *testing.T) {
 			assert.Equal(found, tc.expectedFound)
 		})
 	}
+}
+
+func TestGetEventDestinationType(t *testing.T) {
+	assert.Equal(t, onlineEventDestination, getEventDestinationType(testOnlineDestination))
+	assert.Equal(t, offlineEventDestination, getEventDestinationType(testOfflineDestination))
+	assert.Equal(t, fullyManageableEventDestination, getEventDestinationType(testFullyManageableDestination))
+	assert.Equal(t, operationalEventDestination, getEventDestinationType(testOperationalDestination))
+	assert.Equal(t, rebootPendingEventDestination, getEventDestinationType(testRebootDestination))
+	assert.Equal(t, otherEventDestination, getEventDestinationType(testOtherDestination))
+	assert.Equal(t, noEventDestination, getEventDestinationType(testNoDestination))
+}
+
+//set up test tables for events
+func setUpEventTesting() {
+	onlineEvent.Destination = testOnlineDestination
+	offlineEvent.Destination = testOfflineDestination
+	fullyManageableEvent.Destination = testFullyManageableDestination
+	operationalEvent.Destination = testOperationalDestination
+	rebootPendingEvent.Destination = testRebootDestination
+	otherEvent.Destination = testOtherDestination
+	noDestinationEvent.Destination = testNoDestination
+	noPartnerIDs.PartnerIDs = nil
 }
