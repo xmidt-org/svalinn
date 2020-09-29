@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -25,12 +26,12 @@ import (
 )
 
 const (
-	testOnlineDestination          = "/some_random_mac_address/online"
-	testOfflineDestination         = "/some_random_mac_address/offline"
-	testFullyManageableDestination = "/some_random_mac_address/fully-manageable/some_timestamp"
-	testOperationalDestination     = "/some_random_mac_address/operational/some_timestamp"
-	testRebootDestination          = "/some_random_mac_address/reboot-pending/some_timestamp"
-	testOtherDestination           = "/some_random_mac_address/this-event-is-not-covered/some_timestamp"
+	testOnlineDestination          = "device-status/mac:some_random_mac_address/online"
+	testOfflineDestination         = "device-status/mac:some_random_mac_address/offline"
+	testFullyManageableDestination = "device-status/mac:some_random_mac_address/fully-manageable/some_timestamp"
+	testOperationalDestination     = "device-status/mac:some_random_mac_address/operational/some_timestamp"
+	testRebootDestination          = "device-status/mac:some_random_mac_address/reboot-pending/some_timestamp"
+	testOtherDestination           = "device-status/mac:some_random_mac_address/this-event-is-not-covered/some_timestamp"
 	testNoDestination              = ""
 )
 
@@ -141,6 +142,7 @@ func TestNewRequestParser(t *testing.T) {
 			if rp != nil {
 				tc.expectedRequestParser.requestQueue = rp.requestQueue
 				tc.expectedRequestParser.parseWorkers = rp.parseWorkers
+				tc.expectedRequestParser.eventTemplate = rp.eventTemplate
 				rp.currTime = nil
 			}
 			assert.Equal(tc.expectedRequestParser, rp)
@@ -158,6 +160,8 @@ func TestParseRequest(t *testing.T) {
 	goodTime, err := time.Parse(time.RFC3339Nano, "2019-02-13T21:19:02.614191735Z")
 	testassert.Nil(err)
 	setUpEventTesting()
+	eventRegexTemplate := createEventTemplateRegex(eventRegexTemplate, nil)
+
 	beginTime := time.Now()
 	tests := []struct {
 		description          string
@@ -184,14 +188,14 @@ func TestParseRequest(t *testing.T) {
 			timeExpected:         true,
 			expectPartnerIDCount: 1.0,
 			expectPartnerID:      goodEvent.PartnerIDs[0],
-			eventDest:            getEventDestinationType(goodEvent.Destination),
+			eventDest:            getEventDestinationType(eventRegexTemplate, goodEvent.Destination),
 		},
 		{
 			description:          "Empty ID Error",
 			expectParseCount:     1.0,
 			expectPartnerID:      noPartnerID,
 			expectPartnerIDCount: 1.0,
-			eventDest:            getEventDestinationType(""),
+			eventDest:            getEventDestinationType(eventRegexTemplate, ""),
 		},
 		{
 			description:        "Encrypt Error",
@@ -221,7 +225,7 @@ func TestParseRequest(t *testing.T) {
 			timeExpected:         true,
 			expectPartnerID:      onlineEvent.PartnerIDs[0],
 			expectPartnerIDCount: 1.0,
-			eventDest:            onlineEventDestination,
+			eventDest:            getEventDestinationType(eventRegexTemplate, onlineEvent.Destination),
 		},
 		{
 			description:          "Offline Event",
@@ -232,7 +236,7 @@ func TestParseRequest(t *testing.T) {
 			timeExpected:         true,
 			expectPartnerID:      offlineEvent.PartnerIDs[0],
 			expectPartnerIDCount: 1.0,
-			eventDest:            getEventDestinationType(offlineEvent.Destination),
+			eventDest:            getEventDestinationType(eventRegexTemplate, offlineEvent.Destination),
 		},
 		{
 			description:          "Fully Manageable Event",
@@ -243,7 +247,7 @@ func TestParseRequest(t *testing.T) {
 			timeExpected:         true,
 			expectPartnerID:      fullyManageableEvent.PartnerIDs[0],
 			expectPartnerIDCount: 1.0,
-			eventDest:            getEventDestinationType(fullyManageableEvent.Destination),
+			eventDest:            getEventDestinationType(eventRegexTemplate, fullyManageableEvent.Destination),
 		},
 		{
 			description:          "Operational Event",
@@ -254,7 +258,7 @@ func TestParseRequest(t *testing.T) {
 			timeExpected:         true,
 			expectPartnerID:      operationalEvent.PartnerIDs[0],
 			expectPartnerIDCount: 1.0,
-			eventDest:            getEventDestinationType(operationalEvent.Destination),
+			eventDest:            getEventDestinationType(eventRegexTemplate, operationalEvent.Destination),
 		},
 		{
 			description:          "Fully Manageable Event",
@@ -265,7 +269,7 @@ func TestParseRequest(t *testing.T) {
 			timeExpected:         true,
 			expectPartnerID:      fullyManageableEvent.PartnerIDs[0],
 			expectPartnerIDCount: 1.0,
-			eventDest:            getEventDestinationType(fullyManageableEvent.Destination),
+			eventDest:            getEventDestinationType(eventRegexTemplate, fullyManageableEvent.Destination),
 		},
 		{
 			description:          "Reboot Pending Event",
@@ -276,7 +280,7 @@ func TestParseRequest(t *testing.T) {
 			timeExpected:         true,
 			expectPartnerID:      rebootPendingEvent.PartnerIDs[0],
 			expectPartnerIDCount: 1.0,
-			eventDest:            getEventDestinationType(rebootPendingEvent.Destination),
+			eventDest:            getEventDestinationType(eventRegexTemplate, rebootPendingEvent.Destination),
 		},
 		{
 			description:          "Other Event",
@@ -287,7 +291,7 @@ func TestParseRequest(t *testing.T) {
 			timeExpected:         true,
 			expectPartnerID:      otherEvent.PartnerIDs[0],
 			expectPartnerIDCount: 1.0,
-			eventDest:            getEventDestinationType(otherEvent.Destination),
+			eventDest:            getEventDestinationType(eventRegexTemplate, otherEvent.Destination),
 		},
 		{
 			description:          "No Destination Event",
@@ -298,7 +302,7 @@ func TestParseRequest(t *testing.T) {
 			timeExpected:         true,
 			expectPartnerID:      noDestinationEvent.PartnerIDs[0],
 			expectPartnerIDCount: 1.0,
-			eventDest:            getEventDestinationType(noDestinationEvent.Destination),
+			eventDest:            getEventDestinationType(eventRegexTemplate, noDestinationEvent.Destination),
 		},
 		{
 			description:          "No Partner IDs",
@@ -309,7 +313,7 @@ func TestParseRequest(t *testing.T) {
 			timeExpected:         true,
 			expectPartnerID:      noPartnerID,
 			expectPartnerIDCount: 1.0,
-			eventDest:            getEventDestinationType(noPartnerIDs.Destination),
+			eventDest:            getEventDestinationType(eventRegexTemplate, noPartnerIDs.Destination),
 		},
 	}
 
@@ -352,13 +356,14 @@ func TestParseRequest(t *testing.T) {
 					DefaultTTL:      time.Second,
 					MaxWorkers:      5,
 				},
-				inserter:     mockInserter,
-				timeTracker:  mockTimeTracker,
-				parseWorkers: semaphore.New(2),
-				measures:     m,
-				logger:       logging.NewTestLogger(nil, t),
-				blacklist:    mblacklist,
-				currTime:     timeFunc,
+				inserter:      mockInserter,
+				timeTracker:   mockTimeTracker,
+				parseWorkers:  semaphore.New(2),
+				measures:      m,
+				logger:        logging.NewTestLogger(nil, t),
+				blacklist:     mblacklist,
+				currTime:      timeFunc,
+				eventTemplate: eventRegexTemplate,
 			}
 
 			handler.parseWorkers.Acquire()
@@ -677,13 +682,27 @@ func TestGetBirthDate(t *testing.T) {
 }
 
 func TestGetEventDestinationType(t *testing.T) {
-	assert.Equal(t, onlineEventDestination, getEventDestinationType(testOnlineDestination))
-	assert.Equal(t, offlineEventDestination, getEventDestinationType(testOfflineDestination))
-	assert.Equal(t, fullyManageableEventDestination, getEventDestinationType(testFullyManageableDestination))
-	assert.Equal(t, operationalEventDestination, getEventDestinationType(testOperationalDestination))
-	assert.Equal(t, rebootPendingEventDestination, getEventDestinationType(testRebootDestination))
-	assert.Equal(t, otherEventDestination, getEventDestinationType(testOtherDestination))
-	assert.Equal(t, noEventDestination, getEventDestinationType(testNoDestination))
+	eventRegexTemplate := regexp.MustCompile(eventRegexTemplate)
+
+	tests := map[string]string{
+		testOnlineDestination:          "online",
+		testOfflineDestination:         "offline",
+		testFullyManageableDestination: "fully-manageable",
+		testOperationalDestination:     "operational",
+		testRebootDestination:          "reboot-pending",
+		testOtherDestination:           "this-event-is-not-covered",
+		testNoDestination:              noEventDestination,
+	}
+
+	assert.Equal(t, tests[testOnlineDestination], getEventDestinationType(eventRegexTemplate, testOnlineDestination))
+	assert.Equal(t, tests[testOfflineDestination], getEventDestinationType(eventRegexTemplate, testOfflineDestination))
+	assert.Equal(t, tests[testFullyManageableDestination], getEventDestinationType(eventRegexTemplate, testFullyManageableDestination))
+	assert.Equal(t, tests[testOperationalDestination], getEventDestinationType(eventRegexTemplate, testOperationalDestination))
+	assert.Equal(t, tests[testRebootDestination], getEventDestinationType(eventRegexTemplate, testRebootDestination))
+	assert.Equal(t, tests[testOtherDestination], getEventDestinationType(eventRegexTemplate, testOtherDestination))
+	assert.Equal(t, tests[testNoDestination], getEventDestinationType(eventRegexTemplate, testNoDestination))
+	assert.Equal(t, noEventDestination, getEventDestinationType(nil, testOtherDestination))
+
 }
 
 //set up test tables for events

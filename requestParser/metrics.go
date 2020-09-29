@@ -44,19 +44,9 @@ const (
 )
 
 const (
-	onlineEventRegex                = ".*/online.*"
-	offlineEventRegex               = ".*/offline.*"
-	fullyManageableEventRegex       = ".*/fully-manageable/.*"
-	operationalEventRegex           = ".*/operational/.*"
-	rebootPendingEventRegex         = ".*/reboot-pending/.*"
-	onlineEventDestination          = "online"
-	offlineEventDestination         = "offline"
-	fullyManageableEventDestination = "fully-manageable"
-	operationalEventDestination     = "operational"
-	rebootPendingEventDestination   = "reboot-pending"
-	otherEventDestination           = "other"
-	noEventDestination              = "no-destination"
-	noPartnerID                     = "no-partner-id"
+	eventRegexTemplate = `^(?P<event>[^\/]+)\/((?P<prefix>(?i)mac|uuid|dns|serial):(?P<id>[^\/]+))\/(?P<type>[^\/\s]+)`
+	noEventDestination = "no-destination"
+	noPartnerID        = "no-partner-id"
 )
 
 func Metrics() []xmetrics.Metric {

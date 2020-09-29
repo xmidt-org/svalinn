@@ -61,18 +61,19 @@ type Config struct {
 }
 
 type RequestParser struct {
-	encrypter    voynicrypto.Encrypt
-	blacklist    blacklist.List
-	inserter     inserter
-	timeTracker  TimeTracker
-	rules        rules.Rules
-	requestQueue chan WrpWithTime
-	parseWorkers semaphore.Interface
-	wg           sync.WaitGroup
-	measures     *Measures
-	logger       log.Logger
-	config       Config
-	currTime     func() time.Time
+	encrypter     voynicrypto.Encrypt
+	blacklist     blacklist.List
+	inserter      inserter
+	timeTracker   TimeTracker
+	rules         rules.Rules
+	requestQueue  chan WrpWithTime
+	parseWorkers  semaphore.Interface
+	wg            sync.WaitGroup
+	measures      *Measures
+	logger        log.Logger
+	config        Config
+	currTime      func() time.Time
+	eventTemplate *regexp.Regexp
 }
 
 type WrpWithTime struct {
@@ -121,18 +122,21 @@ func NewRequestParser(config Config, logger log.Logger, metricsRegistry provider
 	}
 	queue := make(chan WrpWithTime, config.QueueSize)
 	workers := semaphore.New(config.MaxWorkers)
+	template := createEventTemplateRegex(eventRegexTemplate, logger)
+
 	r := RequestParser{
-		config:       config,
-		logger:       logger,
-		measures:     measures,
-		parseWorkers: workers,
-		requestQueue: queue,
-		inserter:     inserter,
-		rules:        rules,
-		blacklist:    blacklist,
-		encrypter:    encrypter,
-		currTime:     time.Now,
-		timeTracker:  timeTracker,
+		config:        config,
+		logger:        logger,
+		measures:      measures,
+		parseWorkers:  workers,
+		requestQueue:  queue,
+		inserter:      inserter,
+		rules:         rules,
+		blacklist:     blacklist,
+		encrypter:     encrypter,
+		currTime:      time.Now,
+		timeTracker:   timeTracker,
+		eventTemplate: template,
 	}
 
 	return &r, nil
@@ -183,7 +187,7 @@ func (r *RequestParser) parseRequest(request WrpWithTime) {
 	defer r.parseWorkers.Release()
 
 	//use regex matching to see what event type event is, for events metrics
-	eventDestination := getEventDestinationType(request.Message.Destination)
+	eventDestination := getEventDestinationType(r.eventTemplate, request.Message.Destination)
 
 	//If partner ID exists, grab first partner ID for event metrics
 	var partnerID string
@@ -348,24 +352,30 @@ func getBirthDate(payload []byte) (time.Time, bool) {
 	return birthDate, true
 }
 
-//use regex matching to see what type of event an event destination is, for events metrics
-func getEventDestinationType(eventDestination string) string {
-	if len(eventDestination) == 0 {
+// create compiled regex for events regex template
+func createEventTemplateRegex(regexTemplate string, logger log.Logger) *regexp.Regexp {
+	template, err := regexp.Compile(regexTemplate)
+
+	if err != nil {
+		if logger != nil {
+			logging.Info(logger).Log(logging.MessageKey(), "Could not compile template regex for events", logging.ErrorKey(), err, "regex: ", eventRegexTemplate)
+		}
+		return nil
+	}
+	return template
+}
+
+// get specific event type
+func getEventDestinationType(regexTemplate *regexp.Regexp, destinationToCheck string) string {
+	if regexTemplate == nil || len(destinationToCheck) == 0 {
 		return noEventDestination
 	}
 
-	switch {
-	case regexp.MustCompile(onlineEventRegex).MatchString(eventDestination):
-		return onlineEventDestination
-	case regexp.MustCompile(offlineEventRegex).MatchString(eventDestination):
-		return offlineEventDestination
-	case regexp.MustCompile(fullyManageableEventRegex).MatchString(eventDestination):
-		return fullyManageableEventDestination
-	case regexp.MustCompile(operationalEventRegex).MatchString(eventDestination):
-		return operationalEventDestination
-	case regexp.MustCompile(rebootPendingEventRegex).MatchString(eventDestination):
-		return rebootPendingEventDestination
-	default:
-		return otherEventDestination
+	match := regexTemplate.FindStringSubmatch(destinationToCheck)
+	index := regexTemplate.SubexpIndex("type")
+	if index < len(match) {
+		return match[index]
 	}
+
+	return noEventDestination
 }
