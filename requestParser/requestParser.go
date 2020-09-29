@@ -193,7 +193,7 @@ func (r *RequestParser) parseRequest(request WrpWithTime) {
 		partnerID = noPartnerID
 	}
 
-	r.measures.PartnerIDCount.With(partnerIDLabel, partnerID, eventDestLabel, eventDestination).Add(1.0)
+	r.measures.EventsCount.With(partnerIDLabel, partnerID, eventDestLabel, eventDestination).Add(1.0)
 
 	rule, err := r.rules.FindRule(request.Message.Destination)
 	if err != nil {

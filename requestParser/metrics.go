@@ -84,7 +84,7 @@ func Metrics() []xmetrics.Metric {
 type Measures struct {
 	ParsingQueue       metrics.Gauge
 	DroppedEventsCount metrics.Counter
-	PartnerIDCount     metrics.Counter
+	EventsCount        metrics.Counter
 }
 
 // NewMeasures constructs a Measures given a go-kit metrics Provider
@@ -92,6 +92,6 @@ func NewMeasures(p provider.Provider) *Measures {
 	return &Measures{
 		ParsingQueue:       p.NewGauge(ParsingQueueDepth),
 		DroppedEventsCount: p.NewCounter(DroppedEventsCounter),
-		PartnerIDCount:     p.NewCounter(EventCounter),
+		EventsCount:        p.NewCounter(EventCounter),
 	}
 }
