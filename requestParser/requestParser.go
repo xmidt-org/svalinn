@@ -358,7 +358,7 @@ func createEventTemplateRegex(regexTemplate string, logger log.Logger) *regexp.R
 
 	if err != nil {
 		if logger != nil {
-			logging.Info(logger).Log(logging.MessageKey(), "Could not compile template regex for events", logging.ErrorKey(), err, "regex: ", eventRegexTemplate)
+			logging.Info(logger).Log(logging.MessageKey(), "Could not compile template regex for events", logging.ErrorKey(), err, "regex: ", regexTemplate)
 		}
 		return nil
 	}
