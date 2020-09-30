@@ -367,8 +367,15 @@ func getEventDestinationType(regexTemplate *regexp.Regexp, destinationToCheck st
 	}
 
 	match := regexTemplate.FindStringSubmatch(destinationToCheck)
-	index := regexTemplate.SubexpIndex("type")
-	if index > 0 && index < len(match) {
+	index := -1
+	for i, name := range regexTemplate.SubexpNames() {
+		if name == "type" {
+			index = i
+			break
+		}
+	}
+
+	if index >= 0 && index < len(match) {
 		return match[index]
 	}
 
