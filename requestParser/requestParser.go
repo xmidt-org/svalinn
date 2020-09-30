@@ -20,6 +20,7 @@ import (
 	"github.com/xmidt-org/codex-db/batchInserter"
 	"github.com/xmidt-org/codex-db/blacklist"
 	"github.com/xmidt-org/voynicrypto"
+	"github.com/xmidt-org/webpa-common/basculechecks"
 	"github.com/xmidt-org/webpa-common/logging"
 	"github.com/xmidt-org/webpa-common/semaphore"
 	"github.com/xmidt-org/wrp-go/v2"
@@ -189,13 +190,7 @@ func (r *RequestParser) parseRequest(request WrpWithTime) {
 	//use regex matching to see what event type event is, for events metrics
 	eventDestination := getEventDestinationType(r.eventTemplate, request.Message.Destination)
 
-	//If partner ID exists, grab first partner ID for event metrics
-	var partnerID string
-	if request.Message.PartnerIDs != nil && len(request.Message.PartnerIDs) > 0 {
-		partnerID = request.Message.PartnerIDs[0]
-	} else {
-		partnerID = noPartnerID
-	}
+	partnerID := basculechecks.DeterminePartnerMetric(request.Message.PartnerIDs)
 
 	r.measures.EventsCount.With(partnerIDLabel, partnerID, eventDestLabel, eventDestination).Add(1.0)
 
