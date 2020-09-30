@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 - Bumped codex-db and updated requestParser to use the error returned on insert (#125)[https://github.com/xmidt-org/svalinn/pull/125]
 - Updated references to the main branch [#131](https://github.com/xmidt-org/svalinn/pull/131)
+- Bumped webpa-common version to v1.11.0 and wrp-listener version to v0.2.1 [#137](https://github.com/xmidt-org/svalinn/pull/137)
 
 ## [v0.14.1]
 - Added metric for how long an event is in Svalinn's memory [#124](https://github.com/xmidt-org/svalinn/pull/124)
