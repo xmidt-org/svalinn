@@ -341,7 +341,7 @@ func startHealth(logger log.Logger, health *health.Health, config *SvalinnConfig
 
 func waitUntilShutdown(logger log.Logger, s *Svalinn, database database) {
 	signals := make(chan os.Signal, 10)
-	signal.Notify(signals)
+	signal.Notify(signals, os.Kill, os.Interrupt)
 	for exit := false; !exit; {
 		select {
 		case s := <-signals:
