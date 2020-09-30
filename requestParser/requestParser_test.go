@@ -267,131 +267,42 @@ func TestEventDetailsMetrics(t *testing.T) {
 	eventRegexTemplate := createEventTemplateRegex(eventRegexTemplate, nil)
 
 	tests := []struct {
-		description          string
-		req                  wrp.Message
-		expectPartnerIDCount float64
-		expectPartnerID      string
-		eventDest            string
+		description    string
+		destination    string
+		emptyPartnerID bool
 	}{
 		{
 			description: "Online Event",
-			req: wrp.Message{
-				Source:          goodEvent.Source,
-				Destination:     testOnlineDestination,
-				PartnerIDs:      goodEvent.PartnerIDs,
-				TransactionUUID: goodEvent.TransactionUUID,
-				Type:            goodEvent.Type,
-				Payload:         goodEvent.Payload,
-				Metadata:        goodEvent.Metadata,
-			},
-			expectPartnerID:      basculechecks.DeterminePartnerMetric(goodEvent.PartnerIDs),
-			expectPartnerIDCount: 1.0,
-			eventDest:            getEventDestinationType(eventRegexTemplate, testOnlineDestination),
+			destination: testOnlineDestination,
 		},
 		{
 			description: "Offline Event",
-			req: wrp.Message{
-				Source:          goodEvent.Source,
-				Destination:     testOfflineDestination,
-				PartnerIDs:      goodEvent.PartnerIDs,
-				TransactionUUID: goodEvent.TransactionUUID,
-				Type:            goodEvent.Type,
-				Payload:         goodEvent.Payload,
-				Metadata:        goodEvent.Metadata,
-			},
-			expectPartnerID:      basculechecks.DeterminePartnerMetric(goodEvent.PartnerIDs),
-			expectPartnerIDCount: 1.0,
-			eventDest:            getEventDestinationType(eventRegexTemplate, testOfflineDestination),
+			destination: testOfflineDestination,
 		},
 		{
 			description: "Fully Manageable Event",
-			req: wrp.Message{
-				Source:          goodEvent.Source,
-				Destination:     testFullyManageableDestination,
-				PartnerIDs:      goodEvent.PartnerIDs,
-				TransactionUUID: goodEvent.TransactionUUID,
-				Type:            goodEvent.Type,
-				Payload:         goodEvent.Payload,
-				Metadata:        goodEvent.Metadata,
-			},
-			expectPartnerID:      basculechecks.DeterminePartnerMetric(goodEvent.PartnerIDs),
-			expectPartnerIDCount: 1.0,
-			eventDest:            getEventDestinationType(eventRegexTemplate, testFullyManageableDestination),
+			destination: testFullyManageableDestination,
 		},
 		{
 			description: "Operational Event",
-			req: wrp.Message{
-				Source:          goodEvent.Source,
-				Destination:     testOperationalDestination,
-				PartnerIDs:      goodEvent.PartnerIDs,
-				TransactionUUID: goodEvent.TransactionUUID,
-				Type:            goodEvent.Type,
-				Payload:         goodEvent.Payload,
-				Metadata:        goodEvent.Metadata,
-			},
-			expectPartnerID:      basculechecks.DeterminePartnerMetric(goodEvent.PartnerIDs),
-			expectPartnerIDCount: 1.0,
-			eventDest:            getEventDestinationType(eventRegexTemplate, testOperationalDestination),
+			destination: testOperationalDestination,
 		},
 		{
 			description: "Reboot Pending Event",
-			req: wrp.Message{
-				Source:          goodEvent.Source,
-				Destination:     testRebootDestination,
-				PartnerIDs:      goodEvent.PartnerIDs,
-				TransactionUUID: goodEvent.TransactionUUID,
-				Type:            goodEvent.Type,
-				Payload:         goodEvent.Payload,
-				Metadata:        goodEvent.Metadata,
-			},
-			expectPartnerID:      basculechecks.DeterminePartnerMetric(goodEvent.PartnerIDs),
-			expectPartnerIDCount: 1.0,
-			eventDest:            getEventDestinationType(eventRegexTemplate, testRebootDestination),
+			destination: testRebootDestination,
 		},
 		{
 			description: "Other Event",
-			req: wrp.Message{
-				Source:          goodEvent.Source,
-				Destination:     testOtherDestination,
-				PartnerIDs:      goodEvent.PartnerIDs,
-				TransactionUUID: goodEvent.TransactionUUID,
-				Type:            goodEvent.Type,
-				Payload:         goodEvent.Payload,
-				Metadata:        goodEvent.Metadata,
-			},
-			expectPartnerID:      basculechecks.DeterminePartnerMetric(goodEvent.PartnerIDs),
-			expectPartnerIDCount: 1.0,
-			eventDest:            getEventDestinationType(eventRegexTemplate, testOtherDestination),
+			destination: testOtherDestination,
 		},
 		{
 			description: "No Destination Event",
-			req: wrp.Message{
-				Source:          goodEvent.Source,
-				Destination:     testNoDestination,
-				PartnerIDs:      goodEvent.PartnerIDs,
-				TransactionUUID: goodEvent.TransactionUUID,
-				Type:            goodEvent.Type,
-				Payload:         goodEvent.Payload,
-				Metadata:        goodEvent.Metadata,
-			},
-			expectPartnerID:      basculechecks.DeterminePartnerMetric(goodEvent.PartnerIDs),
-			expectPartnerIDCount: 1.0,
-			eventDest:            getEventDestinationType(eventRegexTemplate, testNoDestination),
+			destination: testNoDestination,
 		},
 		{
-			description: "No Partner IDs",
-			req: wrp.Message{
-				Source:          goodEvent.Source,
-				Destination:     testOtherDestination,
-				PartnerIDs:      []string{},
-				TransactionUUID: goodEvent.TransactionUUID,
-				Type:            goodEvent.Type,
-				Payload:         goodEvent.Payload,
-				Metadata:        goodEvent.Metadata,
-			},
-			expectPartnerID:      basculechecks.DeterminePartnerMetric([]string{}),
-			expectPartnerIDCount: 1.0,
-			eventDest:            getEventDestinationType(eventRegexTemplate, testOtherDestination),
+			description:    "No Partner IDs",
+			destination:    testOtherDestination,
+			emptyPartnerID: true,
 		},
 	}
 
@@ -433,9 +344,27 @@ func TestEventDetailsMetrics(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
+
+			var partnerIDs []string
+			if tc.emptyPartnerID {
+				partnerIDs = []string{}
+			} else {
+				partnerIDs = goodEvent.PartnerIDs
+			}
+
+			message := wrp.Message{
+				Source:          goodEvent.Source,
+				Destination:     tc.destination,
+				PartnerIDs:      partnerIDs,
+				TransactionUUID: goodEvent.TransactionUUID,
+				Type:            goodEvent.Type,
+				Payload:         goodEvent.Payload,
+				Metadata:        goodEvent.Metadata,
+			}
+
 			handler.parseWorkers.Acquire()
-			handler.parseRequest(WrpWithTime{Message: tc.req, Beginning: beginTime})
-			registry.Assert(t, EventCounter, partnerIDLabel, tc.expectPartnerID, eventDestLabel, tc.eventDest)(xmetricstest.Value(tc.expectPartnerIDCount))
+			handler.parseRequest(WrpWithTime{Message: message, Beginning: beginTime})
+			registry.Assert(t, EventCounter, partnerIDLabel, basculechecks.DeterminePartnerMetric(partnerIDs), eventDestLabel, getEventDestinationType(eventRegexTemplate, tc.destination))(xmetricstest.Value(1.0))
 		})
 	}
 
@@ -741,48 +670,73 @@ func TestGetBirthDate(t *testing.T) {
 }
 
 func TestCreateEventTemplateRegex(t *testing.T) {
-	const (
-		validRegexTemplate   = `^(?P<event>[^\/]+)\/((?P<prefix>(?i)mac|uuid|dns|serial):(?P<id>[^\/]+))\/(?P<type>[^\/\s]+)`
-		invalidRegexTemplate = `^(?<event>[^\/]+)\/`
-	)
-
 	testassert := assert.New(t)
-	invalidRegex := createEventTemplateRegex(invalidRegexTemplate, nil)
-	validRegex := createEventTemplateRegex(validRegexTemplate, nil)
-	testassert.Nil(invalidRegex)
+	validRegex := createEventTemplateRegex(`^(?P<event>[^\/]+)\/((?P<prefix>(?i)mac|uuid|dns|serial):(?P<id>[^\/]+))\/(?P<type>[^\/\s]+)`, nil)
+	invalidRegex := createEventTemplateRegex(`^(?<event>[^\/]+)\/`, nil)
 	testassert.NotNil(validRegex)
+	testassert.Nil(invalidRegex)
 }
 
 func TestGetEventDestinationType(t *testing.T) {
 	eventRegex := regexp.MustCompile(eventRegexTemplate)
 
-	const (
-		testOnlineDestination          = "device-status/mac:some_random_mac_address/online"
-		testOfflineDestination         = "device-status/mac:some_random_mac_address/offline"
-		testFullyManageableDestination = "device-status/mac:some_random_mac_address/fully-manageable/some_timestamp"
-		testOperationalDestination     = "device-status/mac:some_random_mac_address/operational/some_timestamp"
-		testRebootDestination          = "device-status/mac:some_random_mac_address/reboot-pending/some_timestamp"
-		testOtherDestination           = "device-status/mac:some_random_mac_address/this-event-is-not-covered/some_timestamp"
-		testNoDestination              = ""
-	)
-
-	tests := map[string]string{
-		testOnlineDestination:          "online",
-		testOfflineDestination:         "offline",
-		testFullyManageableDestination: "fully-manageable",
-		testOperationalDestination:     "operational",
-		testRebootDestination:          "reboot-pending",
-		testOtherDestination:           "this-event-is-not-covered",
-		testNoDestination:              noEventDestination,
+	tests := []struct {
+		description           string
+		destination           string
+		expectDestinationType string
+		noCompiledRegex       bool
+	}{
+		{
+			description:           "Online Event",
+			destination:           "device-status/mac:some_random_mac_address/online",
+			expectDestinationType: "online",
+		},
+		{
+			description:           "Offline Event",
+			destination:           "device-status/mac:some_random_mac_address/offline",
+			expectDestinationType: "offline",
+		},
+		{
+			description:           "Fully Manageable Event",
+			destination:           "device-status/mac:some_random_mac_address/fully-manageable/some_timestamp",
+			expectDestinationType: "fully-manageable",
+		},
+		{
+			description:           "Operational Event",
+			destination:           "device-status/mac:some_random_mac_address/operational/some_timestamp",
+			expectDestinationType: "operational",
+		},
+		{
+			description:           "Reboot Pending Event",
+			destination:           "device-status/mac:some_random_mac_address/reboot-pending/some_timestamp",
+			expectDestinationType: "reboot-pending",
+		},
+		{
+			description:           "Random Event",
+			destination:           "device-status/mac:some_random_mac_address/some-random-event/some_timestamp",
+			expectDestinationType: "some-random-event",
+		},
+		{
+			description:           "No Event Destination",
+			destination:           "",
+			expectDestinationType: noEventDestination,
+		},
+		{
+			description:           "No Regex",
+			destination:           "device-status/mac:some_random_mac_address/some-random-event/some_timestamp",
+			expectDestinationType: noEventDestination,
+			noCompiledRegex:       true,
+		},
 	}
 
-	assert.Equal(t, tests[testOnlineDestination], getEventDestinationType(eventRegex, testOnlineDestination))
-	assert.Equal(t, tests[testOfflineDestination], getEventDestinationType(eventRegex, testOfflineDestination))
-	assert.Equal(t, tests[testFullyManageableDestination], getEventDestinationType(eventRegex, testFullyManageableDestination))
-	assert.Equal(t, tests[testOperationalDestination], getEventDestinationType(eventRegex, testOperationalDestination))
-	assert.Equal(t, tests[testRebootDestination], getEventDestinationType(eventRegex, testRebootDestination))
-	assert.Equal(t, tests[testOtherDestination], getEventDestinationType(eventRegex, testOtherDestination))
-	assert.Equal(t, tests[testNoDestination], getEventDestinationType(eventRegex, testNoDestination))
-	assert.Equal(t, noEventDestination, getEventDestinationType(nil, testOtherDestination))
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			if tc.noCompiledRegex {
+				assert.Equal(t, tc.expectDestinationType, getEventDestinationType(nil, tc.destination))
+			} else {
+				assert.Equal(t, tc.expectDestinationType, getEventDestinationType(eventRegex, tc.destination))
+			}
 
+		})
+	}
 }
