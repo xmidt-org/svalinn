@@ -254,16 +254,6 @@ func TestParseRequest(t *testing.T) {
 
 func TestEventDetailsMetrics(t *testing.T) {
 
-	const (
-		testOnlineDestination          = "device-status/mac:some_random_mac_address/online"
-		testOfflineDestination         = "device-status/mac:some_random_mac_address/offline"
-		testFullyManageableDestination = "device-status/mac:some_random_mac_address/fully-manageable/some_timestamp"
-		testOperationalDestination     = "device-status/mac:some_random_mac_address/operational/some_timestamp"
-		testRebootDestination          = "device-status/mac:some_random_mac_address/reboot-pending/some_timestamp"
-		testOtherDestination           = "device-status/mac:some_random_mac_address/this-event-is-not-covered/some_timestamp"
-		testNoDestination              = ""
-	)
-
 	eventRegexTemplate := createEventTemplateRegex(eventRegexTemplate, nil)
 
 	tests := []struct {
@@ -273,35 +263,35 @@ func TestEventDetailsMetrics(t *testing.T) {
 	}{
 		{
 			description: "Online Event",
-			destination: testOnlineDestination,
+			destination: "device-status/mac:some_random_mac_address/online",
 		},
 		{
 			description: "Offline Event",
-			destination: testOfflineDestination,
+			destination: "device-status/mac:some_random_mac_address/offline",
 		},
 		{
 			description: "Fully Manageable Event",
-			destination: testFullyManageableDestination,
+			destination: "device-status/mac:some_random_mac_address/fully-manageable/some_timestamp",
 		},
 		{
 			description: "Operational Event",
-			destination: testOperationalDestination,
+			destination: "device-status/mac:some_random_mac_address/operational/some_timestamp",
 		},
 		{
 			description: "Reboot Pending Event",
-			destination: testRebootDestination,
+			destination: "device-status/mac:some_random_mac_address/reboot-pending/some_timestamp",
 		},
 		{
 			description: "Other Event",
-			destination: testOtherDestination,
+			destination: "device-status/mac:some_random_mac_address/this-event-is-not-covered/some_timestamp",
 		},
 		{
 			description: "No Destination Event",
-			destination: testNoDestination,
+			destination: "",
 		},
 		{
 			description:    "No Partner IDs",
-			destination:    testOtherDestination,
+			destination:    "",
 			emptyPartnerID: true,
 		},
 	}
