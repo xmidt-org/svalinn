@@ -18,6 +18,8 @@
 package requestParser
 
 import (
+	"regexp"
+
 	"github.com/go-kit/kit/metrics"
 	"github.com/go-kit/kit/metrics/provider"
 	"github.com/xmidt-org/webpa-common/xmetrics"
@@ -74,6 +76,11 @@ type Measures struct {
 	ParsingQueue       metrics.Gauge
 	DroppedEventsCount metrics.Counter
 	EventsCount        metrics.Counter
+}
+
+type EventTypeMetrics struct {
+	Regex          *regexp.Regexp
+	EventTypeIndex int
 }
 
 // NewMeasures constructs a Measures given a go-kit metrics Provider

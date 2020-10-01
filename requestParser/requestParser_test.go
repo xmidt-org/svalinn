@@ -125,7 +125,7 @@ func TestNewRequestParser(t *testing.T) {
 			if rp != nil {
 				tc.expectedRequestParser.requestQueue = rp.requestQueue
 				tc.expectedRequestParser.parseWorkers = rp.parseWorkers
-				tc.expectedRequestParser.eventTemplate = rp.eventTemplate
+				tc.expectedRequestParser.eventTypeMetrics = rp.eventTypeMetrics
 				rp.currTime = nil
 			}
 			assert.Equal(tc.expectedRequestParser, rp)
@@ -142,6 +142,8 @@ func TestParseRequest(t *testing.T) {
 	testassert := assert.New(t)
 	goodTime, err := time.Parse(time.RFC3339Nano, "2019-02-13T21:19:02.614191735Z")
 	testassert.Nil(err)
+
+	eventRegex, eventTypeIndex := createEventTemplateRegex(eventRegexTemplate, nil)
 	beginTime := time.Now()
 	tests := []struct {
 		description        string
@@ -187,6 +189,38 @@ func TestParseRequest(t *testing.T) {
 			blacklistCalled:   true,
 			timeExpected:      true,
 		},
+		{
+			description: "Event Metrics – Random Event",
+			req: wrp.Message{
+				Source:          goodEvent.Source,
+				Destination:     "device-status/mac:some_random_mac_address/an-event/some_timestamp",
+				Type:            goodEvent.Type,
+				PartnerIDs:      goodEvent.PartnerIDs,
+				TransactionUUID: goodEvent.TransactionUUID,
+				Payload:         goodEvent.Payload,
+				Metadata:        goodEvent.Metadata,
+			},
+			encryptCalled:   true,
+			blacklistCalled: true,
+			insertCalled:    true,
+			timeExpected:    true,
+		},
+		{
+			description: "Event Metrics – No Partner ID",
+			req: wrp.Message{
+				Source:          goodEvent.Source,
+				Destination:     "device-status/mac:some_random_mac_address/an-event/some_timestamp",
+				Type:            goodEvent.Type,
+				PartnerIDs:      []string{},
+				TransactionUUID: goodEvent.TransactionUUID,
+				Payload:         goodEvent.Payload,
+				Metadata:        goodEvent.Metadata,
+			},
+			encryptCalled:   true,
+			blacklistCalled: true,
+			insertCalled:    true,
+			timeExpected:    true,
+		},
 	}
 
 	for _, tc := range tests {
@@ -228,13 +262,14 @@ func TestParseRequest(t *testing.T) {
 					DefaultTTL:      time.Second,
 					MaxWorkers:      5,
 				},
-				inserter:     mockInserter,
-				timeTracker:  mockTimeTracker,
-				parseWorkers: semaphore.New(2),
-				measures:     m,
-				logger:       logging.NewTestLogger(nil, t),
-				blacklist:    mblacklist,
-				currTime:     timeFunc,
+				inserter:         mockInserter,
+				timeTracker:      mockTimeTracker,
+				parseWorkers:     semaphore.New(2),
+				measures:         m,
+				logger:           logging.NewTestLogger(nil, t),
+				blacklist:        mblacklist,
+				currTime:         timeFunc,
+				eventTypeMetrics: EventTypeMetrics{Regex: eventRegex, EventTypeIndex: eventTypeIndex},
 			}
 
 			handler.parseWorkers.Acquire()
@@ -246,118 +281,11 @@ func TestParseRequest(t *testing.T) {
 			p.Assert(t, DroppedEventsCounter, reasonLabel, encryptFailReason)(xmetricstest.Value(tc.expectEncryptCount))
 			p.Assert(t, DroppedEventsCounter, reasonLabel, parseFailReason)(xmetricstest.Value(tc.expectParseCount))
 			p.Assert(t, DroppedEventsCounter, reasonLabel, insertFailReason)(xmetricstest.Value(tc.expectInsertCount))
+			p.Assert(t, EventCounter, partnerIDLabel, basculechecks.DeterminePartnerMetric(tc.req.PartnerIDs), eventDestLabel, getEventDestinationType(handler.eventTypeMetrics.Regex, handler.eventTypeMetrics.EventTypeIndex, tc.req.Destination))(xmetricstest.Value(1.0))
 			testassert.Equal(tc.timeExpected, timeCalled)
 
 		})
 	}
-}
-
-func TestEventDetailsMetrics(t *testing.T) {
-
-	eventRegexTemplate := createEventTemplateRegex(eventRegexTemplate, nil)
-
-	tests := []struct {
-		description    string
-		destination    string
-		emptyPartnerID bool
-	}{
-		{
-			description: "Online Event",
-			destination: "device-status/mac:some_random_mac_address/online",
-		},
-		{
-			description: "Offline Event",
-			destination: "device-status/mac:some_random_mac_address/offline",
-		},
-		{
-			description: "Fully Manageable Event",
-			destination: "device-status/mac:some_random_mac_address/fully-manageable/some_timestamp",
-		},
-		{
-			description: "Operational Event",
-			destination: "device-status/mac:some_random_mac_address/operational/some_timestamp",
-		},
-		{
-			description: "Reboot Pending Event",
-			destination: "device-status/mac:some_random_mac_address/reboot-pending/some_timestamp",
-		},
-		{
-			description: "Other Event",
-			destination: "device-status/mac:some_random_mac_address/this-event-is-not-covered/some_timestamp",
-		},
-		{
-			description: "No Destination Event",
-			destination: "",
-		},
-		{
-			description:    "No Partner IDs",
-			destination:    "",
-			emptyPartnerID: true,
-		},
-	}
-
-	testassert := assert.New(t)
-	goodTime, err := time.Parse(time.RFC3339Nano, "2019-02-13T21:19:02.614191735Z")
-	testassert.Nil(err)
-	timeFunc := func() time.Time {
-		return goodTime
-	}
-
-	encrypter := new(mockEncrypter)
-	inserter := new(mockInserter)
-	blacklist := new(mockBlacklist)
-	registry := xmetricstest.NewProvider(nil, Metrics)
-	measures := NewMeasures(registry)
-
-	encrypter.On("EncryptMessage", mock.Anything).Return(nil)
-	blacklist.On("InList", mock.Anything).Return("", false)
-	inserter.On("Insert", mock.Anything).Return(nil)
-
-	beginTime := time.Now()
-
-	handler := RequestParser{
-		encrypter: encrypter,
-		config: Config{
-			PayloadMaxSize:  9999,
-			MetadataMaxSize: 9999,
-			DefaultTTL:      time.Second,
-			MaxWorkers:      5,
-		},
-		inserter:      inserter,
-		parseWorkers:  semaphore.New(2),
-		measures:      measures,
-		logger:        logging.NewTestLogger(nil, t),
-		blacklist:     blacklist,
-		currTime:      timeFunc,
-		eventTemplate: eventRegexTemplate,
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.description, func(t *testing.T) {
-
-			var partnerIDs []string
-			if tc.emptyPartnerID {
-				partnerIDs = []string{}
-			} else {
-				partnerIDs = goodEvent.PartnerIDs
-			}
-
-			message := wrp.Message{
-				Source:          goodEvent.Source,
-				Destination:     tc.destination,
-				PartnerIDs:      partnerIDs,
-				TransactionUUID: goodEvent.TransactionUUID,
-				Type:            goodEvent.Type,
-				Payload:         goodEvent.Payload,
-				Metadata:        goodEvent.Metadata,
-			}
-
-			handler.parseWorkers.Acquire()
-			handler.parseRequest(WrpWithTime{Message: message, Beginning: beginTime})
-			registry.Assert(t, EventCounter, partnerIDLabel, basculechecks.DeterminePartnerMetric(partnerIDs), eventDestLabel, getEventDestinationType(eventRegexTemplate, tc.destination))(xmetricstest.Value(1.0))
-		})
-	}
-
 }
 
 func TestCreateRecord(t *testing.T) {
@@ -660,15 +588,55 @@ func TestGetBirthDate(t *testing.T) {
 }
 
 func TestCreateEventTemplateRegex(t *testing.T) {
-	testassert := assert.New(t)
-	validRegex := createEventTemplateRegex(`^(?P<event>[^\/]+)\/((?P<prefix>(?i)mac|uuid|dns|serial):(?P<id>[^\/]+))\/(?P<type>[^\/\s]+)`, nil)
-	invalidRegex := createEventTemplateRegex(`^(?<event>[^\/]+)\/`, nil)
-	testassert.NotNil(validRegex)
-	testassert.Nil(invalidRegex)
+	tests := []struct {
+		description   string
+		regex         string
+		validRegex    bool
+		expectedIndex int
+	}{
+		{
+			description:   "Valid Regex",
+			regex:         `^(?P<event>[^\/]+)\/((?P<prefix>(?i)mac|uuid|dns|serial):(?P<id>[^\/]+))\/(?P<type>[^\/\s]+)`,
+			validRegex:    true,
+			expectedIndex: 5,
+		},
+		{
+			description:   "Invalid Regex",
+			regex:         `^(?<event>[^\/]+)\/`,
+			validRegex:    false,
+			expectedIndex: -1,
+		},
+		{
+			description:   "No Type Regex",
+			regex:         `^(?P<event>[^\/]+)\/((?P<prefix>(?i)mac|uuid|dns|serial):(?P<id>[^\/]+))`,
+			validRegex:    true,
+			expectedIndex: -1,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			assert := assert.New(t)
+			compiledRegex, index := createEventTemplateRegex(tc.regex, nil)
+			if tc.validRegex {
+				assert.NotNil(compiledRegex)
+			} else {
+				assert.Nil(compiledRegex)
+			}
+			assert.Equal(tc.expectedIndex, index)
+		})
+	}
 }
 
 func TestGetEventDestinationType(t *testing.T) {
 	eventRegex := regexp.MustCompile(eventRegexTemplate)
+	typeIndex := -1
+
+	for i, name := range eventRegex.SubexpNames() {
+		if name == "type" {
+			typeIndex = i
+		}
+	}
 
 	tests := []struct {
 		description           string
@@ -712,6 +680,11 @@ func TestGetEventDestinationType(t *testing.T) {
 			expectDestinationType: noEventDestination,
 		},
 		{
+			description:           "Unexpected Event Structure",
+			destination:           "some-event/random-event-that-doesn't-match-expected-structure",
+			expectDestinationType: noEventDestination,
+		},
+		{
 			description:           "No Regex",
 			destination:           "device-status/mac:some_random_mac_address/some-random-event/some_timestamp",
 			expectDestinationType: noEventDestination,
@@ -722,9 +695,9 @@ func TestGetEventDestinationType(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			if tc.noCompiledRegex {
-				assert.Equal(t, tc.expectDestinationType, getEventDestinationType(nil, tc.destination))
+				assert.Equal(t, tc.expectDestinationType, getEventDestinationType(nil, typeIndex, tc.destination))
 			} else {
-				assert.Equal(t, tc.expectDestinationType, getEventDestinationType(eventRegex, tc.destination))
+				assert.Equal(t, tc.expectDestinationType, getEventDestinationType(eventRegex, typeIndex, tc.destination))
 			}
 
 		})
