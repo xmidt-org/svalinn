@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"path"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -19,6 +20,7 @@ import (
 	"github.com/xmidt-org/codex-db/batchInserter"
 	"github.com/xmidt-org/codex-db/blacklist"
 	"github.com/xmidt-org/voynicrypto"
+	"github.com/xmidt-org/webpa-common/basculechecks"
 	"github.com/xmidt-org/webpa-common/logging"
 	"github.com/xmidt-org/webpa-common/semaphore"
 	"github.com/xmidt-org/wrp-go/v2"
@@ -60,18 +62,19 @@ type Config struct {
 }
 
 type RequestParser struct {
-	encrypter    voynicrypto.Encrypt
-	blacklist    blacklist.List
-	inserter     inserter
-	timeTracker  TimeTracker
-	rules        rules.Rules
-	requestQueue chan WrpWithTime
-	parseWorkers semaphore.Interface
-	wg           sync.WaitGroup
-	measures     *Measures
-	logger       log.Logger
-	config       Config
-	currTime     func() time.Time
+	encrypter        voynicrypto.Encrypt
+	blacklist        blacklist.List
+	inserter         inserter
+	timeTracker      TimeTracker
+	rules            rules.Rules
+	requestQueue     chan WrpWithTime
+	parseWorkers     semaphore.Interface
+	wg               sync.WaitGroup
+	measures         *Measures
+	logger           log.Logger
+	config           Config
+	currTime         func() time.Time
+	eventTypeMetrics EventTypeMetrics
 }
 
 type WrpWithTime struct {
@@ -120,18 +123,21 @@ func NewRequestParser(config Config, logger log.Logger, metricsRegistry provider
 	}
 	queue := make(chan WrpWithTime, config.QueueSize)
 	workers := semaphore.New(config.MaxWorkers)
+	template, typeIndex := createEventTemplateRegex(eventRegexTemplate, logger)
+
 	r := RequestParser{
-		config:       config,
-		logger:       logger,
-		measures:     measures,
-		parseWorkers: workers,
-		requestQueue: queue,
-		inserter:     inserter,
-		rules:        rules,
-		blacklist:    blacklist,
-		encrypter:    encrypter,
-		currTime:     time.Now,
-		timeTracker:  timeTracker,
+		config:           config,
+		logger:           logger,
+		measures:         measures,
+		parseWorkers:     workers,
+		requestQueue:     queue,
+		inserter:         inserter,
+		rules:            rules,
+		blacklist:        blacklist,
+		encrypter:        encrypter,
+		currTime:         time.Now,
+		timeTracker:      timeTracker,
+		eventTypeMetrics: EventTypeMetrics{Regex: template, EventTypeIndex: typeIndex},
 	}
 
 	return &r, nil
@@ -181,6 +187,13 @@ func (r *RequestParser) parseRequests() {
 func (r *RequestParser) parseRequest(request WrpWithTime) {
 	defer r.parseWorkers.Release()
 
+	//use regex matching to see what event type event is, for events metrics
+	eventDestination := getEventDestinationType(r.eventTypeMetrics.Regex, r.eventTypeMetrics.EventTypeIndex, request.Message.Destination)
+
+	partnerID := basculechecks.DeterminePartnerMetric(request.Message.PartnerIDs)
+
+	r.measures.EventsCount.With(partnerIDLabel, partnerID, eventDestLabel, eventDestination).Add(1.0)
+
 	rule, err := r.rules.FindRule(request.Message.Destination)
 	if err != nil {
 		logging.Info(r.logger).Log(logging.MessageKey(), "Could not get rule", logging.ErrorKey(), err, "destination", request.Message.Destination)
@@ -190,6 +203,7 @@ func (r *RequestParser) parseRequest(request WrpWithTime) {
 	if rule != nil {
 		eventType = db.ParseEventType(rule.EventType())
 	}
+
 	record, reason, err := r.createRecord(request.Message, rule, eventType)
 	if err != nil {
 		r.measures.DroppedEventsCount.With(reasonLabel, reason).Add(1.0)
@@ -331,4 +345,39 @@ func getBirthDate(payload []byte) (time.Time, bool) {
 		return time.Time{}, false
 	}
 	return birthDate, true
+}
+
+// create compiled regex for events regex template
+func createEventTemplateRegex(regexTemplate string, logger log.Logger) (*regexp.Regexp, int) {
+	template, err := regexp.Compile(regexTemplate)
+
+	if err != nil {
+		if logger != nil {
+			logging.Info(logger).Log(logging.MessageKey(), "Could not compile template regex for events", logging.ErrorKey(), err, "regex: ", regexTemplate)
+		}
+		return nil, -1
+	}
+
+	for i, name := range template.SubexpNames() {
+		if name == "type" {
+			return template, i
+		}
+	}
+
+	return template, -1
+}
+
+// get specific event type
+func getEventDestinationType(regexTemplate *regexp.Regexp, index int, destinationToCheck string) string {
+	if regexTemplate == nil || len(destinationToCheck) == 0 {
+		return noEventDestination
+	}
+
+	match := regexTemplate.FindStringSubmatch(destinationToCheck)
+
+	if index >= 0 && index < len(match) {
+		return match[index]
+	}
+
+	return noEventDestination
 }

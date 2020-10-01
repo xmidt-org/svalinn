@@ -18,6 +18,8 @@
 package requestParser
 
 import (
+	"regexp"
+
 	"github.com/go-kit/kit/metrics"
 	"github.com/go-kit/kit/metrics/provider"
 	"github.com/xmidt-org/webpa-common/xmetrics"
@@ -26,9 +28,12 @@ import (
 const (
 	ParsingQueueDepth    = "parsing_queue_depth"
 	DroppedEventsCounter = "dropped_events_count"
+	EventCounter         = "event_count"
 )
 
 const (
+	partnerIDLabel         = "partner_id"
+	eventDestLabel         = "event_destination"
 	reasonLabel            = "reason"
 	blackListReason        = "blacklist"
 	parseFailReason        = "parsing_failed"
@@ -38,6 +43,11 @@ const (
 	expiredReason          = "deathdate_has_already_passed"
 	queueFullReason        = "queue_full"
 	insertFailReason       = "inserting_failed"
+)
+
+const (
+	eventRegexTemplate = `^(?P<event>[^\/]+)\/((?P<prefix>(?i)mac|uuid|dns|serial):(?P<id>[^\/]+))\/(?P<type>[^\/\s]+)`
+	noEventDestination = "no-destination"
 )
 
 func Metrics() []xmetrics.Metric {
@@ -53,12 +63,24 @@ func Metrics() []xmetrics.Metric {
 			Type:       "counter",
 			LabelNames: []string{reasonLabel},
 		},
+		{
+			Name:       EventCounter,
+			Help:       "Details of incoming events",
+			Type:       "counter",
+			LabelNames: []string{partnerIDLabel, eventDestLabel},
+		},
 	}
 }
 
 type Measures struct {
 	ParsingQueue       metrics.Gauge
 	DroppedEventsCount metrics.Counter
+	EventsCount        metrics.Counter
+}
+
+type EventTypeMetrics struct {
+	Regex          *regexp.Regexp
+	EventTypeIndex int
 }
 
 // NewMeasures constructs a Measures given a go-kit metrics Provider
@@ -66,5 +88,6 @@ func NewMeasures(p provider.Provider) *Measures {
 	return &Measures{
 		ParsingQueue:       p.NewGauge(ParsingQueueDepth),
 		DroppedEventsCount: p.NewCounter(DroppedEventsCounter),
+		EventsCount:        p.NewCounter(EventCounter),
 	}
 }

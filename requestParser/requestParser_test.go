@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -18,6 +19,7 @@ import (
 	db "github.com/xmidt-org/codex-db"
 	"github.com/xmidt-org/svalinn/rules"
 	"github.com/xmidt-org/voynicrypto"
+	"github.com/xmidt-org/webpa-common/basculechecks"
 	"github.com/xmidt-org/webpa-common/logging"
 	"github.com/xmidt-org/webpa-common/semaphore"
 	"github.com/xmidt-org/webpa-common/xmetrics/xmetricstest"
@@ -123,6 +125,7 @@ func TestNewRequestParser(t *testing.T) {
 			if rp != nil {
 				tc.expectedRequestParser.requestQueue = rp.requestQueue
 				tc.expectedRequestParser.parseWorkers = rp.parseWorkers
+				tc.expectedRequestParser.eventTypeMetrics = rp.eventTypeMetrics
 				rp.currTime = nil
 			}
 			assert.Equal(tc.expectedRequestParser, rp)
@@ -139,6 +142,8 @@ func TestParseRequest(t *testing.T) {
 	testassert := assert.New(t)
 	goodTime, err := time.Parse(time.RFC3339Nano, "2019-02-13T21:19:02.614191735Z")
 	testassert.Nil(err)
+
+	eventRegex, eventTypeIndex := createEventTemplateRegex(eventRegexTemplate, nil)
 	beginTime := time.Now()
 	tests := []struct {
 		description        string
@@ -184,6 +189,38 @@ func TestParseRequest(t *testing.T) {
 			blacklistCalled:   true,
 			timeExpected:      true,
 		},
+		{
+			description: "Event Metrics – Random Event",
+			req: wrp.Message{
+				Source:          goodEvent.Source,
+				Destination:     "device-status/mac:some_random_mac_address/an-event/some_timestamp",
+				Type:            goodEvent.Type,
+				PartnerIDs:      goodEvent.PartnerIDs,
+				TransactionUUID: goodEvent.TransactionUUID,
+				Payload:         goodEvent.Payload,
+				Metadata:        goodEvent.Metadata,
+			},
+			encryptCalled:   true,
+			blacklistCalled: true,
+			insertCalled:    true,
+			timeExpected:    true,
+		},
+		{
+			description: "Event Metrics – No Partner ID",
+			req: wrp.Message{
+				Source:          goodEvent.Source,
+				Destination:     "device-status/mac:some_random_mac_address/an-event/some_timestamp",
+				Type:            goodEvent.Type,
+				PartnerIDs:      []string{},
+				TransactionUUID: goodEvent.TransactionUUID,
+				Payload:         goodEvent.Payload,
+				Metadata:        goodEvent.Metadata,
+			},
+			encryptCalled:   true,
+			blacklistCalled: true,
+			insertCalled:    true,
+			timeExpected:    true,
+		},
 	}
 
 	for _, tc := range tests {
@@ -225,13 +262,14 @@ func TestParseRequest(t *testing.T) {
 					DefaultTTL:      time.Second,
 					MaxWorkers:      5,
 				},
-				inserter:     mockInserter,
-				timeTracker:  mockTimeTracker,
-				parseWorkers: semaphore.New(2),
-				measures:     m,
-				logger:       logging.NewTestLogger(nil, t),
-				blacklist:    mblacklist,
-				currTime:     timeFunc,
+				inserter:         mockInserter,
+				timeTracker:      mockTimeTracker,
+				parseWorkers:     semaphore.New(2),
+				measures:         m,
+				logger:           logging.NewTestLogger(nil, t),
+				blacklist:        mblacklist,
+				currTime:         timeFunc,
+				eventTypeMetrics: EventTypeMetrics{Regex: eventRegex, EventTypeIndex: eventTypeIndex},
 			}
 
 			handler.parseWorkers.Acquire()
@@ -243,6 +281,7 @@ func TestParseRequest(t *testing.T) {
 			p.Assert(t, DroppedEventsCounter, reasonLabel, encryptFailReason)(xmetricstest.Value(tc.expectEncryptCount))
 			p.Assert(t, DroppedEventsCounter, reasonLabel, parseFailReason)(xmetricstest.Value(tc.expectParseCount))
 			p.Assert(t, DroppedEventsCounter, reasonLabel, insertFailReason)(xmetricstest.Value(tc.expectInsertCount))
+			p.Assert(t, EventCounter, partnerIDLabel, basculechecks.DeterminePartnerMetric(tc.req.PartnerIDs), eventDestLabel, getEventDestinationType(handler.eventTypeMetrics.Regex, handler.eventTypeMetrics.EventTypeIndex, tc.req.Destination))(xmetricstest.Value(1.0))
 			testassert.Equal(tc.timeExpected, timeCalled)
 
 		})
@@ -544,6 +583,123 @@ func TestGetBirthDate(t *testing.T) {
 			time, found := getBirthDate(tc.payload)
 			assert.Equal(time, tc.expectedTime)
 			assert.Equal(found, tc.expectedFound)
+		})
+	}
+}
+
+func TestCreateEventTemplateRegex(t *testing.T) {
+	tests := []struct {
+		description   string
+		regex         string
+		validRegex    bool
+		expectedIndex int
+	}{
+		{
+			description:   "Valid Regex",
+			regex:         `^(?P<event>[^\/]+)\/((?P<prefix>(?i)mac|uuid|dns|serial):(?P<id>[^\/]+))\/(?P<type>[^\/\s]+)`,
+			validRegex:    true,
+			expectedIndex: 5,
+		},
+		{
+			description:   "Invalid Regex",
+			regex:         `^(?<event>[^\/]+)\/`,
+			validRegex:    false,
+			expectedIndex: -1,
+		},
+		{
+			description:   "No Type Regex",
+			regex:         `^(?P<event>[^\/]+)\/((?P<prefix>(?i)mac|uuid|dns|serial):(?P<id>[^\/]+))`,
+			validRegex:    true,
+			expectedIndex: -1,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			assert := assert.New(t)
+			compiledRegex, index := createEventTemplateRegex(tc.regex, nil)
+			if tc.validRegex {
+				assert.NotNil(compiledRegex)
+			} else {
+				assert.Nil(compiledRegex)
+			}
+			assert.Equal(tc.expectedIndex, index)
+		})
+	}
+}
+
+func TestGetEventDestinationType(t *testing.T) {
+	eventRegex := regexp.MustCompile(eventRegexTemplate)
+	typeIndex := -1
+
+	for i, name := range eventRegex.SubexpNames() {
+		if name == "type" {
+			typeIndex = i
+		}
+	}
+
+	tests := []struct {
+		description           string
+		destination           string
+		expectDestinationType string
+		noCompiledRegex       bool
+	}{
+		{
+			description:           "Online Event",
+			destination:           "device-status/mac:some_random_mac_address/online",
+			expectDestinationType: "online",
+		},
+		{
+			description:           "Offline Event",
+			destination:           "device-status/mac:some_random_mac_address/offline",
+			expectDestinationType: "offline",
+		},
+		{
+			description:           "Fully Manageable Event",
+			destination:           "device-status/mac:some_random_mac_address/fully-manageable/some_timestamp",
+			expectDestinationType: "fully-manageable",
+		},
+		{
+			description:           "Operational Event",
+			destination:           "device-status/mac:some_random_mac_address/operational/some_timestamp",
+			expectDestinationType: "operational",
+		},
+		{
+			description:           "Reboot Pending Event",
+			destination:           "device-status/mac:some_random_mac_address/reboot-pending/some_timestamp",
+			expectDestinationType: "reboot-pending",
+		},
+		{
+			description:           "Random Event",
+			destination:           "device-status/mac:some_random_mac_address/some-random-event/some_timestamp",
+			expectDestinationType: "some-random-event",
+		},
+		{
+			description:           "No Event Destination",
+			destination:           "",
+			expectDestinationType: noEventDestination,
+		},
+		{
+			description:           "Unexpected Event Structure",
+			destination:           "some-event/random-event-that-doesn't-match-expected-structure",
+			expectDestinationType: noEventDestination,
+		},
+		{
+			description:           "No Regex",
+			destination:           "device-status/mac:some_random_mac_address/some-random-event/some_timestamp",
+			expectDestinationType: noEventDestination,
+			noCompiledRegex:       true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			if tc.noCompiledRegex {
+				assert.Equal(t, tc.expectDestinationType, getEventDestinationType(nil, typeIndex, tc.destination))
+			} else {
+				assert.Equal(t, tc.expectDestinationType, getEventDestinationType(eventRegex, typeIndex, tc.destination))
+			}
+
 		})
 	}
 }
