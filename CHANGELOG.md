@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- Migrate to github actions, normalize analysis tools, Dockerfiles and Makefiles. [#140](https://github.com/xmidt-org/svalinn/pull/140)
 
 ## [v0.14.2]
 - Bumped codex-db and updated requestParser to use the error returned on insert (#125)[https://github.com/xmidt-org/svalinn/pull/125]
