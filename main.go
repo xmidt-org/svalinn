@@ -138,6 +138,7 @@ func GetLogger(ctx context.Context) bascule.Logger {
 	return log.With(logging.GetLogger(ctx), "ts", log.DefaultTimestampUTC, "caller", log.DefaultCaller)
 }
 
+//nolint:funlen // this will be fixed with uber fx
 func svalinn(arguments []string) {
 	start := time.Now()
 
