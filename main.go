@@ -334,7 +334,7 @@ func startHealth(logger log.Logger, health *health.Health, config *SvalinnConfig
 
 func waitUntilShutdown(logger log.Logger, s *Svalinn, database database) {
 	signals := make(chan os.Signal, 10)
-	signal.Notify(signals, os.Kill, os.Interrupt)
+	signal.Notify(signals, os.Kill, os.Interrupt) //nolint:staticcheck // this will be fixed with uber fx
 	for exit := false; !exit; {
 		select {
 		case s := <-signals:

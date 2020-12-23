@@ -236,7 +236,7 @@ func (r *RequestParser) createRecord(req wrp.Message, rule *rules.Rule, eventTyp
 	if eventType == db.State {
 		// get state and id from dest if this is a state event
 		base, _ := path.Split(req.Destination)
-		base, deviceId := path.Split(path.Base(base))
+		_, deviceId := path.Split(path.Base(base))
 		if deviceId == "" {
 			return emptyRecord, parseFailReason, emperror.WrapWith(errEmptyID, "id check failed", "request destination", req.Destination, "full message", req)
 		}
