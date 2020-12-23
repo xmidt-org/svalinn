@@ -18,30 +18,11 @@
 package main
 
 import (
-	"net/http"
 	"time"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/xmidt-org/svalinn/requestParser"
 )
-
-type mockRegisterer struct {
-	mock.Mock
-}
-
-func (r *mockRegisterer) Register(client *http.Client, secret string) error {
-	args := r.Called(client, secret)
-	return args.Error(0)
-}
-
-type mockSecretGetter struct {
-	mock.Mock
-}
-
-func (sg *mockSecretGetter) GetSecret() (string, error) {
-	args := sg.Called()
-	return args.String(0), args.Error(1)
-}
 
 type mockParser struct {
 	mock.Mock
