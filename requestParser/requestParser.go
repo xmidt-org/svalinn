@@ -29,7 +29,6 @@ import (
 var (
 	errEmptyID           = errors.New("empty id is invalid")
 	errUnexpectedWRPType = errors.New("unexpected wrp message type")
-	errTimestampString   = errors.New("timestamp couldn't be found and converted to string")
 	errFutureBirthdate   = errors.New("birthdate is too far in the future")
 	errExpired           = errors.New("deathdate has passed")
 	errBlacklist         = errors.New("device is in blacklist")

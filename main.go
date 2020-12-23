@@ -66,7 +66,6 @@ import (
 
 const (
 	applicationName, apiBase = "svalinn", "/api/v1"
-	DEFAULT_KEY_ID           = "current"
 )
 
 var (
@@ -100,12 +99,6 @@ type WebhookConfig struct {
 type SecretConfig struct {
 	Header    string
 	Delimiter string
-}
-
-type RetryConfig struct {
-	NumRetries   int
-	Interval     time.Duration
-	IntervalMult time.Duration
 }
 
 type Svalinn struct {
