@@ -209,12 +209,12 @@ func (r *RequestParser) parseRequest(request WrpWithTime) {
 		if reason == blackListReason {
 			logging.Info(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 				"Failed to create record", logging.ErrorKey(), err.Error())
-			r.timeTracker.TrackTime(time.Now().Sub(request.Beginning))
+			r.timeTracker.TrackTime(time.Since(request.Beginning))
 			return
 		}
 		logging.Warn(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 			"Failed to create record", logging.ErrorKey(), err.Error())
-		r.timeTracker.TrackTime(time.Now().Sub(request.Beginning))
+		r.timeTracker.TrackTime(time.Since(request.Beginning))
 		return
 	}
 
@@ -326,7 +326,7 @@ func (r *RequestParser) createRecord(req wrp.Message, rule *rules.Rule, eventTyp
 
 func getBirthDate(payload []byte) (time.Time, bool) {
 	p := make(map[string]interface{})
-	if payload == nil || len(payload) == 0 {
+	if len(payload) == 0 {
 		return time.Time{}, false
 	}
 	err := json.Unmarshal(payload, &p)
