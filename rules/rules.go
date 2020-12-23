@@ -46,7 +46,7 @@ type Rule struct {
 type Rules []*Rule
 
 func NewRules(rules []RuleConfig) (Rules, error) {
-	var parsedRules Rules
+	parsedRules := Rules(make([]*Rule, len(rules)))
 	for _, r := range rules {
 		regex, err := regexp.Compile(r.Regex)
 		if err != nil {
