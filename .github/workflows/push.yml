@@ -60,6 +60,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
+      - name: Download unit tests report
+        uses: actions/download-artifact@v2
+        with:
+          name: report
+      - name: Download code coverage results
+        uses: actions/download-artifact@v2
+        with:
+          name: coverage
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
