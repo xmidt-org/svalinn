@@ -25,7 +25,10 @@ issues:
         - dupl
         - funlen
 
-linters-settings:
-  errorlint:
-    # Report non-wrapping error creation using fmt.Errorf
-    errorf: false
+    - path: main\.go
+      # Accept pprof is automatically exposed
+      text: "G108:"
+
+    - path: main\.go
+      # Accept sha1 for signature
+      text: "G505:"
