@@ -32,3 +32,8 @@ issues:
     - path: main\.go
       # Accept sha1 for signature
       text: "G505:"
+
+linters-settings:
+  errorlint:
+    # Report non-wrapping error creation using fmt.Errorf
+    errorf: false
