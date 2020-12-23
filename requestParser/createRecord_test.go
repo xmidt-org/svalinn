@@ -19,15 +19,15 @@ func TestCreateRecord(t *testing.T) {
 	testassert := assert.New(t)
 	goodTime, err := time.Parse(time.RFC3339Nano, "2019-02-13T21:19:02.614191735Z")
 	testassert.Nil(err)
+	timeFunc := func() time.Time {
+		return goodTime
+	}
 	tests := []struct {
 		description      string
 		req              wrp.Message
 		storePayload     bool
-		eventType        db.EventType
 		blacklistCalled  bool
 		inBlacklist      bool
-		timeExpected     bool
-		timeToReturn     time.Time
 		maxPayloadSize   int
 		maxMetadataSize  int
 		encryptCalled    bool
@@ -44,68 +44,10 @@ func TestCreateRecord(t *testing.T) {
 			expectedDeviceID: "test",
 			expectedEvent:    goodEvent,
 			storePayload:     true,
-			eventType:        db.State,
 			blacklistCalled:  true,
-			timeExpected:     true,
-			timeToReturn:     goodTime,
 			encryptCalled:    true,
 			maxMetadataSize:  500,
 			maxPayloadSize:   500,
-		},
-		{
-			description: "Success Uppercase Device ID",
-			req: wrp.Message{
-				Source:          goodEvent.Source,
-				Destination:     strings.ToUpper(goodEvent.Destination),
-				PartnerIDs:      goodEvent.PartnerIDs,
-				TransactionUUID: goodEvent.TransactionUUID,
-				Type:            goodEvent.Type,
-				Payload:         goodEvent.Payload,
-				Metadata:        goodEvent.Metadata,
-			},
-			expectedDeviceID: "test",
-			expectedEvent: wrp.Message{
-				Source:          goodEvent.Source,
-				Destination:     strings.ToUpper(goodEvent.Destination),
-				PartnerIDs:      goodEvent.PartnerIDs,
-				TransactionUUID: goodEvent.TransactionUUID,
-				Type:            goodEvent.Type,
-				Payload:         goodEvent.Payload,
-				Metadata:        goodEvent.Metadata,
-			},
-			eventType:       db.State,
-			storePayload:    true,
-			blacklistCalled: true,
-			timeExpected:    true,
-			timeToReturn:    goodTime,
-			encryptCalled:   true,
-			maxMetadataSize: 500,
-			maxPayloadSize:  500,
-		},
-		{
-			description: "Success Source Device and No Birthdate",
-			req: wrp.Message{
-				Source:          goodEvent.Source,
-				PartnerIDs:      goodEvent.PartnerIDs,
-				TransactionUUID: goodEvent.TransactionUUID,
-				Type:            goodEvent.Type,
-				Metadata:        goodEvent.Metadata,
-			},
-			expectedDeviceID: goodEvent.Source,
-			expectedEvent: wrp.Message{
-				Source:          goodEvent.Source,
-				PartnerIDs:      goodEvent.PartnerIDs,
-				TransactionUUID: goodEvent.TransactionUUID,
-				Type:            goodEvent.Type,
-				Metadata:        goodEvent.Metadata,
-			},
-			storePayload:    true,
-			blacklistCalled: true,
-			timeExpected:    true,
-			timeToReturn:    goodTime,
-			encryptCalled:   true,
-			maxMetadataSize: 500,
-			maxPayloadSize:  500,
 		},
 		{
 			description:      "Success Empty Metadata/Payload",
@@ -121,27 +63,7 @@ func TestCreateRecord(t *testing.T) {
 				Metadata:        map[string]string{"error": "metadata provided exceeds size limit - too big to store"},
 			},
 			blacklistCalled: true,
-			timeExpected:    true,
-			timeToReturn:    goodTime,
 			encryptCalled:   true,
-			eventType:       db.State,
-		},
-		{
-			description: "Empty Dest ID Error",
-			req: wrp.Message{
-				Destination: "//",
-			},
-			eventType:      db.State,
-			emptyRecord:    true,
-			expectedReason: parseFailReason,
-			expectedErr:    errEmptyID,
-		},
-		{
-			description:    "Empty Source ID Error",
-			req:            wrp.Message{},
-			emptyRecord:    true,
-			expectedReason: parseFailReason,
-			expectedErr:    errEmptyID,
 		},
 		{
 			description: "Blacklist Error",
@@ -160,33 +82,10 @@ func TestCreateRecord(t *testing.T) {
 				Destination: "/device/",
 				Type:        5,
 			},
-			eventType:       db.State,
 			emptyRecord:     true,
 			blacklistCalled: true,
 			expectedReason:  parseFailReason,
 			expectedErr:     errUnexpectedWRPType,
-		},
-		{
-			description:     "Future Birthdate Error",
-			req:             goodEvent,
-			eventType:       db.State,
-			emptyRecord:     true,
-			blacklistCalled: true,
-			timeExpected:    true,
-			timeToReturn:    goodTime.Add(-5 * time.Hour),
-			expectedReason:  invalidBirthdateReason,
-			expectedErr:     errFutureBirthdate,
-		},
-		{
-			description:     "Past Deathdate Error",
-			req:             goodEvent,
-			eventType:       db.State,
-			emptyRecord:     true,
-			blacklistCalled: true,
-			timeExpected:    true,
-			timeToReturn:    goodTime.Add(5 * time.Hour),
-			expectedReason:  expiredReason,
-			expectedErr:     errExpired,
 		},
 		{
 			description:     "Encrypt Error",
@@ -195,8 +94,6 @@ func TestCreateRecord(t *testing.T) {
 			emptyRecord:     true,
 			blacklistCalled: true,
 			encryptCalled:   true,
-			timeExpected:    true,
-			timeToReturn:    goodTime,
 			expectedReason:  encryptFailReason,
 			expectedErr:     errors.New("failed to encrypt message"),
 		},
@@ -212,7 +109,7 @@ func TestCreateRecord(t *testing.T) {
 			var expectedRecord db.Record
 			if !tc.emptyRecord {
 				expectedRecord = db.Record{
-					Type:      tc.eventType,
+					Type:      db.State,
 					DeviceID:  tc.expectedDeviceID,
 					BirthDate: goodTime.UnixNano(),
 					DeathDate: goodTime.Add(time.Second).UnixNano(),
@@ -241,12 +138,6 @@ func TestCreateRecord(t *testing.T) {
 				mblacklist.On("InList", mock.Anything).Return("", tc.inBlacklist).Once()
 			}
 
-			timeCalled := false
-			timeFunc := func() time.Time {
-				timeCalled = true
-				return tc.timeToReturn
-			}
-
 			handler := RequestParser{
 				encrypter: encrypter,
 				config: Config{
@@ -256,12 +147,162 @@ func TestCreateRecord(t *testing.T) {
 				blacklist: mblacklist,
 				currTime:  timeFunc,
 			}
-			record, reason, err := handler.createRecord(tc.req, rule, tc.eventType)
+			record, reason, err := handler.createRecord(tc.req, rule, db.State)
 			encrypter.AssertExpectations(t)
 			mblacklist.AssertExpectations(t)
 			assert.Equal(expectedRecord, record)
 			assert.Equal(tc.expectedReason, reason)
-			assert.Equal(tc.timeExpected, timeCalled)
+			if tc.expectedErr == nil || err == nil {
+				assert.Equal(tc.expectedErr, err)
+			} else {
+				assert.Contains(err.Error(), tc.expectedErr.Error())
+			}
+		})
+	}
+}
+
+func TestParseDeviceID(t *testing.T) {
+	tests := []struct {
+		description string
+		eventType   db.EventType
+		dest        string
+		src         string
+		expectedID  string
+		expectedErr error
+	}{
+		{
+			description: "Success",
+			eventType:   db.State,
+			dest:        goodEvent.Destination,
+			src:         goodEvent.Source,
+			expectedID:  "test",
+			expectedErr: nil,
+		},
+		{
+			description: "Success Uppercase Device ID",
+			eventType:   db.State,
+			dest:        strings.ToUpper(goodEvent.Destination),
+			src:         goodEvent.Source,
+			expectedID:  "test",
+			expectedErr: nil,
+		},
+		{
+			description: "Success Source Device",
+			dest:        goodEvent.Destination,
+			src:         goodEvent.Source,
+			expectedID:  goodEvent.Source,
+			expectedErr: nil,
+		},
+		{
+			description: "Empty Dest ID Error",
+			eventType:   db.State,
+			dest:        "//",
+			src:         goodEvent.Source,
+			expectedID:  "",
+			expectedErr: errEmptyID,
+		},
+		{
+			description: "Empty Source ID Error",
+			dest:        goodEvent.Destination,
+			src:         "",
+			expectedID:  "",
+			expectedErr: errEmptyID,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			assert := assert.New(t)
+			msg := wrp.Message{
+				Source:      tc.src,
+				Destination: tc.dest,
+			}
+			id, err := parseDeviceID(tc.eventType, msg)
+			assert.Equal(tc.expectedID, id)
+			if tc.expectedErr == nil || err == nil {
+				assert.Equal(tc.expectedErr, err)
+			} else {
+				assert.Contains(err.Error(), tc.expectedErr.Error())
+			}
+		})
+	}
+}
+
+func TestGetValidBirthDeathDates(t *testing.T) {
+	testassert := assert.New(t)
+	goodTime, err := time.Parse(time.RFC3339Nano, "2019-02-13T21:19:02.614191735Z")
+	testassert.Nil(err)
+	currTime, err := time.Parse(time.RFC3339Nano, "2019-02-13T21:21:21.614191735Z")
+	testassert.Nil(err)
+
+	r, err := rules.NewRules([]rules.RuleConfig{
+		{
+			Regex:        ".*",
+			StorePayload: true,
+			RuleTTL:      2 * time.Hour,
+		},
+	})
+	testassert.Nil(err)
+	rule, err := r.FindRule(" ")
+	testassert.Nil(err)
+
+	tests := []struct {
+		description       string
+		fakeNow           time.Time
+		payload           []byte
+		rule              *rules.Rule
+		expectedBirthDate int64
+		expectedDeathDate int64
+		expectedReason    string
+		expectedErr       error
+	}{
+		{
+			description:       "Success",
+			fakeNow:           currTime,
+			payload:           goodEvent.Payload,
+			expectedBirthDate: goodTime.UnixNano(),
+			expectedDeathDate: goodTime.Add(time.Hour).UnixNano(),
+		},
+		{
+			description:       "Success No Birthdate in Payload",
+			fakeNow:           currTime,
+			payload:           nil,
+			expectedBirthDate: currTime.UnixNano(),
+			expectedDeathDate: currTime.Add(time.Hour).UnixNano(),
+		},
+		{
+			description:       "Success with Rule",
+			fakeNow:           goodTime,
+			payload:           goodEvent.Payload,
+			rule:              rule,
+			expectedBirthDate: goodTime.UnixNano(),
+			expectedDeathDate: goodTime.Add(2 * time.Hour).UnixNano(),
+		},
+		{
+			description:    "Future Birthdate Error",
+			fakeNow:        currTime.Add(-5 * time.Hour),
+			payload:        goodEvent.Payload,
+			expectedReason: invalidBirthdateReason,
+			expectedErr:    errFutureBirthdate,
+		},
+		{
+			description:    "Past Deathdate Error",
+			fakeNow:        currTime.Add(5 * time.Hour),
+			payload:        goodEvent.Payload,
+			expectedReason: expiredReason,
+			expectedErr:    errExpired,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			assert := assert.New(t)
+			currTime := func() time.Time {
+				return tc.fakeNow
+			}
+			b, d, reason, err := getValidBirthDeathDates(currTime, tc.payload, tc.rule, time.Hour)
+			assert.Equal(tc.expectedBirthDate, b, "birth date mismatch")
+			assert.Equal(tc.expectedDeathDate, d, "death date mismatch")
+			assert.Equal(tc.expectedReason, reason)
 			if tc.expectedErr == nil || err == nil {
 				assert.Equal(tc.expectedErr, err)
 			} else {
