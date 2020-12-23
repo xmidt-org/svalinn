@@ -46,13 +46,16 @@ type Rule struct {
 type Rules []*Rule
 
 func NewRules(rules []RuleConfig) (Rules, error) {
+	if len(rules) == 0 {
+		return nil, nil
+	}
 	parsedRules := Rules(make([]*Rule, len(rules)))
-	for _, r := range rules {
+	for i, r := range rules {
 		regex, err := regexp.Compile(r.Regex)
 		if err != nil {
-			return parsedRules, emperror.WrapWith(err, "Failed to compile regexp rule", "regexp attempted", r.Regex)
+			return nil, emperror.WrapWith(err, "Failed to compile regexp rule", "regexp attempted", r.Regex)
 		}
-		parsedRules = append(parsedRules, &Rule{regex, r.StorePayload, r.RuleTTL, r.EventType})
+		parsedRules[i] = &Rule{regex, r.StorePayload, r.RuleTTL, r.EventType}
 	}
 	return parsedRules, nil
 }
