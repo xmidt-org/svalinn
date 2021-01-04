@@ -50,7 +50,7 @@ func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		logging.Error(app.logger).Log(logging.MessageKey(), "Could not read request body", logging.ErrorKey(), err.Error())
 		writer.WriteHeader(http.StatusBadRequest)
-		app.timeTracker.TrackTime(time.Now().Sub(begin))
+		app.timeTracker.TrackTime(time.Since(begin))
 		return
 	}
 
@@ -58,7 +58,7 @@ func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		logging.Error(app.logger).Log(logging.MessageKey(), "Could not decode request body", logging.ErrorKey(), err.Error())
 		writer.WriteHeader(http.StatusBadRequest)
-		app.timeTracker.TrackTime(time.Now().Sub(begin))
+		app.timeTracker.TrackTime(time.Since(begin))
 		return
 	}
 
@@ -69,7 +69,7 @@ func (app *App) handleWebhook(writer http.ResponseWriter, req *http.Request) {
 		// end := time.Now()
 		// todo: send beginning and end times to metric handler
 		writer.WriteHeader(http.StatusTooManyRequests)
-		app.timeTracker.TrackTime(time.Now().Sub(begin))
+		app.timeTracker.TrackTime(time.Since(begin))
 		return
 	}
 	writer.WriteHeader(http.StatusAccepted)

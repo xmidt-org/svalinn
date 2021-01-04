@@ -66,7 +66,6 @@ import (
 
 const (
 	applicationName, apiBase = "svalinn", "/api/v1"
-	DEFAULT_KEY_ID           = "current"
 )
 
 var (
@@ -100,12 +99,6 @@ type WebhookConfig struct {
 type SecretConfig struct {
 	Header    string
 	Delimiter string
-}
-
-type RetryConfig struct {
-	NumRetries   int
-	Interval     time.Duration
-	IntervalMult time.Duration
 }
 
 type Svalinn struct {
@@ -145,6 +138,7 @@ func GetLogger(ctx context.Context) bascule.Logger {
 	return log.With(logging.GetLogger(ctx), "ts", log.DefaultTimestampUTC, "caller", log.DefaultCaller)
 }
 
+//nolint:funlen // this will be fixed with uber fx
 func svalinn(arguments []string) {
 	start := time.Now()
 
@@ -341,7 +335,7 @@ func startHealth(logger log.Logger, health *health.Health, config *SvalinnConfig
 
 func waitUntilShutdown(logger log.Logger, s *Svalinn, database database) {
 	signals := make(chan os.Signal, 10)
-	signal.Notify(signals, os.Kill, os.Interrupt)
+	signal.Notify(signals, os.Kill, os.Interrupt) //nolint:staticcheck // this will be fixed with uber fx
 	for exit := false; !exit; {
 		select {
 		case s := <-signals:

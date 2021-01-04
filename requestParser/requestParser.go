@@ -1,12 +1,8 @@
 package requestParser
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
-	"path"
 	"regexp"
-	"strings"
 	"sync"
 	"time"
 
@@ -29,7 +25,6 @@ import (
 var (
 	errEmptyID           = errors.New("empty id is invalid")
 	errUnexpectedWRPType = errors.New("unexpected wrp message type")
-	errTimestampString   = errors.New("timestamp couldn't be found and converted to string")
 	errFutureBirthdate   = errors.New("birthdate is too far in the future")
 	errExpired           = errors.New("deathdate has passed")
 	errBlacklist         = errors.New("device is in blacklist")
@@ -210,12 +205,12 @@ func (r *RequestParser) parseRequest(request WrpWithTime) {
 		if reason == blackListReason {
 			logging.Info(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 				"Failed to create record", logging.ErrorKey(), err.Error())
-			r.timeTracker.TrackTime(time.Now().Sub(request.Beginning))
+			r.timeTracker.TrackTime(time.Since(request.Beginning))
 			return
 		}
 		logging.Warn(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 			"Failed to create record", logging.ErrorKey(), err.Error())
-		r.timeTracker.TrackTime(time.Now().Sub(request.Beginning))
+		r.timeTracker.TrackTime(time.Since(request.Beginning))
 		return
 	}
 
@@ -225,126 +220,6 @@ func (r *RequestParser) parseRequest(request WrpWithTime) {
 		logging.Warn(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 			"Failed to insert record", logging.ErrorKey(), err.Error())
 	}
-}
-
-func (r *RequestParser) createRecord(req wrp.Message, rule *rules.Rule, eventType db.EventType) (db.Record, string, error) {
-	var (
-		err         error
-		emptyRecord db.Record
-		record      = db.Record{Type: eventType}
-	)
-
-	if eventType == db.State {
-		// get state and id from dest if this is a state event
-		base, _ := path.Split(req.Destination)
-		base, deviceId := path.Split(path.Base(base))
-		if deviceId == "" {
-			return emptyRecord, parseFailReason, emperror.WrapWith(errEmptyID, "id check failed", "request destination", req.Destination, "full message", req)
-		}
-		record.DeviceID = strings.ToLower(deviceId)
-	} else {
-		if req.Source == "" {
-			return emptyRecord, parseFailReason, emperror.WrapWith(errEmptyID, "id check failed", "request Source", req.Source, "full message", req)
-		}
-		record.DeviceID = strings.ToLower(req.Source)
-	}
-
-	if reason, ok := r.blacklist.InList(record.DeviceID); ok {
-		return emptyRecord, blackListReason, emperror.With(errBlacklist, "reason", reason)
-	}
-
-	// verify wrp is the right type
-	msg := req
-	switch msg.Type {
-	case wrp.SimpleEventMessageType:
-
-	default:
-		return emptyRecord, parseFailReason, emperror.WrapWith(errUnexpectedWRPType, "message type check failed", "type", msg.Type, "full message", req)
-	}
-
-	now := r.currTime()
-
-	// get timestamp from wrp payload
-	birthDate, ok := getBirthDate(msg.Payload)
-	if !ok {
-		birthDate = now
-	}
-	record.BirthDate = birthDate.UnixNano()
-
-	if birthDate.After(now.Add(time.Hour)) {
-		return emptyRecord, invalidBirthdateReason, emperror.WrapWith(errFutureBirthdate, "invalid birthdate", "birthdate", birthDate.String())
-	}
-
-	// determine ttl for deathdate
-	ttl := r.config.DefaultTTL
-	if rule != nil && rule.TTL() != 0 {
-		ttl = rule.TTL()
-	}
-
-	deathDate := birthDate.Add(ttl)
-	if now.After(deathDate) {
-		return emptyRecord, expiredReason, emperror.WrapWith(errExpired, "event is already expired", "deathdate", deathDate.String())
-	}
-	record.DeathDate = deathDate.UnixNano()
-
-	// store the payload if we are supposed to and it's not too big
-	storePayload := false
-	if rule != nil {
-		storePayload = rule.StorePayload()
-	}
-	if !storePayload || len(msg.Payload) > r.config.PayloadMaxSize {
-		msg.Payload = nil
-	}
-
-	// if metadata is too large, store a message explaining that instead of the metadata
-	marshaledMetadata, err := json.Marshal(msg.Metadata)
-	if err != nil {
-		return emptyRecord, parseFailReason, emperror.WrapWith(err, "failed to marshal metadata to determine size", "metadata", msg.Metadata, "full message", req)
-	}
-	if len(marshaledMetadata) > r.config.MetadataMaxSize {
-		msg.Metadata = make(map[string]string)
-		msg.Metadata["error"] = "metadata provided exceeds size limit - too big to store"
-	}
-
-	var buffer bytes.Buffer
-	msgEncoder := wrp.NewEncoder(&buffer, wrp.Msgpack)
-	err = msgEncoder.Encode(&msg)
-	if err != nil {
-		return emptyRecord, marshalFailReason, emperror.WrapWith(err, "failed to marshal event", "full message", req)
-	}
-
-	encyptedData, nonce, err := r.encrypter.EncryptMessage(buffer.Bytes())
-	if err != nil {
-		return emptyRecord, encryptFailReason, emperror.WrapWith(err, "failed to encrypt message")
-	}
-	record.Data = encyptedData
-	record.Nonce = nonce
-	record.Alg = string(r.encrypter.GetAlgorithm())
-	record.KID = r.encrypter.GetKID()
-
-	return record, "", nil
-}
-
-func getBirthDate(payload []byte) (time.Time, bool) {
-	p := make(map[string]interface{})
-	if payload == nil || len(payload) == 0 {
-		return time.Time{}, false
-	}
-	err := json.Unmarshal(payload, &p)
-	if err != nil {
-		return time.Time{}, false
-	}
-
-	// parse the time from the payload
-	timeString, ok := p["ts"].(string)
-	if !ok {
-		return time.Time{}, false
-	}
-	birthDate, err := time.Parse(time.RFC3339Nano, timeString)
-	if err != nil {
-		return time.Time{}, false
-	}
-	return birthDate, true
 }
 
 // create compiled regex for events regex template
