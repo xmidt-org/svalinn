@@ -41,7 +41,6 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
-	"github.com/xmidt-org/bascule"
 	"github.com/xmidt-org/bascule/acquire"
 	"github.com/xmidt-org/bascule/basculehttp"
 	db "github.com/xmidt-org/codex-db"
@@ -134,7 +133,7 @@ func SetLogger(logger log.Logger) func(delegate http.Handler) http.Handler {
 	}
 }
 
-func GetLogger(ctx context.Context) bascule.Logger {
+func GetLogger(ctx context.Context) log.Logger {
 	return log.With(logging.GetLogger(ctx), "ts", log.DefaultTimestampUTC, "caller", log.DefaultCaller)
 }
 
@@ -235,7 +234,10 @@ func svalinn(arguments []string) {
 			logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to create basic registerer", logging.ErrorKey(), err.Error())
 			//TODO: we shouldn't continue trying to set the webhook registerer up if we fail
 		}
-		periodicRegisterer := webhookClient.NewPeriodicRegisterer(registerer, config.Webhook.RegistrationInterval, logger, metricsRegistry)
+		periodicRegisterer, err := webhookClient.NewPeriodicRegisterer(registerer, config.Webhook.RegistrationInterval, logger, webhookClient.NewMeasures(metricsRegistry))
+		if err != nil {
+			logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to create periodic registerer", logging.ErrorKey(), err.Error())
+		}
 
 		s.registerer = periodicRegisterer
 		periodicRegisterer.Start()

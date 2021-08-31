@@ -50,5 +50,3 @@ binaries: generate
 
 clean:
 	-rm -r .ignore/ $(APP) errors.txt report.json coverage.txt
-
-
