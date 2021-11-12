@@ -84,12 +84,14 @@ func TestNewRequestParser(t *testing.T) {
 			config:      goodConfig,
 			logger:      log.NewJSONLogger(os.Stdout),
 			expectedRequestParser: &RequestParser{
-				encrypter: goodEncrypter,
-				blacklist: goodBlacklist,
-				inserter:  goodInserter,
-				measures:  goodMeasures,
-				config:    goodConfig,
-				logger:    log.NewJSONLogger(os.Stdout),
+				rc: RecordConfig{
+					encrypter: goodEncrypter,
+					blacklist: goodBlacklist,
+					inserter:  goodInserter,
+				},
+				measures: goodMeasures,
+				config:   goodConfig,
+				logger:   log.NewJSONLogger(os.Stdout),
 			},
 		},
 		{
@@ -103,10 +105,13 @@ func TestNewRequestParser(t *testing.T) {
 				PayloadMaxSize:  -5,
 			},
 			expectedRequestParser: &RequestParser{
-				encrypter: goodEncrypter,
-				blacklist: goodBlacklist,
-				inserter:  goodInserter,
-				measures:  goodMeasures,
+				rc: RecordConfig{
+					encrypter: goodEncrypter,
+					blacklist: goodBlacklist,
+					inserter:  goodInserter,
+				},
+
+				measures: goodMeasures,
 				config: Config{
 					QueueSize:  defaultMinQueueSize,
 					DefaultTTL: defaultTTL,
@@ -139,7 +144,7 @@ func TestNewRequestParser(t *testing.T) {
 				tc.expectedRequestParser.requestQueue = rp.requestQueue
 				tc.expectedRequestParser.parseWorkers = rp.parseWorkers
 				tc.expectedRequestParser.eventTypeMetrics = rp.eventTypeMetrics
-				rp.currTime = nil
+				rp.rc.currTime = nil
 			}
 			assert.Equal(tc.expectedRequestParser, rp)
 			if tc.expectedErr == nil || err == nil {
@@ -268,20 +273,22 @@ func TestParseRequest(t *testing.T) {
 			}
 
 			handler := RequestParser{
-				encrypter: encrypter,
+				rc: RecordConfig{
+					encrypter:   encrypter,
+					inserter:    mockInserter,
+					timeTracker: mockTimeTracker,
+					blacklist:   mblacklist,
+					currTime:    timeFunc,
+				},
 				config: Config{
 					PayloadMaxSize:  9999,
 					MetadataMaxSize: 9999,
 					DefaultTTL:      time.Second,
 					MaxWorkers:      5,
 				},
-				inserter:         mockInserter,
-				timeTracker:      mockTimeTracker,
 				parseWorkers:     semaphore.New(2),
 				measures:         m,
 				logger:           logging.NewTestLogger(nil, t),
-				blacklist:        mblacklist,
-				currTime:         timeFunc,
 				eventTypeMetrics: EventTypeMetrics{Regex: eventRegex, EventTypeIndex: eventTypeIndex},
 			}
 

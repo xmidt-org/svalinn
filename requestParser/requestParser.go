@@ -73,20 +73,24 @@ type Config struct {
 	RegexRules      []rules.RuleConfig
 }
 
+type RecordConfig struct {
+	inserter    inserter
+	blacklist   blacklist.List
+	currTime    func() time.Time
+	rules       rules.Rules
+	timeTracker TimeTracker
+	encrypter   voynicrypto.Encrypt
+}
+
 type RequestParser struct {
-	encrypter        voynicrypto.Encrypt
-	blacklist        blacklist.List
-	inserter         inserter
-	timeTracker      TimeTracker
-	rules            rules.Rules
-	requestQueue     chan WrpWithTime
+	rc               RecordConfig
+	config           Config
+	logger           log.Logger
 	parseWorkers     semaphore.Interface
 	wg               sync.WaitGroup
 	measures         *Measures
-	logger           log.Logger
-	config           Config
-	currTime         func() time.Time
 	eventTypeMetrics EventTypeMetrics
+	requestQueue     chan WrpWithTime
 }
 
 type WrpWithTime struct {
@@ -136,19 +140,22 @@ func NewRequestParser(config Config, logger log.Logger, metricsRegistry provider
 	queue := make(chan WrpWithTime, config.QueueSize)
 	workers := semaphore.New(config.MaxWorkers)
 	template, typeIndex := createEventTemplateRegex(eventRegexTemplate, logger)
+	recordConfig := RecordConfig{
+		inserter:    inserter,
+		rules:       rules,
+		blacklist:   blacklist,
+		encrypter:   encrypter,
+		currTime:    time.Now,
+		timeTracker: timeTracker,
+	}
 
 	r := RequestParser{
+		rc:               recordConfig,
 		config:           config,
 		logger:           logger,
 		measures:         measures,
 		parseWorkers:     workers,
 		requestQueue:     queue,
-		inserter:         inserter,
-		rules:            rules,
-		blacklist:        blacklist,
-		encrypter:        encrypter,
-		currTime:         time.Now,
-		timeTracker:      timeTracker,
 		eventTypeMetrics: EventTypeMetrics{Regex: template, EventTypeIndex: typeIndex},
 	}
 
@@ -206,7 +213,7 @@ func (r *RequestParser) parseRequest(request WrpWithTime) {
 
 	r.measures.EventsCount.With(partnerIDLabel, partnerID, eventDestLabel, eventDestination).Add(1.0)
 
-	rule, err := r.rules.FindRule(request.Message.Destination)
+	rule, err := r.rc.rules.FindRule(request.Message.Destination)
 	if err != nil {
 		logging.Info(r.logger).Log(logging.MessageKey(), "Could not get rule", logging.ErrorKey(), err, "destination", request.Message.Destination)
 	}
@@ -226,7 +233,7 @@ func (r *RequestParser) recordHandler(request WrpWithTime, eventType db.EventTyp
 		return
 	}
 
-	err = r.inserter.Insert(batchInserter.RecordWithTime{Record: record, Beginning: request.Beginning})
+	err = r.rc.inserter.Insert(batchInserter.RecordWithTime{Record: record, Beginning: request.Beginning})
 	if err != nil {
 		r.measures.DroppedEventsCount.With(reasonLabel, insertFailReason).Add(1.0)
 		logging.Warn(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
@@ -239,12 +246,12 @@ func (r *RequestParser) handleCreateRecordErr(request WrpWithTime, record db.Rec
 	if reason == blackListReason {
 		logging.Info(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 			"Failed to create record", logging.ErrorKey(), err.Error())
-		r.timeTracker.TrackTime(time.Since(request.Beginning))
+		r.rc.timeTracker.TrackTime(time.Since(request.Beginning))
 		return
 	}
 	logging.Warn(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 		"Failed to create record", logging.ErrorKey(), err.Error())
-	r.timeTracker.TrackTime(time.Since(request.Beginning))
+	r.rc.timeTracker.TrackTime(time.Since(request.Beginning))
 }
 
 // create compiled regex for events regex template
