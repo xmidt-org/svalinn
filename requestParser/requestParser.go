@@ -1,3 +1,20 @@
+/**
+ * Copyright 2021 Comcast Cable Communications Management, LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
+
 package requestParser
 
 import (
@@ -28,7 +45,7 @@ var (
 	errFutureBirthdate   = errors.New("birthdate is too far in the future")
 	errExpired           = errors.New("deathdate has passed")
 	errBlacklist         = errors.New("device is in blacklist")
-	errQueueFull         = errors.New("Queue Full")
+	errQueueFull         = errors.New("queue full")
 
 	defaultLogger = log.NewNopLogger()
 )
@@ -199,18 +216,13 @@ func (r *RequestParser) parseRequest(request WrpWithTime) {
 		eventType = db.ParseEventType(rule.EventType())
 	}
 
+	r.recordHandler(request, eventType, rule)
+}
+
+func (r *RequestParser) recordHandler(request WrpWithTime, eventType db.EventType, rule *rules.Rule) {
 	record, reason, err := r.createRecord(request.Message, rule, eventType)
 	if err != nil {
-		r.measures.DroppedEventsCount.With(reasonLabel, reason).Add(1.0)
-		if reason == blackListReason {
-			logging.Info(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
-				"Failed to create record", logging.ErrorKey(), err.Error())
-			r.timeTracker.TrackTime(time.Since(request.Beginning))
-			return
-		}
-		logging.Warn(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
-			"Failed to create record", logging.ErrorKey(), err.Error())
-		r.timeTracker.TrackTime(time.Since(request.Beginning))
+		r.handleCreateRecordErr(request, record, reason, err)
 		return
 	}
 
@@ -220,6 +232,19 @@ func (r *RequestParser) parseRequest(request WrpWithTime) {
 		logging.Warn(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
 			"Failed to insert record", logging.ErrorKey(), err.Error())
 	}
+}
+
+func (r *RequestParser) handleCreateRecordErr(request WrpWithTime, record db.Record, reason string, err error) {
+	r.measures.DroppedEventsCount.With(reasonLabel, reason).Add(1.0)
+	if reason == blackListReason {
+		logging.Info(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
+			"Failed to create record", logging.ErrorKey(), err.Error())
+		r.timeTracker.TrackTime(time.Since(request.Beginning))
+		return
+	}
+	logging.Warn(r.logger, emperror.Context(err)...).Log(logging.MessageKey(),
+		"Failed to create record", logging.ErrorKey(), err.Error())
+	r.timeTracker.TrackTime(time.Since(request.Beginning))
 }
 
 // create compiled regex for events regex template
