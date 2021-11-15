@@ -139,13 +139,16 @@ func TestCreateRecord(t *testing.T) {
 			}
 
 			handler := RequestParser{
-				encrypter: encrypter,
+				rc: RecordConfig{
+					encrypter: encrypter,
+					blacklist: mblacklist,
+					currTime:  timeFunc,
+				},
+
 				config: Config{
 					PayloadMaxSize:  tc.maxPayloadSize,
 					MetadataMaxSize: tc.maxMetadataSize,
 				},
-				blacklist: mblacklist,
-				currTime:  timeFunc,
 			}
 			record, reason, err := handler.createRecord(tc.req, rule, db.State)
 			encrypter.AssertExpectations(t)

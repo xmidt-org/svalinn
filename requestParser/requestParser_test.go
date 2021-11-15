@@ -1,3 +1,20 @@
+/**
+ * Copyright 2021 Comcast Cable Communications Management, LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
+
 package requestParser
 
 import (
@@ -67,12 +84,14 @@ func TestNewRequestParser(t *testing.T) {
 			config:      goodConfig,
 			logger:      log.NewJSONLogger(os.Stdout),
 			expectedRequestParser: &RequestParser{
-				encrypter: goodEncrypter,
-				blacklist: goodBlacklist,
-				inserter:  goodInserter,
-				measures:  goodMeasures,
-				config:    goodConfig,
-				logger:    log.NewJSONLogger(os.Stdout),
+				rc: RecordConfig{
+					encrypter: goodEncrypter,
+					blacklist: goodBlacklist,
+					inserter:  goodInserter,
+				},
+				measures: goodMeasures,
+				config:   goodConfig,
+				logger:   log.NewJSONLogger(os.Stdout),
 			},
 		},
 		{
@@ -86,10 +105,13 @@ func TestNewRequestParser(t *testing.T) {
 				PayloadMaxSize:  -5,
 			},
 			expectedRequestParser: &RequestParser{
-				encrypter: goodEncrypter,
-				blacklist: goodBlacklist,
-				inserter:  goodInserter,
-				measures:  goodMeasures,
+				rc: RecordConfig{
+					encrypter: goodEncrypter,
+					blacklist: goodBlacklist,
+					inserter:  goodInserter,
+				},
+
+				measures: goodMeasures,
 				config: Config{
 					QueueSize:  defaultMinQueueSize,
 					DefaultTTL: defaultTTL,
@@ -122,7 +144,7 @@ func TestNewRequestParser(t *testing.T) {
 				tc.expectedRequestParser.requestQueue = rp.requestQueue
 				tc.expectedRequestParser.parseWorkers = rp.parseWorkers
 				tc.expectedRequestParser.eventTypeMetrics = rp.eventTypeMetrics
-				rp.currTime = nil
+				rp.rc.currTime = nil
 			}
 			assert.Equal(tc.expectedRequestParser, rp)
 			if tc.expectedErr == nil || err == nil {
@@ -251,20 +273,22 @@ func TestParseRequest(t *testing.T) {
 			}
 
 			handler := RequestParser{
-				encrypter: encrypter,
+				rc: RecordConfig{
+					encrypter:   encrypter,
+					inserter:    mockInserter,
+					timeTracker: mockTimeTracker,
+					blacklist:   mblacklist,
+					currTime:    timeFunc,
+				},
 				config: Config{
 					PayloadMaxSize:  9999,
 					MetadataMaxSize: 9999,
 					DefaultTTL:      time.Second,
 					MaxWorkers:      5,
 				},
-				inserter:         mockInserter,
-				timeTracker:      mockTimeTracker,
 				parseWorkers:     semaphore.New(2),
 				measures:         m,
 				logger:           logging.NewTestLogger(nil, t),
-				blacklist:        mblacklist,
-				currTime:         timeFunc,
 				eventTypeMetrics: EventTypeMetrics{Regex: eventRegex, EventTypeIndex: eventTypeIndex},
 			}
 

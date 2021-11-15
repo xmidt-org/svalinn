@@ -1,3 +1,20 @@
+/**
+ * Copyright 2021 Comcast Cable Communications Management, LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
+
 package requestParser
 
 import (
@@ -25,7 +42,7 @@ func (r *RequestParser) createRecord(req wrp.Message, rule *rules.Rule, eventTyp
 		return emptyRecord, parseFailReason, err
 	}
 
-	if reason, ok := r.blacklist.InList(record.DeviceID); ok {
+	if reason, ok := r.rc.blacklist.InList(record.DeviceID); ok {
 		return emptyRecord, blackListReason, emperror.With(errBlacklist, "reason", reason)
 	}
 
@@ -36,7 +53,7 @@ func (r *RequestParser) createRecord(req wrp.Message, rule *rules.Rule, eventTyp
 
 	msg := req
 	var reason string
-	record.BirthDate, record.DeathDate, reason, err = getValidBirthDeathDates(r.currTime, msg.Payload, rule, r.config.DefaultTTL)
+	record.BirthDate, record.DeathDate, reason, err = getValidBirthDeathDates(r.rc.currTime, msg.Payload, rule, r.config.DefaultTTL)
 	if err != nil {
 		return emptyRecord, reason, err
 	}
@@ -64,14 +81,14 @@ func (r *RequestParser) createRecord(req wrp.Message, rule *rules.Rule, eventTyp
 		return emptyRecord, marshalFailReason, emperror.WrapWith(err, "failed to marshal event", "full message", req)
 	}
 
-	encyptedData, nonce, err := r.encrypter.EncryptMessage(buffer.Bytes())
+	encyptedData, nonce, err := r.rc.encrypter.EncryptMessage(buffer.Bytes())
 	if err != nil {
 		return emptyRecord, encryptFailReason, emperror.WrapWith(err, "failed to encrypt message")
 	}
 	record.Data = encyptedData
 	record.Nonce = nonce
-	record.Alg = string(r.encrypter.GetAlgorithm())
-	record.KID = r.encrypter.GetKID()
+	record.Alg = string(r.rc.encrypter.GetAlgorithm())
+	record.KID = r.rc.encrypter.GetKID()
 
 	return record, "", nil
 }
