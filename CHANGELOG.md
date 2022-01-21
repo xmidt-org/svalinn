@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Migrate to github actions, normalize analysis tools, Dockerfiles and Makefiles. [#140](https://github.com/xmidt-org/svalinn/pull/140)
 - bumped bascule to remove security vulnerability. [#147](https://github.com/xmidt-org/svalinn/pull/147)
 - Simplified RequestParser struct and parseRequest function. [#148](https://github.com/xmidt-org/svalinn/pull/148)
+- Updated spec file and rpkg version macro to be able to choose when the 'v' is included in the version. [#149](https://github.com/xmidt-org/svalinn/pull/149)
 
 ## [v0.14.2]
 - Bumped codex-db and updated requestParser to use the error returned on insert (#125)[https://github.com/xmidt-org/svalinn/pull/125]
