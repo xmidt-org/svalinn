@@ -2,7 +2,7 @@
 %define debug_package %{nil}
 
 Name:       svalinn
-Version:    {{{ git_tag_version }}}
+Version:    v{{{ git_tag_version }}}
 Release:    1%{?dist}
 Summary:    The receiver of data from XMiDT Caduceus.
 
@@ -11,7 +11,7 @@ Packager:   Comcast
 Group:      System Environment/Daemons
 License:    ASL 2.0
 URL:        https://github.com/xmidt-org/svalinn
-Source0:    %{name}-%{version}.tar.gz
+Source0:    https://github.com/xmidt-org/%{name}/archive/%{version}.tar.gz
 
 Prefix:     /opt
 BuildRoot:  %{_tmppath}/%{name}
@@ -24,7 +24,7 @@ The shield to protect our users from incoming events for the codex project.
 aka. The receiver of data from XMiDT Caduceus
 
 %prep
-%setup -q
+%setup -n %{name}-{{{ git_tag_version }}}
 
 %build
 GO111MODULE=on GOPROXY=https://proxy.golang.org go build -ldflags "-linkmode=external -X 'main.BuildTime=`date -u '+%Y-%m-%d %H:%M:%S'`' -X main.GitCommit={{{ git_short_hash }}} -X main.Version=%{version}" -o %{name} .
