@@ -32,10 +32,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/xmidt-org/voynicrypto"
-	"github.com/xmidt-org/webpa-common/basculechecks"
-	"github.com/xmidt-org/webpa-common/logging"
-	"github.com/xmidt-org/webpa-common/semaphore"
-	"github.com/xmidt-org/webpa-common/xmetrics/xmetricstest"
+	"github.com/xmidt-org/webpa-common/v2/basculechecks"
+	"github.com/xmidt-org/webpa-common/v2/logging"
+	"github.com/xmidt-org/webpa-common/v2/semaphore"
+	"github.com/xmidt-org/webpa-common/v2/xmetrics/xmetricstest"
 	"github.com/xmidt-org/wrp-go/v2"
 )
 

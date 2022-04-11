@@ -51,12 +51,12 @@ import (
 	dbretry "github.com/xmidt-org/codex-db/retry"
 	"github.com/xmidt-org/svalinn/requestParser"
 	"github.com/xmidt-org/voynicrypto"
-	"github.com/xmidt-org/webpa-common/basculechecks"
-	"github.com/xmidt-org/webpa-common/basculemetrics"
-	"github.com/xmidt-org/webpa-common/concurrent"
-	"github.com/xmidt-org/webpa-common/logging"
-	"github.com/xmidt-org/webpa-common/server"
-	"github.com/xmidt-org/webpa-common/xmetrics"
+	"github.com/xmidt-org/webpa-common/v2/basculechecks"
+	"github.com/xmidt-org/webpa-common/v2/basculemetrics"
+	"github.com/xmidt-org/webpa-common/v2/concurrent"
+	"github.com/xmidt-org/webpa-common/v2/logging"
+	"github.com/xmidt-org/webpa-common/v2/server"
+	"github.com/xmidt-org/webpa-common/v2/xmetrics"
 	webhook "github.com/xmidt-org/wrp-listener"
 	"github.com/xmidt-org/wrp-listener/hashTokenFactory"
 	secretGetter "github.com/xmidt-org/wrp-listener/secret"
@@ -222,7 +222,7 @@ func svalinn(arguments []string) {
 		acquirer, err := determineTokenAcquirer(config.Webhook)
 		if err != nil {
 			logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to determine token acquirer", logging.ErrorKey(), err.Error())
-			//TODO: we shouldn't continue trying to set the webhook registerer up if we fail
+			// TODO: we shouldn't continue trying to set the webhook registerer up if we fail
 		}
 		basicConfig := webhookClient.BasicConfig{
 			Timeout:         config.Webhook.Timeout,
@@ -232,7 +232,7 @@ func svalinn(arguments []string) {
 		registerer, err := webhookClient.NewBasicRegisterer(acquirer, secretGetter, basicConfig)
 		if err != nil {
 			logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to create basic registerer", logging.ErrorKey(), err.Error())
-			//TODO: we shouldn't continue trying to set the webhook registerer up if we fail
+			// TODO: we shouldn't continue trying to set the webhook registerer up if we fail
 		}
 		periodicRegisterer, err := webhookClient.NewPeriodicRegisterer(registerer, config.Webhook.RegistrationInterval, logger, webhookClient.NewMeasures(metricsRegistry))
 		if err != nil {
@@ -327,7 +327,7 @@ func startHealth(logger log.Logger, health *health.Health, config *SvalinnConfig
 		if err != nil {
 			logging.Error(logger).Log(logging.MessageKey(), "failed to start health", logging.ErrorKey(), err)
 		}
-		//router.Handler(config.Health.Address, handlers)
+		// router.Handler(config.Health.Address, handlers)
 		http.HandleFunc(config.Health.Endpoint, handlers.NewJSONHandlerFunc(health, nil))
 		go func() {
 			olog.Fatal(http.ListenAndServe(config.Health.Port, nil))
