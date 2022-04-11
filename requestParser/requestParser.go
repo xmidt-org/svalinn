@@ -33,9 +33,9 @@ import (
 	"github.com/xmidt-org/codex-db/batchInserter"
 	"github.com/xmidt-org/codex-db/blacklist"
 	"github.com/xmidt-org/voynicrypto"
-	"github.com/xmidt-org/webpa-common/basculechecks"
-	"github.com/xmidt-org/webpa-common/logging"
-	"github.com/xmidt-org/webpa-common/semaphore"
+	"github.com/xmidt-org/webpa-common/v2/basculechecks"
+	"github.com/xmidt-org/webpa-common/v2/logging"
+	"github.com/xmidt-org/webpa-common/v2/semaphore"
 	"github.com/xmidt-org/wrp-go/v2"
 )
 
@@ -206,7 +206,7 @@ func (r *RequestParser) parseRequests() {
 func (r *RequestParser) parseRequest(request WrpWithTime) {
 	defer r.parseWorkers.Release()
 
-	//use regex matching to see what event type event is, for events metrics
+	// use regex matching to see what event type event is, for events metrics
 	eventDestination := getEventDestinationType(r.eventTypeMetrics.Regex, r.eventTypeMetrics.EventTypeIndex, request.Message.Destination)
 
 	partnerID := basculechecks.DeterminePartnerMetric(request.Message.PartnerIDs)
