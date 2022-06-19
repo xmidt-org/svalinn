@@ -1,12 +1,13 @@
 # Svalinn
 (pronounced “svæ-lin”)
 
-[![Build Status](https://github.com/xmidt-org/svalinn/workflows/CI/badge.svg)](https://github.com/xmidt-org/svalinn/actions)
+[![Build Status](https://github.com/xmidt-org/svalinn/actions/workflows/ci.yml/badge.svg)](https://github.com/xmidt-org/svalinn/actions/workflows/ci.yml)
+[![Dependency Updateer](https://github.com/xmidt-org/svalinn/actions/workflows/updater.yml/badge.svg)](https://github.com/xmidt-org/svalinn/actions/workflows/updater.yml)
 [![codecov.io](http://codecov.io/github/xmidt-org/svalinn/coverage.svg?branch=main)](http://codecov.io/github/xmidt-org/svalinn?branch=main)
 [![Go Report Card](https://goreportcard.com/badge/github.com/xmidt-org/svalinn)](https://goreportcard.com/report/github.com/xmidt-org/svalinn)
-[![Apache V2 License](http://img.shields.io/badge/license-Apache%20V2-blue.svg)](https://github.com/xmidt-org/svalinn/blob/main/LICENSE)
-[![GitHub release](https://img.shields.io/github/release/xmidt-org/svalinn.svg)](CHANGELOG.md)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=xmidt-org_svalinn&metric=alert_status)](https://sonarcloud.io/dashboard?id=xmidt-org_svalinn)
+[![Apache V2 License](http://img.shields.io/badge/license-Apache%20V2-blue.svg)](https://github.com/xmidt-org/svalinn/blob/main/LICENSE)
+[![GitHub Release](https://img.shields.io/github/release/xmidt-org/svalinn.svg)](CHANGELOG.md)
 
 
 ## Summary
