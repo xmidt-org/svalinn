@@ -122,6 +122,7 @@ github.com/aws/aws-sdk-go v1.25.41/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpi
 github.com/aws/aws-sdk-go v1.27.0/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN924inxo=
 github.com/aws/aws-sdk-go v1.31.6/go.mod h1:5zCpMtNQVjRREroY7sYe8lOMRSxkhG6MZveU8YkpAk0=
 github.com/aws/aws-sdk-go v1.40.45/go.mod h1:585smgzpB/KqRA+K3y/NL/oYRqQvpNJYvLm+LY1U59Q=
+github.com/aws/aws-sdk-go v1.43.35/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX4oIKwKHZo=
 github.com/aws/aws-sdk-go-v2 v0.18.0/go.mod h1:JWVYvqSMppoMJC0x5wdwiImzgXTI9FuZwxzkQq9wy+g=
 github.com/aws/aws-sdk-go-v2 v1.9.1/go.mod h1:cK/D0BBs0b/oWPIcX/Z/obahJK1TT7IPVjy53i/mX/4=
 github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.8.1/go.mod h1:CM+19rL1+4dFWnOQKwDc7H1KwXTz+h61oUSHyhV0b3o=
@@ -874,6 +875,7 @@ github.com/xmidt-org/argus v0.3.10-0.20201105190057-402fede05764/go.mod h1:lnMCV
 github.com/xmidt-org/argus v0.3.10-0.20201217204602-66f69b12c498/go.mod h1:lnMCVB/i0gOlUOOd2WbzDDgzTEqP5TipzQ8xKIw+N/I=
 github.com/xmidt-org/argus v0.3.12/go.mod h1:T0oHbqQ1SAjE616Q9f1p+7nsmuvmHNoC0zAIUpUiFuE=
 github.com/xmidt-org/argus v0.6.0/go.mod h1:IRVJlpd8JsoWXhys8o6tFU+dZi9Q6YWTX1Wn3AkyEkI=
+github.com/xmidt-org/argus v0.9.0/go.mod h1:qa9zafyQDJDcL6lxD2hniA+D0oM27GTa5uXxO/UDRMA=
 github.com/xmidt-org/arrange v0.1.9/go.mod h1:PRA8iEZ11L93NsEkDP56x1mZyfDcWxzDULgHj56TaEk=
 github.com/xmidt-org/arrange v0.3.0 h1:YNO+1lufCx3EeN17xuSRMC1sci9y9rzZVZ+TkWwq9QE=
 github.com/xmidt-org/arrange v0.3.0/go.mod h1:pCHeb93OFA0QnEJ//Mmly7QqUt7y/w3xllK0VQ3Bigo=
@@ -906,8 +908,9 @@ github.com/xmidt-org/webpa-common v1.11.4/go.mod h1:ffQHH+pCRnoxtdbyIkCbOSDVhV62
 github.com/xmidt-org/webpa-common v1.11.5-0.20210120003553-3d03d7329aee/go.mod h1:NtJzdNhDznwjWiRKDnj/vxdQZnPOhuQ6haemx+nDMSY=
 github.com/xmidt-org/webpa-common v1.11.5 h1:kUR7fvtZ4tBlRMNLlyhFiHQN0No42F/6DApU4VniBzw=
 github.com/xmidt-org/webpa-common v1.11.5/go.mod h1:jMyROPQmgvNS+P0csPodDMikqesqPFzlb3v/JVw2SmY=
-github.com/xmidt-org/webpa-common/v2 v2.0.4 h1:Um9+7aF8VK3z7RuQPylrZ2MJe8AxfqmK4RWjDs5CI4I=
 github.com/xmidt-org/webpa-common/v2 v2.0.4/go.mod h1:wqVfhUZrcm32yAMn5a7DR6FGZ7KRg3lzqQhtf9Eq6ik=
+github.com/xmidt-org/webpa-common/v2 v2.0.6 h1:QkDDddiiGm8l62Qki/lxtH5SDvXuUxq+FbKYjWylrGg=
+github.com/xmidt-org/webpa-common/v2 v2.0.6/go.mod h1:7ZSV/DD9Ao7u7e2pd3y8MktOdWA4pntuYNCkS7lynHw=
 github.com/xmidt-org/wrp-go v1.3.4 h1:7kj+1VXRNNEI7G0Z3z7C58QpIXrWzTw/eI79FdAhyPA=
 github.com/xmidt-org/wrp-go v1.3.4/go.mod h1:EWC9BgcYYO1hKgLzz6VFPpg3LU6ZWSDV/uNiWC7zP+o=
 github.com/xmidt-org/wrp-go/v2 v2.0.1 h1:JWMpAvNCkD1pLXdZLmAs/4g3twxTM7K4YU57dapJvB0=
