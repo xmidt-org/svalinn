@@ -16,7 +16,7 @@ require (
 	github.com/xmidt-org/bascule v0.10.2
 	github.com/xmidt-org/codex-db v0.7.1
 	github.com/xmidt-org/voynicrypto v0.1.1
-	github.com/xmidt-org/webpa-common/v2 v2.0.4
+	github.com/xmidt-org/webpa-common/v2 v2.0.6
 	github.com/xmidt-org/wrp-go/v2 v2.0.1
 	github.com/xmidt-org/wrp-listener v0.2.4
 )
