@@ -28,6 +28,7 @@ import (
 	"github.com/go-kit/kit/metrics/provider"
 
 	"github.com/xmidt-org/codex-db/blacklist"
+	"github.com/xmidt-org/wrp-go/v3"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -36,7 +37,6 @@ import (
 	"github.com/xmidt-org/webpa-common/v2/logging"
 	"github.com/xmidt-org/webpa-common/v2/semaphore"
 	"github.com/xmidt-org/webpa-common/v2/xmetrics/xmetricstest"
-	"github.com/xmidt-org/wrp-go/v2"
 )
 
 var (
