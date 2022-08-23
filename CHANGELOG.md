@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - https://github.com/xmidt-org/svalinn/issues/153
 - Upgrade wrp go from v2 to v3 [#166](https://github.com/xmidt-org/svalinn/pull/166)
 
+
 ## [v0.14.3]
 - bump dependencies [#152](https://github.com/xmidt-org/svalinn/pull/152)
 - Migrate to github actions, normalize analysis tools, Dockerfiles and Makefiles. [#140](https://github.com/xmidt-org/svalinn/pull/140)
