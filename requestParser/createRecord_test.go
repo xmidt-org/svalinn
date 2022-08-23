@@ -12,7 +12,7 @@ import (
 	db "github.com/xmidt-org/codex-db"
 	"github.com/xmidt-org/svalinn/rules"
 	"github.com/xmidt-org/voynicrypto"
-	"github.com/xmidt-org/wrp-go/v2"
+	"github.com/xmidt-org/wrp-go/v3"
 )
 
 func TestCreateRecord(t *testing.T) {

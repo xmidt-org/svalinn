@@ -25,7 +25,7 @@ require (
 	github.com/xmidt-org/voynicrypto v0.1.1
 	github.com/xmidt-org/webpa-common v1.11.9 // indirect
 	github.com/xmidt-org/webpa-common/v2 v2.0.6
-	github.com/xmidt-org/wrp-go/v2 v2.0.1
+	github.com/xmidt-org/wrp-go/v3 v3.1.3
 	github.com/xmidt-org/wrp-listener v0.2.5
 	go.uber.org/atomic v1.10.0 // indirect
 	golang.org/x/crypto v0.0.0-20220817201139-bc19a97f63c8 // indirect
