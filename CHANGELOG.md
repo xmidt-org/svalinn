@@ -158,7 +158,7 @@ Bug Fix Caduceus config loading
 - Bumped codex version, modified code to match changes
 
 [Unreleased]: https://github.com/xmidt-org/svalinn/compare/v0.14.4...HEAD
-[v0.14.3]: https://github.com/xmidt-org/svalinn/compare/v0.14.3...v0.14.4
+[v0.14.4]: https://github.com/xmidt-org/svalinn/compare/v0.14.3...v0.14.4
 [v0.14.3]: https://github.com/xmidt-org/svalinn/compare/v0.14.2...v0.14.3
 [v0.14.2]: https://github.com/xmidt-org/svalinn/compare/v0.14.1...v0.14.2
 [v0.14.1]: https://github.com/xmidt-org/svalinn/compare/v0.14.0...v0.14.1
