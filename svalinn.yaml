@@ -1,7 +1,7 @@
 ---
 
-# The unique fully-qualified-domain-name of the server.  It is provided to 
-# the X-Svalinn-Server header for showing what server fulfilled the request 
+# The unique fully-qualified-domain-name of the server.  It is provided to
+# the X-Svalinn-Server header for showing what server fulfilled the request
 # sent.
 # (Optional)
 server: "svalinn-instance-123.example.com"
@@ -39,7 +39,7 @@ primary:
   # ":443" is ideal, but may require some special handling due to it being
   # a reserved (by the kernel) port.
   address: ":7100"
-  # HTTPS/TLS 
+  # HTTPS/TLS
   #
   # certificateFile provides the public key and CA chain in PEM format if
   # TLS is used.  Note: the certificate needs to match the fqdn for clients
@@ -62,7 +62,7 @@ health:
   # ":80" is ideal, but may require some special handling due to it being
   # a reserved (by the kernel) port.
   port: ":7101"
-  # endpoint provides the endpoint that will provide the health check 
+  # endpoint provides the endpoint that will provide the health check
   # information.
   endpoint: "/health"
 
@@ -144,7 +144,7 @@ log:
 #   Database Related Configuration
 ########################################
 
-# db provides the configuration for connecting to the database and database 
+# db provides the configuration for connecting to the database and database
 # calls.
 db:
   # hosts is and array of address and port used to connect to the cluster.
@@ -186,66 +186,66 @@ db:
 #  # (Optional) defaults to false
 #  #enableHostVerification: false
 
-# insertRetries provides the information needed for making multiple attempts to 
-# insert the same batch of records.  This gets populated into the backoff 
+# insertRetries provides the information needed for making multiple attempts to
+# insert the same batch of records.  This gets populated into the backoff
 # package's ExponentialBackoff struct.  Read more about that here:
 # https://godoc.org/gopkg.in/cenkalti/backoff.v3#ExponentialBackOff
 insertRetries:
-  # initialInterval provides the initial amount of time to wait in between 
-  # attempts to query the database.  Has no effect if maxElapsedTime is less 
+  # initialInterval provides the initial amount of time to wait in between
+  # attempts to query the database.  Has no effect if maxElapsedTime is less
   # than 0.
   # (Optional) defaults to 500ms
   initialInterval: 500ms
 
-  # randomizationFactor provides the "jitter" amount to be used when 
-  # calculating the amount of time to wait before the next retry.  Has no 
+  # randomizationFactor provides the "jitter" amount to be used when
+  # calculating the amount of time to wait before the next retry.  Has no
   # effect if maxElapsedTime is less than 0.
   # (Optional) defaults to 0.5
   randomizationFactor: 0.05
 
-  # multiplier provides the number to multiply the initialInterval by between 
+  # multiplier provides the number to multiply the initialInterval by between
   # each attempt.  Has no effect if maxElapsedTime is less than 0.
   # (Optional) defaults to 1.5
   multiplier: 5
 
-  # maxInterval is the maximum amount of time that can be waited for between 
+  # maxInterval is the maximum amount of time that can be waited for between
   # each attempt.  Has no effect if maxElapsedTime is less than 0.
   # (Optional) defaults to 60s
   maxInterval: 11s
 
-  # maxElapsedTime is the maximum amount of time to continue attempting to 
-  # insert into the database.  If an attempt is currently ongoing, it may 
-  # continue, but no new attempts will be started past the time given.  If 
-  # this value is set below 0, svalinn will attempt to insert only once, with 
+  # maxElapsedTime is the maximum amount of time to continue attempting to
+  # insert into the database.  If an attempt is currently ongoing, it may
+  # continue, but no new attempts will be started past the time given.  If
+  # this value is set below 0, svalinn will attempt to insert only once, with
   # no retries.
   # defaults to 15m
   maxElapsedTime: 30s
 
-# batchInserter provides the information needed for inserting multiple records 
+# batchInserter provides the information needed for inserting multiple records
 # in one query.
 # (Optional)
 batchInserter:
-  # queueSize provides the max number of records that can be stored on the 
-  # queue.  Once records are taken off the queue, they are batched together and 
+  # queueSize provides the max number of records that can be stored on the
+  # queue.  Once records are taken off the queue, they are batched together and
   # inserted.  If a value below 5 is chosen, it defaults to 5.
   # (Optional) defaults to 5
   queueSize: 3000
 
-  # maxWorkers provides the maximum number of workers that can work on 
+  # maxWorkers provides the maximum number of workers that can work on
   # inserting batches of records at one time.  If a value below 1 is chosen,
   # it defaults to 5.
   # (Optional) defaults to 5
   maxWorkers: 1000
 
-  # maxBatchSize provides the maximum number of records that can be grouped 
+  # maxBatchSize provides the maximum number of records that can be grouped
   # together in a single insert.  If a value below 0 is chosen, it defaults to
-  # 1.  If the 0 value is chosen, there is no maximum and records are batched 
+  # 1.  If the 0 value is chosen, there is no maximum and records are batched
   # together until the maxBatchWaitTime is reached.
   # (Optional) defaults to 1
   maxBatchSize: 30
 
-  # maxBatchWaitTime provides the maximum amount of time to wait once the first 
-  # record in a batch is received.  If a value below 0s is chosen, it defaults to 
+  # maxBatchWaitTime provides the maximum amount of time to wait once the first
+  # record in a batch is received.  If a value below 0s is chosen, it defaults to
   # 0s.
   # (Optional)
   maxBatchWaitTime: 10ms
@@ -254,9 +254,9 @@ batchInserter:
 #   Encryption Related Configuration
 ########################################
 
-# cipher tells svalinn what type of encryption it should be prepared to 
+# cipher tells svalinn what type of encryption it should be prepared to
 # encrypt.  This list is used to encrypt the events being inserted the database.
-# If there is no encryption, use the "none" configuration below. Svalinn uses 
+# If there is no encryption, use the "none" configuration below. Svalinn uses
 # the first cipher on the list that loads successfully.
 cipher:
   - # type is the type of encryption.
@@ -285,57 +285,57 @@ cipher:
 #   Event Parsing Related Configuration
 ########################################
 
-# endpoint provides the endpoint to listen for events at, which is added to the 
+# endpoint provides the endpoint to listen for events at, which is added to the
 # api base (a constant in the code).
 endpoint: "/device-status"
 
-# requestParser provides the information needed for starting the parser, which 
+# requestParser provides the information needed for starting the parser, which
 # turns events into records.
 # (Optional)
 requestParser:
-  # queueSize provides the maximum number of events that can be added to the 
-  # queue.  Once events are taken off the queue, they are parsed into records.  
+  # queueSize provides the maximum number of events that can be added to the
+  # queue.  Once events are taken off the queue, they are parsed into records.
   # If a value below 5 is chosen, it defaults to 5.
   # (Optional) defaults to 5
   queueSize: 3000
 
-  # maxWorkers provides the maximum number of workers parsing events at a 
+  # maxWorkers provides the maximum number of workers parsing events at a
   # time.  If a value below 5 is chosen, it defaults to 5.
   # (Optional) defaults to 5
   maxWorkers: 10000
 
-  # metadataMaxSize provides the number of bytes that the marshaled metadata of 
-  # an event must not exceed.  If the metadata is larger than that, it is removed 
-  # from the event before the event is put in a record.  If a value below 0 is 
+  # metadataMaxSize provides the number of bytes that the marshaled metadata of
+  # an event must not exceed.  If the metadata is larger than that, it is removed
+  # from the event before the event is put in a record.  If a value below 0 is
   # chosen, it defaults to 0.
   # (Optional)
   metadataMaxSize: 1000
 
-  # payloadMaxSize provides the number of bytes that the payload of an event must 
-  # not exceed.  If the payload is larger than that, it is removed from the event 
-  # before the events is put in a record.  If a value below 0 is chosen, it 
+  # payloadMaxSize provides the number of bytes that the payload of an event must
+  # not exceed.  If the payload is larger than that, it is removed from the event
+  # before the events is put in a record.  If a value below 0 is chosen, it
   # defaults to 0.
   # (Optional)
   payloadMaxSize: 1000
 
-  # defaultTTL provides the amount of time a record is kept in the database 
-  # before it is removed.  This TTL is for any event that doesn't have a rule 
+  # defaultTTL provides the amount of time a record is kept in the database
+  # before it is removed.  This TTL is for any event that doesn't have a rule
   # with a TTL specified.  If 0 is chosen, it defaults to 5m.
   # (Optional) defaults to 5m
   defaultTTL: 5s
 
-  # regexRules provides rules for events whose destinations match the regular 
-  # expression.  If the event matches the regex of a rule, Svalinn gets 
-  # instructions on whether or not to store the event's payload (storePayload), 
-  # what the event type should be (eventType), and how long the record should 
-  # live in the database (ruleTTL).  If no rules are provided, the payload isn't 
-  # stored, the event type is the default, and the record's TTL is the defaultTTL. 
+  # regexRules provides rules for events whose destinations match the regular
+  # expression.  If the event matches the regex of a rule, Svalinn gets
+  # instructions on whether or not to store the event's payload (storePayload),
+  # what the event type should be (eventType), and how long the record should
+  # live in the database (ruleTTL).  If no rules are provided, the payload isn't
+  # stored, the event type is the default, and the record's TTL is the defaultTTL.
   # Svalinn uses the first rule whose regex matches an event's destination.
   #
-  # The eventType indicates where to find the device id in the event.  If the 
+  # The eventType indicates where to find the device id in the event.  If the
   # event type is "State", the device id is parsed out of the event Destination.
   # Otherwise, the event Source is used as the device id.
-  # eventType options: "State", "Default" 
+  # eventType options: "State", "Default"
   #
   # (Optional)
   regexRules:
@@ -348,9 +348,9 @@ requestParser:
       ruleTTL: 30s
       eventType: "State"
 
-# blacklistInterval provides how often Svalinn should get the blacklist from 
-# the database.  If a device id matches a regular expression on the blacklist, 
-# that event isn't inserted into the database.  If 0s is chosen, it defaults to 
+# blacklistInterval provides how often Svalinn should get the blacklist from
+# the database.  If a device id matches a regular expression on the blacklist,
+# that event isn't inserted into the database.  If 0s is chosen, it defaults to
 # 1m.
 # (Oprional) defaults to 1m
 blacklistInterval: 1m
@@ -359,10 +359,10 @@ blacklistInterval: 1m
 #   Authorization Related Configuration
 ########################################
 
-# secret contains information for finding the secret on incoming requests.  If 
-# both header and webhook secret are empty, no authentication is done on 
-# incoming requests to Svalinn.  Otherwise, the value at the header provided 
-# should hold a sha1 hash of the request body.  It should be in the format: 
+# secret contains information for finding the secret on incoming requests.  If
+# both header and webhook secret are empty, no authentication is done on
+# incoming requests to Svalinn.  Otherwise, the value at the header provided
+# should hold a sha1 hash of the request body.  It should be in the format:
 #
 # Sha1<delimiter><hash>
 #
@@ -380,17 +380,17 @@ secret:
 #   Webhook Registration Related Configuration
 ########################################
 
-# webhook provides the information needed to register to a webhook.  If the 
-# urls and event regex aren't empty and the interval is greater than 0, 
+# webhook provides the information needed to register to a webhook.  If the
+# urls and event regex aren't empty and the interval is greater than 0,
 # registration occurs.
 # (Optional)
 webhook:
-  # registrationInterval provides the time to wait between each registration to 
+  # registrationInterval provides the time to wait between each registration to
   # the webhook.  If this is set to 0, no registration is done.
   # (Optional)
   registrationInterval: "4m"
 
-  # timeout provides the length of time the request should wait before timing 
+  # timeout provides the length of time the request should wait before timing
   # out.
   timeout: "1m"
 
@@ -399,20 +399,20 @@ webhook:
 
   # request provides the information passed in the webhook registration request.
   request:
-    # config provides configuration values for the requests to the webhook 
+    # config provides configuration values for the requests to the webhook
     # receiver.
     config:
-      # url provides the server the webhook should send the events to.  If this 
+      # url provides the server the webhook should send the events to.  If this
       # value isn't set, no registration happens.
       url: "http://host.docker.internal:8181/api/v1/device-status"
 
-      # contentType provides the content type Svalinn expects from the requests 
+      # contentType provides the content type Svalinn expects from the requests
       # it receives.
       # (Optional) defaults to "wrp"
       #contentType: "wrp"
 
-      # secret provides the key for hashing the messages the webhook sends. 
-      # If this is empty, no authentication is done later for incoming requests 
+      # secret provides the key for hashing the messages the webhook sends.
+      # If this is empty, no authentication is done later for incoming requests
       # to Svalinn.
       # (Optional)
       secret: "super secret"
@@ -421,14 +421,14 @@ webhook:
       # (Optional)
       maxRetryCount: 3
 
-      # alternativeURLs provides endpoints to round robin through on a failure 
-      # to send an event.  This is only used if the maxRetryCount is greater 
+      # alternativeURLs provides endpoints to round robin through on a failure
+      # to send an event.  This is only used if the maxRetryCount is greater
       # than 0.
       # (Optional)
       #AlternativeURLs: []
 
-    # events provides a list of regular expressions that tells the webhook 
-    # which endpoints to send to Svalinn.  If the destination of an event 
+    # events provides a list of regular expressions that tells the webhook
+    # which endpoints to send to Svalinn.  If the destination of an event
     # matches a regular expression in this list, it is sent to Svalinn
     events: ["device-status.*"]
 
@@ -437,12 +437,12 @@ webhook:
     # matcher:
     #   deviceID: [".*"]
 
-  # the below configuration values provide a way to add an Authorization header 
-  # to the request to the webhook.  If both basic and sat contain empty values, 
+  # the below configuration values provide a way to add an Authorization header
+  # to the request to the webhook.  If both basic and sat contain empty values,
   # no header is sent.  sat takes priority over basic if both are set.
 
-  # basic provides a way to use Basic Authorization when registering to a 
-  # webhook.  If this value is provided and sat isn't, the following header is 
+  # basic provides a way to use Basic Authorization when registering to a
+  # webhook.  If this value is provided and sat isn't, the following header is
   # added to the registration request:
   #
   # Authorization Basic {basic}
@@ -450,13 +450,13 @@ webhook:
   # (Optional)
   basic: ""
 
-  # jwt provides a way to use Bearer Authorization when registering to a 
-  # webhook.  If the below values are all provided, a request is made to the 
-  # URL to get the token to be used in the registration request.  The 
-  # header would look like: 
-  # 
+  # jwt provides a way to use Bearer Authorization when registering to a
+  # webhook.  If the below values are all provided, a request is made to the
+  # URL to get the token to be used in the registration request.  The
+  # header would look like:
+  #
   # Authorization Bearer {token}
-  # 
+  #
   # (Optional)
   jwt:
     # requestHeaders are added to the request for the token.
@@ -467,7 +467,7 @@ webhook:
     # authURL is the URL to access for the token.
     authURL: ""
 
-    # timeout is how long the request to get the token will take before 
+    # timeout is how long the request to get the token will take before
     # timing out.
     timeout: "1m"
 

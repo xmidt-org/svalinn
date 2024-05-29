@@ -1,1 +1,476 @@
-../svalinn.yaml
+---
+
+# The unique fully-qualified-domain-name of the server.  It is provided to
+# the X-Svalinn-Server header for showing what server fulfilled the request
+# sent.
+# (Optional)
+server: "svalinn-instance-123.example.com"
+
+########################################
+#   Labeling/Tracing via HTTP Headers Configuration
+########################################
+
+# Provides this build number to the X-Svalinn-Build header for
+# showing machine version information.  The build number SHOULD
+# match the scheme `version-build` but there is not a strict requirement.
+# (Optional)
+build: "0.1.3-434"
+
+# Provides the region information to the X-Svalinn-Region header
+# for showing what region this machine is located in.  The region
+# is arbitrary and optional.
+# (Optional)
+region: "east"
+
+# Provides the flavor information to the X-Svalinn-Flavor header
+# for showing what flavor this machine is associated with.  The flavor
+# is arbitrary and optional.
+# (Optional)
+flavor: "mint"
+
+########################################
+#   Primary Endpoint Configuration
+########################################
+
+# primary defines the details needed for the primary endpoint.  The
+# primary endpoint accepts requests for events for a specific device id.
+primary:
+  # address provides the port number for the endpoint to bind to.
+  # ":443" is ideal, but may require some special handling due to it being
+  # a reserved (by the kernel) port.
+  address: ":7100"
+  # HTTPS/TLS
+  #
+  # certificateFile provides the public key and CA chain in PEM format if
+  # TLS is used.  Note: the certificate needs to match the fqdn for clients
+  # to accept without issue.
+  #
+  # keyFile provides the private key that matches the certificateFile
+  # (Optional)
+  # certificateFile: "/etc/svalinn/public.pem"
+  # keyFile: "/etc/svalinn/private.pem"
+
+########################################
+#   Health Endpoint Configuration
+########################################
+
+# health defines the details needed for the health check endpoint.  The
+# health check endpoint is generally used by services (like AWS Route53
+# or consul) to determine if this particular machine is healthy or not.
+health:
+  # port provides the port number for the endpoint to bind to.
+  # ":80" is ideal, but may require some special handling due to it being
+  # a reserved (by the kernel) port.
+  port: ":7101"
+  # endpoint provides the endpoint that will provide the health check
+  # information.
+  endpoint: "/health"
+
+########################################
+#   Debugging/Pprof Configuration
+########################################
+
+# pprof defines the details needed for the pprof debug endpoint.
+# (Optional)
+pprof:
+  # address provides the port number for the endpoint to bind to.
+  address: ":7102"
+
+########################################
+#   Metrics Configuration
+########################################
+
+# metric defines the details needed for the prometheus metrics endpoint
+# (Optional)
+metric:
+  # address provides the port number for the endpoint to bind to.  Port 9389
+  # was chosen because it does not conflict with any of the other prometheus
+  # metrics or other machines in the xmidt cluster.  You may use any port you
+  # wish.
+  address: ":7103"
+
+  # metricsOptions provides the details needed to configure the prometheus
+  # metric data.  Metrics generally have the form:
+  #
+  # {namespace}_{subsystem}_{metric}
+  #
+  # so if you use the suggested value below, your metrics are prefixed like
+  # this:
+  #
+  # codex_svalinn_{metric}
+  #
+  # (Optional)
+  metricsOptions:
+    # namespace is the namespace of the metrics provided
+    # (Optional)
+    namespace: "codex"
+    # subsystem is the subsystem of the metrics provided
+    # (Optional)
+    subsystem: "svalinn"
+
+########################################
+#   Logging Related Configuration
+########################################
+
+# log configures the logging subsystem details
+log:
+  # file is the name of the most recent log file.  If set to "stdout" this
+  # will log to os.Stdout.
+  # (Optional) defaults to os.TempDir()
+  #file: "/var/log/svalinn/svalinn.log"
+  file: "stdout"
+
+  # level is the logging level to use - INFO, DEBUG, WARN, ERROR
+  # (Optional) defaults to ERROR
+  level: "ERROR"
+
+  # maxsize is the maximum file size in MB
+  # (Optional) defaults to max 100MB
+  maxsize: 50
+
+  # maxage is the maximum number of days to retain old log files
+  # (Optional) defaults to ignore age limit (0)
+  maxage: 30
+
+  # maxbackups is the maximum number of old log files to retain
+  # (Optional) defaults to retain all (0)
+  maxbackups: 10
+
+  # json is a flag indicating whether JSON logging output should be used.
+  # (Optional) defaults to false
+  json: true
+
+########################################
+#   Database Related Configuration
+########################################
+
+# db provides the configuration for connecting to the database and database
+# calls.
+db:
+  # hosts is and array of address and port used to connect to the cluster.
+  hosts:
+    - "db"
+  # database is the name of the database being connected to.
+  database: "devices"
+  # opTimeout is the timeout for database calls after svalinn is connected.
+  # If the opTimeout is set to 0, it defaults to 10s.
+  # (Optional) defaults to 10s
+  opTimeout: 100ms
+
+#  # username is the username to use when connecting to the database.
+#  # (Optional)
+#  username: "cassandra"
+#
+#  # password is the password to use when connecting to the database.
+#  # (Optional)
+#  password: "cassandra"
+#
+#  # SSLRootCert is the root cert to use when connecting to the database.
+#  # The SSLKey and SSLCert must also be provided in order to connect securely.
+#  # (Optional)
+#  #sslRootCert: "/etc/svalinn/ca.crt"
+#
+#  # SSLKey is the SSL key to use when connecting to the database.  The
+#  # SSLRootCert and SSLCert must also be provided in order to connect securely.
+#  # (Optional)
+#  #sslKey: "/etc/svalinn/node.0.0.0.0.key"
+#
+#  # SSLCert is the SSL cert to use when connecting to the database.  The SSLKey
+#  # and SSLRootCert must also be provided in order to connect securely.
+#  # (Optional)
+#  #sslCert: "/etc/svalinn/node.0.0.0.0.crt"
+#
+#  # If you want to verify the hostname and server cert (like a wildcard for cass cluster) then you should turn this on
+#  # This option is basically the inverse of InSecureSkipVerify
+#  # See InSecureSkipVerify in http://golang.org/pkg/crypto/tls/ for more info
+#  # (Optional) defaults to false
+#  #enableHostVerification: false
+
+# insertRetries provides the information needed for making multiple attempts to
+# insert the same batch of records.  This gets populated into the backoff
+# package's ExponentialBackoff struct.  Read more about that here:
+# https://godoc.org/gopkg.in/cenkalti/backoff.v3#ExponentialBackOff
+insertRetries:
+  # initialInterval provides the initial amount of time to wait in between
+  # attempts to query the database.  Has no effect if maxElapsedTime is less
+  # than 0.
+  # (Optional) defaults to 500ms
+  initialInterval: 500ms
+
+  # randomizationFactor provides the "jitter" amount to be used when
+  # calculating the amount of time to wait before the next retry.  Has no
+  # effect if maxElapsedTime is less than 0.
+  # (Optional) defaults to 0.5
+  randomizationFactor: 0.05
+
+  # multiplier provides the number to multiply the initialInterval by between
+  # each attempt.  Has no effect if maxElapsedTime is less than 0.
+  # (Optional) defaults to 1.5
+  multiplier: 5
+
+  # maxInterval is the maximum amount of time that can be waited for between
+  # each attempt.  Has no effect if maxElapsedTime is less than 0.
+  # (Optional) defaults to 60s
+  maxInterval: 11s
+
+  # maxElapsedTime is the maximum amount of time to continue attempting to
+  # insert into the database.  If an attempt is currently ongoing, it may
+  # continue, but no new attempts will be started past the time given.  If
+  # this value is set below 0, svalinn will attempt to insert only once, with
+  # no retries.
+  # defaults to 15m
+  maxElapsedTime: 30s
+
+# batchInserter provides the information needed for inserting multiple records
+# in one query.
+# (Optional)
+batchInserter:
+  # queueSize provides the max number of records that can be stored on the
+  # queue.  Once records are taken off the queue, they are batched together and
+  # inserted.  If a value below 5 is chosen, it defaults to 5.
+  # (Optional) defaults to 5
+  queueSize: 3000
+
+  # maxWorkers provides the maximum number of workers that can work on
+  # inserting batches of records at one time.  If a value below 1 is chosen,
+  # it defaults to 5.
+  # (Optional) defaults to 5
+  maxWorkers: 1000
+
+  # maxBatchSize provides the maximum number of records that can be grouped
+  # together in a single insert.  If a value below 0 is chosen, it defaults to
+  # 1.  If the 0 value is chosen, there is no maximum and records are batched
+  # together until the maxBatchWaitTime is reached.
+  # (Optional) defaults to 1
+  maxBatchSize: 30
+
+  # maxBatchWaitTime provides the maximum amount of time to wait once the first
+  # record in a batch is received.  If a value below 0s is chosen, it defaults to
+  # 0s.
+  # (Optional)
+  maxBatchWaitTime: 10ms
+
+########################################
+#   Encryption Related Configuration
+########################################
+
+# cipher tells svalinn what type of encryption it should be prepared to
+# encrypt.  This list is used to encrypt the events being inserted the database.
+# If there is no encryption, use the "none" configuration below. Svalinn uses
+# the first cipher on the list that loads successfully.
+cipher:
+  - # type is the type of encryption.
+    type: rsa-sym
+
+    # kid is a further identifier for what kind of encryption should be used.
+    kid: "basic-sha"
+
+    # params are further information for a type of encryption.
+    # (Optional)
+    params:
+      hash: SHA512
+
+    # keys are the keys to use for this form of encryption.
+    # (Optional)
+    keys:
+      publicKey: "/etc/svalinn/public.pem"
+
+  - # type is the type of encryption.
+    type: none
+
+    # kid is the a further identifier for what kind of encryption should be used.
+    kid: none
+
+########################################
+#   Event Parsing Related Configuration
+########################################
+
+# endpoint provides the endpoint to listen for events at, which is added to the
+# api base (a constant in the code).
+endpoint: "/device-status"
+
+# requestParser provides the information needed for starting the parser, which
+# turns events into records.
+# (Optional)
+requestParser:
+  # queueSize provides the maximum number of events that can be added to the
+  # queue.  Once events are taken off the queue, they are parsed into records.
+  # If a value below 5 is chosen, it defaults to 5.
+  # (Optional) defaults to 5
+  queueSize: 3000
+
+  # maxWorkers provides the maximum number of workers parsing events at a
+  # time.  If a value below 5 is chosen, it defaults to 5.
+  # (Optional) defaults to 5
+  maxWorkers: 10000
+
+  # metadataMaxSize provides the number of bytes that the marshaled metadata of
+  # an event must not exceed.  If the metadata is larger than that, it is removed
+  # from the event before the event is put in a record.  If a value below 0 is
+  # chosen, it defaults to 0.
+  # (Optional)
+  metadataMaxSize: 1000
+
+  # payloadMaxSize provides the number of bytes that the payload of an event must
+  # not exceed.  If the payload is larger than that, it is removed from the event
+  # before the events is put in a record.  If a value below 0 is chosen, it
+  # defaults to 0.
+  # (Optional)
+  payloadMaxSize: 1000
+
+  # defaultTTL provides the amount of time a record is kept in the database
+  # before it is removed.  This TTL is for any event that doesn't have a rule
+  # with a TTL specified.  If 0 is chosen, it defaults to 5m.
+  # (Optional) defaults to 5m
+  defaultTTL: 5s
+
+  # regexRules provides rules for events whose destinations match the regular
+  # expression.  If the event matches the regex of a rule, Svalinn gets
+  # instructions on whether or not to store the event's payload (storePayload),
+  # what the event type should be (eventType), and how long the record should
+  # live in the database (ruleTTL).  If no rules are provided, the payload isn't
+  # stored, the event type is the default, and the record's TTL is the defaultTTL.
+  # Svalinn uses the first rule whose regex matches an event's destination.
+  #
+  # The eventType indicates where to find the device id in the event.  If the
+  # event type is "State", the device id is parsed out of the event Destination.
+  # Otherwise, the event Source is used as the device id.
+  # eventType options: "State", "Default"
+  #
+  # (Optional)
+  regexRules:
+    - regex: ".*/online$"
+      storePayload: true
+      ruleTTL: 30s
+      eventType: "State"
+    - regex: ".*/offline$"
+      storePayload: true
+      ruleTTL: 30s
+      eventType: "State"
+
+# blacklistInterval provides how often Svalinn should get the blacklist from
+# the database.  If a device id matches a regular expression on the blacklist,
+# that event isn't inserted into the database.  If 0s is chosen, it defaults to
+# 1m.
+# (Oprional) defaults to 1m
+blacklistInterval: 1m
+
+########################################
+#   Authorization Related Configuration
+########################################
+
+# secret contains information for finding the secret on incoming requests.  If
+# both header and webhook secret are empty, no authentication is done on
+# incoming requests to Svalinn.  Otherwise, the value at the header provided
+# should hold a sha1 hash of the request body.  It should be in the format:
+#
+# Sha1<delimiter><hash>
+#
+# (Optional)
+secret:
+  # header provides the header key where the hash is expected.
+  # (Optional)
+  header: "X-Webpa-Signature"
+
+  # delimiter provides the string that is expected between "Sha1" and the hash.
+  # (Optional)
+  delimiter: "="
+
+########################################
+#   Webhook Registration Related Configuration
+########################################
+
+# webhook provides the information needed to register to a webhook.  If the
+# urls and event regex aren't empty and the interval is greater than 0,
+# registration occurs.
+# (Optional)
+webhook:
+  # registrationInterval provides the time to wait between each registration to
+  # the webhook.  If this is set to 0, no registration is done.
+  # (Optional)
+  registrationInterval: "4m"
+
+  # timeout provides the length of time the request should wait before timing
+  # out.
+  timeout: "1m"
+
+  # registrationURL provides the place to register the webhook.
+  registrationURL: "https://127.0.0.1:6000/hook"
+
+  # request provides the information passed in the webhook registration request.
+  request:
+    # config provides configuration values for the requests to the webhook
+    # receiver.
+    config:
+      # url provides the server the webhook should send the events to.  If this
+      # value isn't set, no registration happens.
+      url: "http://host.docker.internal:8181/api/v1/device-status"
+
+      # contentType provides the content type Svalinn expects from the requests
+      # it receives.
+      # (Optional) defaults to "wrp"
+      #contentType: "wrp"
+
+      # secret provides the key for hashing the messages the webhook sends.
+      # If this is empty, no authentication is done later for incoming requests
+      # to Svalinn.
+      # (Optional)
+      secret: "super secret"
+
+      # maxRetryCount is the number of times to retry on a failure.
+      # (Optional)
+      maxRetryCount: 3
+
+      # alternativeURLs provides endpoints to round robin through on a failure
+      # to send an event.  This is only used if the maxRetryCount is greater
+      # than 0.
+      # (Optional)
+      #AlternativeURLs: []
+
+    # events provides a list of regular expressions that tells the webhook
+    # which endpoints to send to Svalinn.  If the destination of an event
+    # matches a regular expression in this list, it is sent to Svalinn
+    events: ["device-status.*"]
+
+    # matcher provides regular expressions to match against the event source.
+    # (Optional) default is [".*"]
+    # matcher:
+    #   deviceID: [".*"]
+
+  # the below configuration values provide a way to add an Authorization header
+  # to the request to the webhook.  If both basic and sat contain empty values,
+  # no header is sent.  sat takes priority over basic if both are set.
+
+  # basic provides a way to use Basic Authorization when registering to a
+  # webhook.  If this value is provided and sat isn't, the following header is
+  # added to the registration request:
+  #
+  # Authorization Basic {basic}
+  #
+  # (Optional)
+  basic: ""
+
+  # jwt provides a way to use Bearer Authorization when registering to a
+  # webhook.  If the below values are all provided, a request is made to the
+  # URL to get the token to be used in the registration request.  The
+  # header would look like:
+  #
+  # Authorization Bearer {token}
+  #
+  # (Optional)
+  jwt:
+    # requestHeaders are added to the request for the token.
+    # (Optional)
+    # requestHeaders:
+    #   "": ""
+
+    # authURL is the URL to access for the token.
+    authURL: ""
+
+    # timeout is how long the request to get the token will take before
+    # timing out.
+    timeout: "1m"
+
+    # buffer is the length of time before a token expires to get a new token.
+    # (Optional)
+    buffer: "5s"
