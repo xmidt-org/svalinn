@@ -323,7 +323,7 @@ func TestCreateEventTemplateRegex(t *testing.T) {
 		},
 		{
 			description:   "Invalid Regex",
-			regex:         `^(?<event>[^\/]+)\/`,
+			regex:         `^(?<event>[^\/]+\/`,
 			validRegex:    false,
 			expectedIndex: -1,
 		},
